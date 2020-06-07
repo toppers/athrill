@@ -1,6 +1,0 @@
-PACKAGE hrp2
-
-MANIFEST
-ldscript.tf
-tool_stddef.h
-tool_svc.h

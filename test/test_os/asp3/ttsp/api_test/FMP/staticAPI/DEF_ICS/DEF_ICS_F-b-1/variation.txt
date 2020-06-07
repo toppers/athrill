@@ -1,2 +1,0 @@
-prc_num:2
-func_exception:true

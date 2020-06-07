@@ -1,2 +1,0 @@
-WFLAGS			+= -pg
-LFLAGS			+= -pg

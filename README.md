@@ -46,11 +46,6 @@ Then make sure you can display usage of athrill on an arbitrary folder:
 	-t<timeout>                    : set program end time using <timeout> clocks. this option is valid on the background mode.
 	-m<memory config file>         : set athrill memory configuration. rom, ram region is configured on your system.
 
-# Demo
----
-Athrill debugging Real-time OS (asp3) demonstration.
- 
-![demo](https://github.com/tmori/athrill/blob/media/demo.gif)
 
 # License
 -------

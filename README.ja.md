@@ -47,11 +47,6 @@ export PATH=[athrill root folder]/src/bin:$PATH
 	-m<memory config file>         : set athrill memory configuration. rom, ram region is configured on your system.
 	-d<device config file>         : set device parameter.
 
-# Demo
----
-Athrill を使用してリアルタイムOS (asp3)をデバッグするデモです.
- 
-![demo](https://github.com/tmori/athrill/blob/media/demo.gif)
 
 # License
 -------
