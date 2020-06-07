@@ -10,7 +10,6 @@ Athrill at the moment supports V850 CPU instructions.
 -----------------
   * [Requirements](#requirements)
   * [Install](#install)
-  * [Deomo](#demo)
   * [License](#license)
 
 # Requirements
