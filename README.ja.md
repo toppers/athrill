@@ -10,7 +10,6 @@ Athrill を使用すると，仮想マイコン上で組込みプログラムを
 -----------------
   * [Requirements](#requirements)
   * [Install](#install)
-  * [Deomo](#demo)
   * [License](#license)
 
 # Requirements
