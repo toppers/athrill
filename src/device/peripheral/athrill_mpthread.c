@@ -22,7 +22,8 @@ typedef struct {
 
 static uint32 mpthread_num = 0;
 static pthread_mutex_t     mpthread_mutex = PTHREAD_MUTEX_INITIALIZER;
-static MpthrInfoType *mpthread_info = NULL;
+#define MPTHREAD_MAX_NUM	1024
+static MpthrInfoType mpthread_info[1024];
 
 
 static void *mpthread_run(void *arg)
@@ -68,12 +69,13 @@ Std_ReturnType mpthread_register(MpthrIdType *id, MpthrOperationType *op)
     MpthrIdType new_id;
     
     pthread_mutex_lock(&mpthread_mutex);
+    if (mpthread_num >= MPTHREAD_MAX_NUM) {
+    	printf("ERROR: max(%u) mpthread creation litmit\n", MPTHREAD_MAX_NUM);
+        pthread_mutex_unlock(&mpthread_mutex);
+    	return STD_E_LIMIT;
+    }
     new_id = mpthread_num;
     mpthread_num++;
-    MpthrInfoType *p = realloc(mpthread_info, sizeof(MpthrInfoType) * mpthread_num);
-    ASSERT(p != NULL);
-    mpthread_info = p;
-    pthread_mutex_unlock(&mpthread_mutex);
 
     mpthread_info[new_id].id = new_id;
     mpthread_info[new_id].timeout = 0;
@@ -85,6 +87,7 @@ Std_ReturnType mpthread_register(MpthrIdType *id, MpthrOperationType *op)
     pthread_create(&mpthread_info[new_id].thread , NULL , mpthread_run , (void*)&mpthread_info[new_id]);
 
     *id = new_id;
+    pthread_mutex_unlock(&mpthread_mutex);
     return STD_E_OK;
 }
 

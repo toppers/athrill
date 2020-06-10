@@ -281,6 +281,7 @@ static Std_ReturnType serial_fifo_tx_thread_do_proc(MpthrIdType id)
 	ssize_t ret;
 	Std_ReturnType err;
 
+	mpthread_lock(id);
 	for (ch = 0; ch < SERIAL_FIFO_MAX_CHANNEL_NUM; ch++) {
 		if (athrill_serial_fifo[ch].wr.data == NULL) {
 			continue;
@@ -292,6 +293,7 @@ static Std_ReturnType serial_fifo_tx_thread_do_proc(MpthrIdType id)
 			break;
 		}
 	}
+	mpthread_unlock(id);
 	ASSERT(ch != SERIAL_FIFO_MAX_CHANNEL_NUM);
 
 	fd = -1;
@@ -303,7 +305,7 @@ static Std_ReturnType serial_fifo_tx_thread_do_proc(MpthrIdType id)
 		}
 	}
 	ASSERT(fd >= 0);
-
+	printf("id=%d OK: open ch=%d tx_fifo(%s)\n", id, ch, athrill_serial_fifo[ch].tx_serial_fifopath);
 	while (TRUE) {
 		if (athrill_serial_fifo[ch].wr.count == 0) {
 			target_os_api_sleep(100);// 100msec
@@ -330,6 +332,7 @@ static Std_ReturnType serial_fifo_rx_thread_do_proc(MpthrIdType id)
 	ssize_t ret;
 	Std_ReturnType err;
 
+	mpthread_lock(id);
 	for (ch = 0; ch < SERIAL_FIFO_MAX_CHANNEL_NUM; ch++) {
 		if (athrill_serial_fifo[ch].rd.data == NULL) {
 			continue;
@@ -341,7 +344,9 @@ static Std_ReturnType serial_fifo_rx_thread_do_proc(MpthrIdType id)
 			break;
 		}
 	}
+	mpthread_unlock(id);
 	ASSERT(ch != SERIAL_FIFO_MAX_CHANNEL_NUM);
+	printf("id=%d OK: open ch=%d rx_fifo(%s)\n", id, ch, athrill_serial_fifo[ch].rx_serial_fifopath);
 
 	fd = -1;
 	while (fd < 0) {
@@ -396,6 +401,8 @@ static void serial_fifo_thread_start(uint32 channel)
 	ASSERT(err == STD_E_OK);
 	err = mpthread_register(&athrill_serial_fifo[channel].tx_thread, &tx_thread_ops);
 	ASSERT(err == STD_E_OK);
+	//printf("ch=%d tx_thr_id=%d\n", channel, athrill_serial_fifo[channel].tx_thread);
+	//printf("ch=%d rx_thr_id=%d\n", channel, athrill_serial_fifo[channel].rx_thread);
 
 	err = mpthread_start_proc(athrill_serial_fifo[channel].rx_thread);
 	ASSERT(err == STD_E_OK);
