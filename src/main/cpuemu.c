@@ -487,14 +487,32 @@ void *cpuemu_thread_run(void* arg)
 					prev_elaps = elaps;
 				}
 #endif /* OS_LINUX */
+#ifndef CPUEMU_CLOCK_BUG_FIX
 				if (cpuemu_dev_clock.min_intr_interval > 2U) {
 					cpuemu_dev_clock.clock += (cpuemu_dev_clock.min_intr_interval - 1);
 				}
+#else
+				if (cpuemu_dev_clock.min_intr_interval != DEVICE_CLOCK_MAX_INTERVAL) {
+					cpuemu_dev_clock.clock += (cpuemu_dev_clock.min_intr_interval);
+				}
+#endif /* CPUEMU_CLOCK_BUG_FIX */
 				else {
 					cpuemu_dev_clock.clock += 1U;
 				}
 			}
+#ifndef CPUEMU_CLOCK_BUG_FIX
+#else
+			else {
+				cpuemu_dev_clock.clock += 1U;
+			}
+#endif /* CPUEMU_CLOCK_BUG_FIX */
 		}
+#ifndef CPUEMU_CLOCK_BUG_FIX
+#else
+		else {
+			cpuemu_dev_clock.clock += 1U;
+		}
+#endif /* CPUEMU_CLOCK_BUG_FIX */
 	}
 
 	return NULL;

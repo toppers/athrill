@@ -104,7 +104,12 @@ extern ProfStatType cpuemu_tool2_prof;
 /*
  * スキップ可能な最大クロック数
  */
+#ifndef CPUEMU_CLOCK_BUG_FIX
 #define DEVICE_CLOCK_MAX_INTERVAL	-1
+#else
+#define DEVICE_CLOCK_MAX_INTERVAL	-1ULL
+#endif /* CPUEMU_CLOCK_BUG_FIX */
+
 typedef struct {
 	uint64 clock;
 	uint64 intclock;//割込み処理で消費している時間
