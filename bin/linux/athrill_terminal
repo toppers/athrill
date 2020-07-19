@@ -10,8 +10,8 @@ CHANNEL=${1}
 athrill_remote c > /dev/null
 while [ 1 ]
 do
-	echo -n "$ "
-	read str 
+	#echo -n "$ "
+	read -rN1 str 
 	athrill_remote q > /dev/null
 	athrill_remote S ${CHANNEL}  $str > /dev/null
 	athrill_remote c > /dev/null
