@@ -1,10 +1,10 @@
 ﻿#ifndef _STD_TYPES_H_
 #define _STD_TYPES_H_
 
-typedef char sint8;
-typedef short sint16;
-typedef int sint32;
-typedef long long sint64;
+typedef signed char sint8;
+typedef signed short sint16;
+typedef signed int sint32;
+typedef signed long long sint64;
 
 typedef unsigned char uint8;
 typedef unsigned short uint16;
