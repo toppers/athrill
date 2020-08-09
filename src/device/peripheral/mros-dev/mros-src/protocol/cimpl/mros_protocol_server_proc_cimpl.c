@@ -63,8 +63,7 @@ mRosReturnType mros_proc_tcpros_receive(mRosCommTcpClientType *client, mRosPacke
 		return ret;
 	}
 	packet->data_size = 0;
-	packet->total_size = res;
-	ret = mros_comm_tcp_client_receive_all(client, packet->data, packet->total_size, &res);
+	ret = mros_comm_tcp_client_receive_all(client, packet->data, res, &res);
 	if (ret != MROS_E_OK) {
 		ROS_ERROR("%s %s() %u ret=%d", __FILE__, __FUNCTION__, __LINE__, ret);
 		return ret;
