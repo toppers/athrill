@@ -156,6 +156,9 @@ static int athrill_mros_device_sub_init(AthrillMrosDevSubReqType *reqs, int req_
 }
 
 char *mros_master_ipaddr = MROS_MASTER_IPADDR;
+char *mros_node_ipaddr = MROS_NODE_IPADDR;
+static char mros_uri_slave_buffer[4096];
+char *mros_uri_slave = &mros_uri_slave_buffer[0];
 
 static void *athrill_mros_device_main(void *arg)
 {
@@ -163,10 +166,16 @@ static void *athrill_mros_device_main(void *arg)
 	int err;
 	char *node_name;
 
+	memset(mros_uri_slave_buffer, 0, sizeof(mros_uri_slave_buffer));
+
 	set_main_task();
 	main_task();
 
 	(void)cpuemu_get_devcfg_string("DEBUG_FUNC_MROS_MASTER_IPADDR", &mros_master_ipaddr);
+	(void)cpuemu_get_devcfg_string("DEBUG_FUNC_MROS_NODE_IPADDR", &mros_node_ipaddr);
+	printf("mros_master_ipaddr=%s\n", mros_master_ipaddr);
+	snprintf(mros_uri_slave_buffer, sizeof(mros_uri_slave_buffer), "http://%s:%d", mros_node_ipaddr, MROS_SLAVE_PORT_NO);
+	printf("mros_uri_slave=%s\n", mros_uri_slave);
 	ret = cpuemu_get_devcfg_string("DEBUG_FUNC_MROS_NODE_NAME", &node_name);
 	if (ret == STD_E_OK) {
 		ros_init(0, NULL, node_name);

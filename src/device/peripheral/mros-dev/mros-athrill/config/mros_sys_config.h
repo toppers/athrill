@@ -24,6 +24,8 @@ extern "C" {
 #define MROS_MASTER_IPADDR						"0.0.0.0"
 
 extern char *mros_master_ipaddr;
+extern char *mros_node_ipaddr;
+extern char *mros_uri_slave;
 
 /*
  * ipaddr of self node

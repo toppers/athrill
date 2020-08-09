@@ -517,7 +517,7 @@ static char *getVirtualFileName(const char *file_name, char *buf)
 // T.B.D. assume fd is not used so much
 #define SPECIAL_FD_NUM (1024)
 static int special_fd_table[SPECIAL_FD_NUM] = {0};
-inline int get_correspond_fd(int fd)
+static inline int get_correspond_fd(int fd)
 {
 	ASSERT( 0<= fd && fd < SPECIAL_FD_NUM);
     if ( special_fd_table[fd] ) {
@@ -525,13 +525,13 @@ inline int get_correspond_fd(int fd)
     }
 	return fd;
 }
-inline int set_correspond_fd(int fd, int curresponding_fd)
+static inline int set_correspond_fd(int fd, int curresponding_fd)
 {
 	ASSERT( 0<= fd && fd < SPECIAL_FD_NUM);	
 	return special_fd_table[fd] = curresponding_fd;
 }
 
-inline int is_stream_fd(int fd)
+static inline int is_stream_fd(int fd)
 {
     return get_correspond_fd(fd) != fd;
 }
@@ -901,9 +901,7 @@ static int create_pipe_pair(const char *path)
 
 static void athrill_syscall_ev3_serial_open(AthrillSyscallArgType *arg)
 {
-    Std_ReturnType err;
     char *path_base;
-    char *path;
     int fd;
     sys_int32 port = arg->body.api_ev3_serial_open.port;
 
