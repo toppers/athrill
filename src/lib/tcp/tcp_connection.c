@@ -8,6 +8,7 @@ Std_ReturnType tcp_connection_send(TcpConnectionType *connection, const char *da
 {
 	ssize_t snd_size;
 
+	*res = 0;
 	snd_size = send(connection->socket.fd, data, size, 0);
 	if (snd_size < 0) {
 		printf("ERROR: tcp_connection_send() errno=%d\n", errno);
@@ -21,10 +22,51 @@ Std_ReturnType tcp_connection_send(TcpConnectionType *connection, const char *da
 	*res = snd_size;
 	return STD_E_OK;
 }
+Std_ReturnType tcp_connection_send_nblk(TcpConnectionType *connection, const char *data, uint32 size, uint32 *res)
+{
+	ssize_t snd_size;
+
+	*res = 0;
+	snd_size = send(connection->socket.fd, data, size, MSG_DONTWAIT);
+	if (snd_size < 0) {
+		if (errno != EAGAIN) {
+			printf("ERROR: tcp_connection_send() errno=%d\n", errno);
+			connection->connected = FALSE;
+		}
+		return STD_E_NOENT;
+	}
+	else if (snd_size == 0) {
+		connection->connected = FALSE;
+		return STD_E_NOENT;
+	}
+	*res = snd_size;
+	return STD_E_OK;
+}
+
+Std_ReturnType tcp_connection_receive_nblk(TcpConnectionType *connection, char *data, uint32 size, uint32 *res)
+{
+	ssize_t rcv_size;
+	*res = 0;
+	rcv_size = recv(connection->socket.fd, data, size, MSG_DONTWAIT);
+	if (rcv_size < 0) {
+		if (errno != EAGAIN) {
+			printf("ERROR: tcp_connection_receive() errno=%d\n", errno);
+			connection->connected = FALSE;
+		}
+		return STD_E_NOENT;
+	}
+	else if (rcv_size == 0) {
+		connection->connected = FALSE;
+		return STD_E_NOENT;
+	}
+	*res = rcv_size;
+	return STD_E_OK;
+}
 
 Std_ReturnType tcp_connection_receive(TcpConnectionType *connection, char *data, uint32 size, uint32 *res)
 {
 	ssize_t rcv_size;
+	*res = 0;
 	rcv_size = recv(connection->socket.fd, data, size, 0);
 	if (rcv_size < 0) {
 		printf("ERROR: tcp_connection_receive() errno=%d\n", errno);

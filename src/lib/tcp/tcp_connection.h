@@ -10,6 +10,8 @@ typedef struct {
 
 extern Std_ReturnType tcp_connection_send(TcpConnectionType *connection, const char *data, uint32 size, uint32 *res);
 extern Std_ReturnType tcp_connection_receive(TcpConnectionType *connection, char *data, uint32 size, uint32 *res);
+extern Std_ReturnType tcp_connection_send_nblk(TcpConnectionType *connection, const char *data, uint32 size, uint32 *res);
+extern Std_ReturnType tcp_connection_receive_nblk(TcpConnectionType *connection, char *data, uint32 size, uint32 *res);
 extern void tcp_connection_close(TcpConnectionType *connection);
 
 #endif /* _TCP_CONNECTION_H_ */
