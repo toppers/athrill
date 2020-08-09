@@ -167,15 +167,15 @@ static void *athrill_mros_device_main(void *arg)
 	char *node_name;
 
 	memset(mros_uri_slave_buffer, 0, sizeof(mros_uri_slave_buffer));
-
-	set_main_task();
-	main_task();
-
 	(void)cpuemu_get_devcfg_string("DEBUG_FUNC_MROS_MASTER_IPADDR", &mros_master_ipaddr);
 	(void)cpuemu_get_devcfg_string("DEBUG_FUNC_MROS_NODE_IPADDR", &mros_node_ipaddr);
 	printf("mros_master_ipaddr=%s\n", mros_master_ipaddr);
 	snprintf(mros_uri_slave_buffer, sizeof(mros_uri_slave_buffer), "http://%s:%d", mros_node_ipaddr, MROS_SLAVE_PORT_NO);
 	printf("mros_uri_slave=%s\n", mros_uri_slave);
+
+	set_main_task();
+	main_task();
+
 	ret = cpuemu_get_devcfg_string("DEBUG_FUNC_MROS_NODE_NAME", &node_name);
 	if (ret == STD_E_OK) {
 		ros_init(0, NULL, node_name);
@@ -183,7 +183,6 @@ static void *athrill_mros_device_main(void *arg)
 	else {
 		ros_init(0, NULL, "athrill_node");
 	}
-
 	err = athrill_mros_device_pub_init(athrill_mros_device_register.pub.reqs, athrill_mros_device_register.pub.req_num);
 	if (err != 0) {
 		printf("ERROR: athrill_mros_device_pub_init()\n");
@@ -194,6 +193,9 @@ static void *athrill_mros_device_main(void *arg)
 		printf("ERROR: athrill_mros_device_pub_init()\n");
 		exit(1);
 	}
+
+
+
 	while (1) {
 		usleep(1000*100); /* 100msec */
 		cyclic_handler(0);

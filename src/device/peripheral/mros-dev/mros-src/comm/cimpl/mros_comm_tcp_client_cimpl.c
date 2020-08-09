@@ -55,7 +55,8 @@ mRosReturnType mros_comm_tcp_client_connect(mRosCommTcpClientType *client)
 
 	ret = mros_comm_connect(client->socket.sock_fd, (const mRosSockAddrType *)&client->remote, sizeof(mRosSockAddrInType));
 	if (ret != MROS_E_OK) {
-		ROS_ERROR("%s %s() %u ret=%d", __FILE__, __FUNCTION__, __LINE__, ret);
+		struct sockaddr_in *sock = (struct sockaddr_in*)&client->remote;
+		ROS_ERROR("%s %s() %u ret=%d ipaddr=0x%x port=%u", __FILE__, __FUNCTION__, __LINE__, ret, sock->sin_addr, sock->sin_port);
 		return MROS_E_NOTCONN;
 	}
 	client->connected = MROS_TRUE;
