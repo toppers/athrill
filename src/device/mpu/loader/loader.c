@@ -34,6 +34,7 @@ Std_ReturnType binary_load(uint8 *binary_data, uint32 load_addr, uint32 binary_d
 Std_ReturnType elf_load(uint8 *elf_data, MemoryAddressMapType *memap)
 {
 	Std_ReturnType err;
+	uint32 disable_debug_data_type = 0;
 
 	err = Elf_Check((const Elf32_Ehdr*)elf_data);
 	if (err != STD_E_OK) {
@@ -63,8 +64,10 @@ Std_ReturnType elf_load(uint8 *elf_data, MemoryAddressMapType *memap)
 	if (err != STD_E_OK) {
 		return err;
 	}
-	dwarf_build_data_type_set();
-
+	cpuemu_get_devcfg_value("DEBUG_FUNC_DISABLE_DEBUG_DATA_TYPE", &disable_debug_data_type);
+	if (disable_debug_data_type == 0) {
+		dwarf_build_data_type_set();
+	}
 
 	return err;
 }
