@@ -544,7 +544,7 @@ static void athrill_syscall_open_r(AthrillSyscallArgType *arg)
     char *file_name;
     int mode = arg->body.api_open_r.mode;
     char buf[255];
-    int flags = arg->body.api_open_r.flags;
+    int flags = athrill_syscall_open_r_flag(arg->body.api_open_r.flags);
     int fd;
 
     err = mpu_get_pointer(0U, arg->body.api_open_r.file_name,(uint8**)&file_name);
