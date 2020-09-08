@@ -36,12 +36,58 @@
 
 AthrillMemHeadType athrill_mem_head = { NULL, NULL };
 
+static FILE *save_operation_fp = NULL;
+
+static void load_cui_operation(void)
+{
+	DbgCmdExecutorType *res;
+	char *filename;
+	size_t buffer_size = 1024;
+	char buffer[1025];
+	char *lineptr = buffer;
+	ssize_t len;
+
+	Std_ReturnType err = cpuemu_get_devcfg_string("DEBUG_FUNC_OPLOG", &filename);
+	if (err != STD_E_OK) {
+		return;
+	}
+	save_operation_fp = fopen(filename, "a+");
+	if (save_operation_fp == NULL) {
+		printf("ERROR: can not open oplog file %s\n", filename);
+		return;
+	}
+	while (TRUE) {
+		len = getline(&lineptr, &buffer_size, save_operation_fp);
+		if (len < 0) {
+			break;
+		}
+		buffer[len] = '\0';
+		res = dbg_parse((uint8*)buffer, (uint32)len);
+
+		if (res != NULL) {
+			res->run(res);
+		}
+	}
+	return;
+}
+static void save_cui_operation(const char* op)
+{
+	if (save_operation_fp == NULL) {
+		return;
+	}
+	fprintf(save_operation_fp, "%s\n", op);
+	fflush(save_operation_fp);
+	return;
+}
+
 static void do_cui(void)
 {
 	DbgCmdExecutorType *res;
 	bool is_dbgmode;
-	char buffer[1024];
+	char buffer[1025];
 	int len;
+
+	load_cui_operation();
 
 	while (TRUE) {
 		is_dbgmode = cpuctrl_is_debug_mode();
@@ -58,7 +104,11 @@ retry:
 		res = dbg_parse((uint8*)buffer, (uint32)len);
 
 		if (res != NULL) {
+			res->result_ok = FALSE;
 			res->run(res);
+			if (res->result_ok == TRUE) {
+				save_cui_operation((const char*)res->original_str);
+			}
 		}
 	}
 }

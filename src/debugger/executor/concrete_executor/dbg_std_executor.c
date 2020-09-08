@@ -89,6 +89,7 @@ void dbg_std_executor_break(void *executor)
 			 if (cpuctrl_set_break(addr, BREAK_POINT_TYPE_FOREVER) == TRUE) {
 				 printf("break %s 0x%x\n", parsed_args->symbol.str, addr);
 				 CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "OK\n"));
+				 arg->result_ok = TRUE;
 			 }
 			 else {
 				 printf("ERROR: can not break %s\n", parsed_args->symbol.str);
@@ -100,6 +101,7 @@ void dbg_std_executor_break(void *executor)
 		 if (cpuctrl_set_break(parsed_args->break_addr, BREAK_POINT_TYPE_FOREVER) == TRUE) {
 			 printf("break 0x%x\n", parsed_args->break_addr);
 			 CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "OK\n"));
+			 arg->result_ok = TRUE;
 		 }
 		 else {
 			 printf("ERROR: can not break 0x%x\n", parsed_args->break_addr);
@@ -123,6 +125,7 @@ void dbg_std_executor_break(void *executor)
 			 if (cpuctrl_set_break(value.addr, BREAK_POINT_TYPE_FOREVER) == TRUE) {
 				 printf("break 0x%x\n", value.addr);
 				 CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "OK\n"));
+				 arg->result_ok = TRUE;
 			 }
 			 else {
 				 printf("ERROR: can not break 0x%x\n", value.addr);
@@ -267,6 +270,7 @@ void dbg_std_executor_watch_data(void *executor)
 
 	 if (result == TRUE) {
 		 CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "OK\n"));
+		 arg->result_ok = TRUE;
 	 }
 	 else {
 		 CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "NG\n"));
@@ -287,11 +291,13 @@ void dbg_std_executor_delete(void *executor)
 		 }
 		 else {
 			 CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "OK\n"));
+			 arg->result_ok = TRUE;
 		 }
 	 }
 	 else if (parsed_args->type == DBG_CMD_DELETE_ALL) {
 		 cpuctrl_del_all_break(BREAK_POINT_TYPE_FOREVER);
 		 CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "OK\n"));
+		 arg->result_ok = TRUE;
 	 }
 	 return;
 }

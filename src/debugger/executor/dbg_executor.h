@@ -13,6 +13,7 @@ typedef struct {
 	uint8	original_str[DBG_CMD_BUFFER_SIZE];
 	uint8	parsed_args[DBG_CMD_BUFFER_SIZE];
 	void (*run) (void *executor);
+	bool result_ok;
 } DbgCmdExecutorType;
 
 #endif /* _DBG_EXECUTOR_H_ */
