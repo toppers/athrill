@@ -35,10 +35,10 @@ Std_ReturnType tcp_inet_get_ipaddr(const char *hostname, uint32 *ipaddr)
     uint8 *paddr = addr_array;
 
     result = sscanf(hostname, "%hhu.%hhu.%hhu.%hhu",
-    		(uint8*)&addr_array[0],
-			(uint8*)&addr_array[1],
+    		(uint8*)&addr_array[3],
 			(uint8*)&addr_array[2],
-			(uint8*)&addr_array[3]);
+			(uint8*)&addr_array[1],
+			(uint8*)&addr_array[0]);
 
     if (result != 4) {
     	 struct hostent *host_address = gethostbyname(hostname);
