@@ -934,7 +934,12 @@ static void athrill_syscall_exit(AthrillSyscallArgType *arg)
 {
     sys_int32 status = arg->body.api_exit.status;
     printf("athrill exit(%d)\n", status);
-   	exit(status);
+    sync();
+    sync();
+    sync();
+    sync();
+    sync();
+    exit(status);
     arg->ret_value = SYS_API_ERR_OK;
     return;
 }
