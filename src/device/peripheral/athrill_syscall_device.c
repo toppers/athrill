@@ -55,6 +55,7 @@ static void athrill_syscall_ev3_readdir(AthrillSyscallArgType *arg);
 static void athrill_syscall_ev3_closedir(AthrillSyscallArgType *arg);
 
 static void athrill_syscall_ev3_serial_open(AthrillSyscallArgType *arg);
+static void athrill_syscall_exit(AthrillSyscallArgType *arg);
 
 
 
@@ -89,6 +90,8 @@ static struct athrill_syscall_functable syscall_table[SYS_API_ID_NUM] = {
     { athrill_syscall_ev3_closedir },
 
     { athrill_syscall_ev3_serial_open },
+
+    { athrill_syscall_exit },
 };
 
 void athrill_syscall_device(uint32 addr)
@@ -925,4 +928,13 @@ static void athrill_syscall_ev3_serial_open(AthrillSyscallArgType *arg)
     //printf("ev3_serial_open() port=%d fd=%d\n",port,fd);
     return;
 
+}
+
+static void athrill_syscall_exit(AthrillSyscallArgType *arg)
+{
+    sys_int32 status = arg->body.api_exit.status;
+    printf("athrill exit(%d)\n", status);
+   	exit(status);
+    arg->ret_value = SYS_API_ERR_OK;
+    return;
 }
