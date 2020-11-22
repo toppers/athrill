@@ -49,6 +49,11 @@ void device_init_athrill_device(void)
 
     return;
 }
+static Std_ReturnType athrill_device_get_memory(uint32 addr, uint8 **data)
+{
+	return mpu_get_pointer(0U, addr, data);
+}
+
 void device_init_athrill_exdev(void)
 {
     /*
@@ -56,10 +61,13 @@ void device_init_athrill_exdev(void)
      */
     athrill_exdev_operation.param.get_devcfg_string = &cpuemu_get_devcfg_string;
     athrill_exdev_operation.param.get_devcfg_value = &cpuemu_get_devcfg_value;
-    athrill_exdev_operation.param.get_devcfg_string = &cpuemu_get_devcfg_string;
+    athrill_exdev_operation.param.get_devcfg_value_hex = &cpuemu_get_devcfg_value_hex;
 
     athrill_exdev_operation.intr.add_intr = NULL; //TODO
     athrill_exdev_operation.intr.raise_intr = &cpuemu_raise_intr;
+
+    athrill_exdev_operation.dev.get_memory = &athrill_device_get_memory;
+    athrill_exdev_operation.dev.get_serial_fifo = &athrill_device_get_serial_fifo_buffer;
 
     athrill_exdev_operation.libs.fifo.create = &comm_fifo_buffer_create;
     athrill_exdev_operation.libs.fifo.add = &comm_fifo_buffer_add;

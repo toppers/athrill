@@ -9,6 +9,7 @@
 #include "tcp/tcp_server.h"
 #include "udp/udp_comm.h"
 #include "athrill_mpthread.h"
+#include "serial_fifo.h"
 
 typedef struct {
 	Std_ReturnType (*get_devcfg_value) (const char* key, uint32 *value);
@@ -79,8 +80,14 @@ typedef struct {
 } AthrillExDevLibOperationType;
 
 typedef struct {
+	Std_ReturnType (*get_memory) (uint32 addr, uint8 **data);
+	void (*get_serial_fifo) (uint32 channel, AthrillSerialFifoType **serial_fifop);
+} AthrillExDevDeviceOperationType;
+
+typedef struct {
 	AthrillExDevParamOperationType	param;
 	AthrillExDevIntrOperationType	intr;
+	AthrillExDevDeviceOperationType	dev;
 	AthrillExDevLibOperationType	libs;
 } AthrillExDevOperationType;
 

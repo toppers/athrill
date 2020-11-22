@@ -4,6 +4,7 @@ LIBTARGET	:= libmpu.a
 
 IFLAGS	:= -I$(CORE_DIR)/inc
 IFLAGS	+= -I$(CORE_DIR)/device/mpu
+IFLAGS  += -I$(CORE_DIR)/device/peripheral/serial/fifo
 IFLAGS	+= -I$(CORE_DIR)/lib
 IFLAGS	+= -I$(CORE_DIR)/lib/dwarf
 IFLAGS	+= -I$(CORE_DIR)/lib/dwarf/data_type
