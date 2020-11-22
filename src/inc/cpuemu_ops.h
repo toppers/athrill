@@ -50,6 +50,7 @@ typedef enum {
 	MemoryAddressImplType_RAM,
 	MemoryAddressImplType_MMAP,
 	MemoryAddressImplType_MALLOC,
+	MemoryAddressImplType_DEV,
 } MemoryAddressImplType;
 
 typedef struct {
@@ -57,6 +58,7 @@ typedef struct {
 	uint32	start;						/* unit:byte */
 	uint32	size;						/* unit:KB */
 	void *mmap_addr;
+	void *extdev_handle;
 	bool region_executable;				/* X */
 	bool region_elf_load_from_vaddr;	/* V */
 } MemoryAddressType;
@@ -66,6 +68,8 @@ typedef struct {
 	MemoryAddressType	*rom;
 	uint32				ram_num;
 	MemoryAddressType	*ram;
+	uint32				dev_num;
+	MemoryAddressType	*dev;
 } MemoryAddressMapType;
 extern Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map);
 

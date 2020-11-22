@@ -141,6 +141,7 @@ typedef struct {
 	uint64 	min_intr_interval;
 } DeviceClockType;
 
+#ifndef ATHRILL_EXT_DEVICE
 extern void device_init(CpuType *cpu, DeviceClockType *dev_clock);
 extern void device_supply_clock(DeviceClockType *dev_clock);
 /*
@@ -153,4 +154,5 @@ extern void device_get_clock(DeviceClockType *dev_clock);
  */
 extern int intc_raise_intr(uint32 intno);
 
+#endif /* ATHRILL_EXT_DEVICE */
 #endif /* _STD_DEVICE_OPS_H_ */

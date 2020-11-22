@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "errno.h"
+#include <dlfcn.h>
 #endif /* OS_LINUX */
 #include "athrill_device.h"
 #include "assert.h"
@@ -770,12 +771,14 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 	Std_ReturnType err = STD_E_OK;
 	uint32 len;
 	bool ret;
-	MemoryAddressType *memp;
+	MemoryAddressType *memp = NULL;
 
 	map->ram_num = 0;
 	map->rom_num = 0;
+	map->dev_num = 0;
 	map->ram = NULL;
 	map->rom = NULL;
+	map->dev = NULL;
 
 	ret = token_string_set(&memcfg_file.filepath, path);
 	if (ret == FALSE) {
@@ -884,6 +887,27 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			}
 			analize_memmap_arguments(&memcfg_token_container, map, memp);
 			printf("MALLOC");
+		}
+		else if (!strcmp("DEV", (char*)memcfg_token_container.array[0].body.str.str)) {
+			char *filepath = (char*)memcfg_token_container.array[2].body.str.str;
+			void *handle = dlopen(filepath, RTLD_NOW);
+			if (handle == NULL) {
+				printf("ERROR: Can not find shared library %s\n", filepath);
+				continue;
+			}
+			int *sizep = dlsym(handle, "ex_device_memory_size");
+			if (sizep == NULL) {
+				printf("ERROR: Can not find symbol(device_memory_size) on %s\n", filepath);
+				continue;
+			}
+			map->dev_num++;
+			map->dev = realloc(map->dev, map->dev_num * sizeof(MemoryAddressType));
+			ASSERT(map->dev != NULL);
+			memp = &map->dev[map->dev_num - 1];
+			memp->type = MemoryAddressImplType_DEV;
+			memp->extdev_handle = handle;
+			memp->size = *sizep;
+			printf("DEV");
 		}
 #endif /* OS_LINUX */
 		else {

@@ -7,7 +7,11 @@
 #include <sys/file.h>
 #include "assert.h"
 #include "std_device_ops.h"
+#include "athrill_exdev.h"
+#include "cpuemu_ops.h"
 
+
+AthrillExDevOperationType athrill_exdev_operation;
 
 static uint32 athrill_device_func_call_addr = 0x0;
 static uint32 athrill_device_raise_interrupt_addr = 0x0;
@@ -45,7 +49,68 @@ void device_init_athrill_device(void)
 
     return;
 }
+void device_init_athrill_exdev(void)
+{
+    /*
+     * device operation setting
+     */
+    athrill_exdev_operation.param.get_devcfg_string = &cpuemu_get_devcfg_string;
+    athrill_exdev_operation.param.get_devcfg_value = &cpuemu_get_devcfg_value;
+    athrill_exdev_operation.param.get_devcfg_string = &cpuemu_get_devcfg_string;
 
+    athrill_exdev_operation.intr.add_intr = NULL; //TODO
+    athrill_exdev_operation.intr.raise_intr = &cpuemu_raise_intr;
+
+    athrill_exdev_operation.libs.fifo.create = &comm_fifo_buffer_create;
+    athrill_exdev_operation.libs.fifo.add = &comm_fifo_buffer_add;
+    athrill_exdev_operation.libs.fifo.get = &comm_fifo_buffer_get;
+    athrill_exdev_operation.libs.fifo.close = &comm_fifo_buffer_close;
+    athrill_exdev_operation.libs.fifo.destroy = &comm_fifo_buffer_destroy;
+
+    athrill_exdev_operation.libs.tcp.client_close = &tcp_connection_close;
+    athrill_exdev_operation.libs.tcp.client_create = &tcp_client_create;
+    athrill_exdev_operation.libs.tcp.client_connect = &tcp_client_connect;
+
+    athrill_exdev_operation.libs.tcp.receive = &tcp_connection_receive;
+    athrill_exdev_operation.libs.tcp.receive_nblk = &tcp_connection_receive_nblk;
+    athrill_exdev_operation.libs.tcp.send = &tcp_connection_send;
+    athrill_exdev_operation.libs.tcp.send_nblk = &tcp_connection_send_nblk;
+
+    athrill_exdev_operation.libs.tcp.server_accept = &tcp_server_accept;
+    athrill_exdev_operation.libs.tcp.server_create = &tcp_server_create;
+    athrill_exdev_operation.libs.tcp.server_close = &tcp_server_close;
+
+    athrill_exdev_operation.libs.udp.create = &udp_comm_create;
+    athrill_exdev_operation.libs.udp.create_ipaddr = &udp_comm_create_ipaddr;
+    athrill_exdev_operation.libs.udp.read = &udp_comm_read;
+    athrill_exdev_operation.libs.udp.write = &udp_comm_write;
+    athrill_exdev_operation.libs.udp.remote_write = &udp_comm_remote_write;
+    athrill_exdev_operation.libs.udp.delete = &udp_server_delete;
+
+    athrill_exdev_operation.libs.thread.init = &mpthread_init;
+    athrill_exdev_operation.libs.thread.thr_register = &mpthread_register;
+    athrill_exdev_operation.libs.thread.lock = &mpthread_lock;
+    athrill_exdev_operation.libs.thread.unlock = &mpthread_unlock;
+    athrill_exdev_operation.libs.thread.get_status = &mpthread_get_status;
+    athrill_exdev_operation.libs.thread.start_proc = &mpthread_start_proc;
+    athrill_exdev_operation.libs.thread.wait_proc = &mpthread_wait_proc;
+    athrill_exdev_operation.libs.thread.timedwait_proc = &mpthread_timedwait_proc;
+    return;
+}
+typedef struct {
+	uint32 num;
+	void (**supply_clock) (DeviceClockType *);
+} AthrillExtDevType;
+static AthrillExtDevType athrill_exdev;
+void device_add_athrill_exdev(void (*supply_clock) (DeviceClockType *))
+{
+	athrill_exdev.num++;
+	athrill_exdev.supply_clock = realloc(athrill_exdev.supply_clock,
+			 sizeof(void (**) (DeviceClockType *)) * athrill_exdev.num);
+	ASSERT(athrill_exdev.supply_clock != NULL);
+	athrill_exdev.supply_clock[athrill_exdev.num - 1] = supply_clock;
+	return;
+}
 void athrill_device_set_mmap_info(AthrillDeviceMmapInfoType *info)
 {
 	int inx = athrill_mmap_table.count;
@@ -150,6 +215,15 @@ void device_supply_clock_athrill_device(void)
     CPUEMU_DEV_ADEV2_PROF_START();
 	do_athrill_device_external_raise_interrupt();
     CPUEMU_DEV_ADEV2_PROF_END();
+    return;
+}
+
+void device_supply_clock_exdev(DeviceClockType *dev_clock)
+{
+    int i;
+    for (i = 0; i < athrill_exdev.num; i++) {
+    	athrill_exdev.supply_clock[athrill_exdev.num - 1](dev_clock);
+    }
     return;
 }
 
