@@ -1,3 +1,4 @@
+#include "cpu.h"
 #include "serial_fifo.h"
 #include "assert.h"
 #include "mpu_ops.h"

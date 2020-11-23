@@ -2,7 +2,6 @@
 #define _SERIAL_FIFO_H_
 
 #include "std_types.h"
-#include "cpu.h"
 #include "std_device_ops.h"
 #include "comm_buffer.h"
 #include "athrill_mpthread.h"
