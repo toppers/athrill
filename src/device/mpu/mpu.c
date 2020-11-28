@@ -214,7 +214,7 @@ uint8 *mpu_address_set_dev(uint32 addr, uint32 size, void *handler)
 				addr, size, region->start, region->size);
 		return NULL;
 	}
-	void (*devinit) (AthrillExDevOperationType *) = dlsym(handler, "ex_device_init");
+	void (*devinit) (MpuAddressRegionType *, AthrillExDevOperationType *) = dlsym(handler, "ex_device_init");
 	if (devinit == NULL) {
 		printf("ERROR: addr=0x%x size=%u not found ex_device_init\n", addr, size);
 		return NULL;
@@ -225,7 +225,6 @@ uint8 *mpu_address_set_dev(uint32 addr, uint32 size, void *handler)
 		return NULL;
 	}
 	device_add_athrill_exdev(supply_clock);
-	devinit(&athrill_exdev_operation);
 	MpuAddressRegionOperationType *ops = dlsym(handler, "ex_device_memory_operation");
 	if (ops == NULL) {
 		printf("INFO: addr=0x%x size=%u: default memory operation\n", addr, size);
@@ -252,6 +251,7 @@ uint8 *mpu_address_set_dev(uint32 addr, uint32 size, void *handler)
 	mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1].data		= datap;
 	mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1].ops			= ops;
 
+	devinit(&mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1], &athrill_exdev_operation);
 	return mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1].data;
 }
 #endif /* OS_LINUX */
