@@ -892,7 +892,7 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			char *filepath = (char*)memcfg_token_container.array[2].body.str.str;
 			void *handle = dlopen(filepath, RTLD_NOW);
 			if (handle == NULL) {
-				printf("ERROR: Can not find shared library %s\n", filepath);
+				printf("ERROR: Can not find shared library %s reason=%s\n", filepath, dlerror());
 				continue;
 			}
 			int *sizep = dlsym(handle, "ex_device_memory_size");

@@ -230,7 +230,7 @@ void device_supply_clock_exdev(DeviceClockType *dev_clock)
 {
     int i;
     for (i = 0; i < athrill_exdev.num; i++) {
-    	athrill_exdev.supply_clock[athrill_exdev.num - 1](dev_clock);
+    	athrill_exdev.supply_clock[i](dev_clock);
     }
     return;
 }
