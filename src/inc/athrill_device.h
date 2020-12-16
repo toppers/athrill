@@ -8,7 +8,7 @@
 
 extern void device_init_athrill_device(void);
 extern void device_init_athrill_exdev(void);
-extern void device_add_athrill_exdev(void (*supply_clock) (DeviceClockType *));
+extern void device_add_athrill_exdev(void *devp, void *region);
 
 extern void device_supply_clock_athrill_device(void);
 extern void device_supply_clock_exdev(DeviceClockType *dev_clock);

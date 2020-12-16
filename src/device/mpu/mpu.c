@@ -214,28 +214,25 @@ uint8 *mpu_address_set_dev(uint32 addr, uint32 size, void *handler)
 				addr, size, region->start, region->size);
 		return NULL;
 	}
-	void (*devinit) (MpuAddressRegionType *, AthrillExDevOperationType *) = dlsym(handler, "ex_device_init");
-	if (devinit == NULL) {
+	AthrillExDeviceType *exdev = dlsym(handler, "athrill_ex_device");
+	if (exdev->devinit == NULL) {
 		printf("ERROR: addr=0x%x size=%u not found ex_device_init\n", addr, size);
 		return NULL;
 	}
-	void (*supply_clock) (DeviceClockType *) = dlsym(handler, "ex_device_supply_clock");
-	if (devinit == NULL) {
+	if (exdev->supply_clock == NULL) {
 		printf("ERROR: addr=0x%x size=%u not found ex_device_supply_clock\n", addr, size);
 		return NULL;
 	}
-	device_add_athrill_exdev(supply_clock);
-	MpuAddressRegionOperationType *ops = dlsym(handler, "ex_device_memory_operation");
-	if (ops == NULL) {
+
+	if (exdev->ops == NULL) {
 		printf("INFO: addr=0x%x size=%u: default memory operation\n", addr, size);
-		ops = &default_memory_operation;
+		exdev->ops = &default_memory_operation;
 	}
-	uint8 *datap = (uint8*)dlsym(handler, "ex_device_memory_data");
-	if (datap == NULL) {
+	if (exdev->datap == NULL) {
 		printf("INFO: addr=0x%x size=%u: default memory\n", addr, size);
-		datap = malloc(size);
-		ASSERT(datap != NULL);
-		memset(datap, 0, size);
+		exdev->datap = malloc(size);
+		ASSERT(exdev->datap != NULL);
+		memset(exdev->datap, 0, size);
 	}
 
 	mpu_address_map.dynamic_map_num++;
@@ -248,10 +245,10 @@ uint8 *mpu_address_set_dev(uint32 addr, uint32 size, void *handler)
 
 	mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1].permission	= MPU_ADDRESS_REGION_PERM_ALL;
 	mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1].mask		= MPU_ADDRESS_REGION_MASK_ALL;
-	mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1].data		= datap;
-	mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1].ops			= ops;
+	mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1].data		= (uint8*)exdev->datap;
+	mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1].ops			= exdev->ops;
 
-	devinit(&mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1], &athrill_exdev_operation);
+	device_add_athrill_exdev(exdev, &mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1]);
 	return mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1].data;
 }
 #endif /* OS_LINUX */

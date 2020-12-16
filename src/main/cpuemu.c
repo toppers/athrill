@@ -29,6 +29,7 @@
 #endif /* OS_LINUX */
 #include "athrill_device.h"
 #include "assert.h"
+#include "athrill_exdev_header.h"
 
 static DeviceClockType cpuemu_dev_clock;
 bool cpuemu_is_cui_mode = FALSE;
@@ -895,9 +896,17 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 				printf("ERROR: Can not find shared library %s reason=%s\n", filepath, dlerror());
 				continue;
 			}
-			int *sizep = dlsym(handle, "ex_device_memory_size");
-			if (sizep == NULL) {
-				printf("ERROR: Can not find symbol(device_memory_size) on %s\n", filepath);
+			AthrillExDeviceHeaderType *ext_dev_headr = dlsym(handle, "athrill_ex_device");
+			if (ext_dev_headr == NULL) {
+				printf("ERROR: Can not find symbol(athrill_ex_device) on %s\n", filepath);
+				continue;
+			}
+			if (ext_dev_headr->magicno != ATHRILL_EXTERNAL_DEVICE_MAGICNO) {
+				printf("ERROR: magicno is invalid(0x%x) on %s\n", ext_dev_headr->magicno, filepath);
+				continue;
+			}
+			if (ext_dev_headr->version != ATHRILL_EXTERNAL_DEVICE_VERSION) {
+				printf("ERROR: version is invalid(0x%x) on %s\n", ext_dev_headr->version, filepath);
 				continue;
 			}
 			map->dev_num++;
@@ -906,7 +915,7 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			memp = &map->dev[map->dev_num - 1];
 			memp->type = MemoryAddressImplType_DEV;
 			memp->extdev_handle = handle;
-			memp->size = *sizep;
+			memp->size = ext_dev_headr->memory_size;
 			printf("DEV");
 		}
 #endif /* OS_LINUX */

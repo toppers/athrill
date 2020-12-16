@@ -53,6 +53,15 @@ static Std_ReturnType athrill_device_get_memory(uint32 addr, uint8 **data)
 {
 	return mpu_get_pointer(0U, addr, data);
 }
+typedef struct {
+	AthrillExDeviceType *devp;
+	MpuAddressRegionType *region;
+} AthrillExtDevEntryType;
+typedef struct {
+	uint32 num;
+	AthrillExtDevEntryType **exdevs;
+} AthrillExtDevType;
+static AthrillExtDevType athrill_exdev;
 
 void device_init_athrill_exdev(void)
 {
@@ -103,20 +112,25 @@ void device_init_athrill_exdev(void)
     athrill_exdev_operation.libs.thread.start_proc = &mpthread_start_proc;
     athrill_exdev_operation.libs.thread.wait_proc = &mpthread_wait_proc;
     athrill_exdev_operation.libs.thread.timedwait_proc = &mpthread_timedwait_proc;
+
+    int i;
+    for (i = 0; i < athrill_exdev.num; i++) {
+    	athrill_exdev.exdevs[i]->devp->devinit(athrill_exdev.exdevs[i]->region, &athrill_exdev_operation);
+    }
+
     return;
 }
-typedef struct {
-	uint32 num;
-	void (**supply_clock) (DeviceClockType *);
-} AthrillExtDevType;
-static AthrillExtDevType athrill_exdev;
-void device_add_athrill_exdev(void (*supply_clock) (DeviceClockType *))
+void device_add_athrill_exdev(void *devp, void *region)
 {
+	AthrillExtDevEntryType *entryp = malloc(sizeof(AthrillExtDevEntryType));
+	ASSERT(entryp != NULL);
+	entryp->devp = (AthrillExDeviceType*)devp;
+	entryp->region = (MpuAddressRegionType*)region;
 	athrill_exdev.num++;
-	athrill_exdev.supply_clock = realloc(athrill_exdev.supply_clock,
-			 sizeof(void (**) (DeviceClockType *)) * athrill_exdev.num);
-	ASSERT(athrill_exdev.supply_clock != NULL);
-	athrill_exdev.supply_clock[athrill_exdev.num - 1] = supply_clock;
+	athrill_exdev.exdevs = realloc(athrill_exdev.exdevs,
+			 sizeof(AthrillExtDevEntryType*) * athrill_exdev.num);
+	ASSERT(athrill_exdev.exdevs != NULL);
+	athrill_exdev.exdevs[athrill_exdev.num - 1] = entryp;
 	return;
 }
 void athrill_device_set_mmap_info(AthrillDeviceMmapInfoType *info)
@@ -230,7 +244,7 @@ void device_supply_clock_exdev(DeviceClockType *dev_clock)
 {
     int i;
     for (i = 0; i < athrill_exdev.num; i++) {
-    	athrill_exdev.supply_clock[i](dev_clock);
+    	athrill_exdev.exdevs[i]->devp->supply_clock(dev_clock);
     }
     return;
 }

@@ -93,4 +93,16 @@ typedef struct {
 
 extern AthrillExDevOperationType athrill_exdev_operation;
 
+#include "athrill_exdev_header.h"
+/*
+ * dynamic symbol name: "athrill_ex_device"
+ */
+typedef struct {
+	AthrillExDeviceHeaderType header;
+	char *datap;
+	MpuAddressRegionOperationType *ops;
+	void (*devinit) (MpuAddressRegionType *, AthrillExDevOperationType *);
+	void (*supply_clock) (DeviceClockType *);
+} AthrillExDeviceType;
+
 #endif /* _ATHRILL_EXDEV_H_ */

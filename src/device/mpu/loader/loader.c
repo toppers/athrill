@@ -191,7 +191,6 @@ static Std_ReturnType Elf_LoadProgram(const Elf32_Ehdr *elf_image, MemoryAddress
 			set_malloc_region(memap, i);
 		}
 	}
-	device_init_athrill_exdev();
 	for (i = 0; i < memap->dev_num; i++) {
 		ptr = mpu_address_set_dev(memap->dev[i].start, memap->dev[i].size * 1024, memap->dev[i].extdev_handle);
 		if (ptr == NULL) {
