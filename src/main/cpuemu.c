@@ -32,7 +32,7 @@
 #include "athrill_exdev_header.h"
 
 static DeviceClockType cpuemu_dev_clock;
-bool cpuemu_is_cui_mode = FALSE;
+std_bool private_cpuemu_is_cui_mode = FALSE;
 static uint64 cpuemu_cpu_end_clock = -1LLU;
 static void cpuemu_env_parse_devcfg_string(TokenStringType* strp);
 
@@ -122,14 +122,14 @@ void cpuemu_init(void *(*cpu_run)(void *), void *opt)
 	cputhr_control_init();
 	cpuctrl_init();
 	if (cpu_run != NULL) {
-		cpuemu_is_cui_mode = TRUE;
+		private_cpuemu_is_cui_mode = TRUE;
 		for (i = 0; i < cpu_config_get_core_id_num(); i++) {
 			dbg_cpu_debug_mode_set(i, TRUE);
 		}
 		cputhr_control_start(cpu_run);
 	}
 	else {
-		cpuemu_is_cui_mode = FALSE;
+		private_cpuemu_is_cui_mode = FALSE;
 	}
 #ifdef OS_LINUX
 	device_init_athrill_device();

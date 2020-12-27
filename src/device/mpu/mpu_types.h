@@ -12,7 +12,7 @@ typedef enum {
 	REGION_UNKNOWN,
 } MpuAddressRegionEnumType;
 
-extern MpuAddressRegionEnumType mpu_address_region_type_get(uint32 addr, bool *is_malloc);
+extern MpuAddressRegionEnumType mpu_address_region_type_get(uint32 addr, std_bool *is_malloc);
 
 #define MPU_ADDRESS_REGION_MASK_ALL				0xFFFFFFFF
 #define MPU_ADDRESS_REGION_PERM_ALL				0xFFFFFFFF

@@ -22,10 +22,10 @@ typedef struct {
 extern void dbg_notify_cpu_clock_supply_start(const TargetCoreType *core);
 extern void dbg_notify_cpu_clock_supply_end(const TargetCoreType *core, const DbgCpuCallbackFuncEnableType *enable_dbg);
 
-extern bool cpuemu_is_cui_mode;
+extern std_bool private_cpuemu_is_cui_mode;
 
-static inline bool cpuemu_cui_mode(void)
+static inline std_bool cpuemu_cui_mode(void)
 {
-	return cpuemu_is_cui_mode;
+	return private_cpuemu_is_cui_mode;
 }
 #endif /* _DBG_CPU_CALLBACK_H_ */

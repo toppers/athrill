@@ -397,7 +397,7 @@ bool cpuctrl_is_break_point(uint32 addr)
 			return TRUE;
 		}
 	}
-	else if ((dbg_cpuctrl_break_points[0].addr == addr)) {
+	else if (dbg_cpuctrl_break_points[0].addr == addr) {
 		return TRUE;
 	}
 	return FALSE;

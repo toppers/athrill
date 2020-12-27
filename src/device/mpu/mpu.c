@@ -263,7 +263,7 @@ void mpu_address_set_malloc_region(uint32 addr, uint32 size)
 	return;
 }
 
-MpuAddressRegionEnumType mpu_address_region_type_get(uint32 addr, bool *is_malloc)
+MpuAddressRegionEnumType mpu_address_region_type_get(uint32 addr, std_bool *is_malloc)
 {
 	uint32 i;
 
