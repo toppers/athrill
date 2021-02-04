@@ -2,11 +2,11 @@
 #define _ATHRILL_EXDEV_HEADER_H_
 
 #define ATHRILL_EXTERNAL_DEVICE_MAGICNO		0xBEAFDEAD
-#define ATHRILL_EXTERNAL_DEVICE_VERSION		0x00000001
+#define ATHRILL_EXTERNAL_DEVICE_VERSION		0x00000002
 typedef struct {
 	unsigned int magicno; /* ATHRILL_EXTERNAL_DEVICE_MAGICNO */
 	unsigned int version; /* ATHRILL_EXTERNAL_DEVICE_VERSION */
-	int memory_size; /* KB */
+	int memory_size; /* Bytes */
 } AthrillExDeviceHeaderType;
 
 

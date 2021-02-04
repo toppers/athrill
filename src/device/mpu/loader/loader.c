@@ -192,7 +192,7 @@ static Std_ReturnType Elf_LoadProgram(const Elf32_Ehdr *elf_image, MemoryAddress
 		}
 	}
 	for (i = 0; i < memap->dev_num; i++) {
-		ptr = mpu_address_set_dev(memap->dev[i].start, memap->dev[i].size * 1024, memap->dev[i].extdev_handle);
+		ptr = mpu_address_set_dev(memap->dev[i].start, memap->dev[i].size, memap->dev[i].extdev_handle);
 		if (ptr == NULL) {
 			printf("Invalid dev file: can not load dev addr=0x%x\n", memap->dev[i].start);
 			return STD_E_INVALID;
