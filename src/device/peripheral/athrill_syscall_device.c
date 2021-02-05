@@ -689,7 +689,7 @@ static void athrill_syscall_write_r(AthrillSyscallArgType *arg)
     	mpthread_unlock(fifop->tx_thread);
         return;
     }
-#ednfi /* ENABLE_EXTERNAL_BT_SERIAL */
+#endif /* ENABLE_EXTERNAL_BT_SERIAL */
 	int actual_fd = get_correspond_fd(fd);
 
     arg->ret_value = write(actual_fd, buf, size);
