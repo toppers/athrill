@@ -638,8 +638,12 @@ static void athrill_syscall_read_r(AthrillSyscallArgType *arg)
         arg->ret_value = 0;
         arg->ret_errno = 0;
     	mpthread_lock(fifop->rx_thread);
-        (void)comm_fifo_buffer_get(&fifop->rd, buf, size, (uint32*)&arg->ret_value);
+        Std_ReturnType ret = comm_fifo_buffer_get(&fifop->rd, buf, size, (uint32*)&arg->ret_value);
     	mpthread_unlock(fifop->rx_thread);
+        if (ret == STD_E_NOENT) {
+            arg->ret_value = -1;
+            arg->ret_errno = 0;
+        }
         return;
     }
 #endif /* ENABLE_EXTERNAL_BT_SERIAL */
