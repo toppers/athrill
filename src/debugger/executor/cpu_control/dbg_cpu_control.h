@@ -25,6 +25,7 @@ extern void dbg_cpu_control_update_editor(void);
 extern void dbg_cpu_debug_mode_set(uint32 core_id, bool dbg_mode);
 extern bool dbg_cpu_debug_mode_get(uint32 core_id);
 extern void dbg_cpu_callback_start(uint32 pc, uint32 sp);
+extern void dbg_cpu_callback_start_nodbg(uint32 pc, uint32 sp);
 
 /*
  * break機能

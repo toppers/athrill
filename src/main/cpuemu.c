@@ -327,7 +327,7 @@ static inline bool cpuemu_thread_run_nodbg(int core_id_num)
 		/**
 		 * CPU 実行開始通知
 		 */
-		dbg_cpu_callback_start(cpu_get_pc(&virtual_cpu.cores[i].core), cpu_get_sp(&virtual_cpu.cores[i].core));
+		dbg_cpu_callback_start_nodbg(cpu_get_pc(&virtual_cpu.cores[i].core), cpu_get_sp(&virtual_cpu.cores[i].core));
 
 		err = cpu_supply_clock(i);
 		if ((err != STD_E_OK) && (cpu_illegal_access(i) == FALSE)) {
