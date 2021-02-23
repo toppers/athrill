@@ -42,6 +42,8 @@ typedef uint32 CoreIdType;
 #define CAST_UINT32_TO_ADDR(uint32_data) ( (void*)((uint32)(uint32_data)) )
 #elif __x86_64__
 #define CAST_UINT32_TO_ADDR(uint32_data) ( (void*)((uint64)(uint32_data)) )
+#elif __arm64
+#define CAST_UINT32_TO_ADDR(uint32_data) ( (void*)((uint64)(uint32_data)) )
 #else
 #error "unknown arch."
 #endif
