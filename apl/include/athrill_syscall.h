@@ -177,6 +177,13 @@ struct api_arg_exit {
 	sys_int32 status;
 };
 
+// for v850 optimize
+struct api_arg_v850_set_intpri {
+    sys_addr imr_table;
+    sys_addr disint_table;
+};
+
+
 typedef enum {
     SYS_API_ID_NONE = 0,
     SYS_API_ID_SOCKET,
@@ -206,6 +213,7 @@ typedef enum {
     SYS_API_ID_EV3_CLOSEDIR,
     SYS_API_ID_EV3_SERIAL_OPEN,
 	SYS_API_ID_EXIT,
+    SYS_API_ID_V850_SET_INTPRI,
     SYS_API_ID_NUM,
 } AthrillSyscallApiIdType;
 
@@ -254,6 +262,7 @@ typedef struct {
         struct api_arg_ev3_closedir api_ev3_closedir;
         struct api_arg_ev3_serial_open api_ev3_serial_open;
         struct api_arg_exit api_exit;
+        struct api_arg_v850_set_intpri api_v850_set_intpri;
     } body;
 } AthrillSyscallArgType;
 
@@ -734,6 +743,17 @@ static inline sys_int32 athrill_posix_exit(sys_int32 status)
     ATHRILL_SYSCALL(&args);
 
     return args.ret_value;
+}
+
+static inline void athrill_v850_set_intpri(sys_addr imr_table,sys_addr disint_table)
+{
+    volatile AthrillSyscallArgType args;
+    args.api_id = SYS_API_ID_V850_SET_INTPRI;
+    args.body.api_v850_set_intpri.imr_table = imr_table;
+    args.body.api_v850_set_intpri.disint_table = disint_table;
+
+    ATHRILL_SYSCALL(&args);
+
 }
 
 #endif /* ATHRILL_SYSCALL_DEVICE */

@@ -57,6 +57,8 @@ static void athrill_syscall_ev3_closedir(AthrillSyscallArgType *arg);
 static void athrill_syscall_ev3_serial_open(AthrillSyscallArgType *arg);
 static void athrill_syscall_exit(AthrillSyscallArgType *arg);
 
+static void athrill_syscall_v850_set_intpri(AthrillSyscallArgType *arg);
+
 
 
 
@@ -92,6 +94,8 @@ static struct athrill_syscall_functable syscall_table[SYS_API_ID_NUM] = {
     { athrill_syscall_ev3_serial_open },
 
     { athrill_syscall_exit },
+
+    { athrill_syscall_v850_set_intpri },
 };
 
 void athrill_syscall_device(uint32 addr)
@@ -1046,4 +1050,30 @@ static void athrill_syscall_exit(AthrillSyscallArgType *arg)
     exit(status);
     arg->ret_value = SYS_API_ERR_OK;
     return;
+}
+
+
+static void athrill_syscall_v850_set_intpri(AthrillSyscallArgType *args)
+{
+    uint8_t *write_top;
+    uint16_t *imr_table;
+    uint16_t *disint_table;
+    Std_ReturnType err;
+
+    // 0xfffff100 is IMR0 in arch/v850_gcc/v850esfk3.h
+    err = mpu_get_pointer(0U, (uint32_t)0xfffff100 ,(uint8_t**)&write_top);
+    err = mpu_get_pointer(0U, (uint32)args->body.api_v850_set_intpri.imr_table ,(uint8_t**)&imr_table);
+    err = mpu_get_pointer(0U, (uint32)args->body.api_v850_set_intpri.disint_table ,(uint8_t**)&disint_table);
+
+    int i;
+    // copy first 7 index by uint16_t
+    for ( i = 0; i < 7; i++ ) {
+        *(uint16_t*)write_top = (*imr_table|*disint_table);
+        write_top += 2;
+        imr_table++;
+        disint_table++;
+    }
+    // last index is uint8
+    *write_top = (uint8_t)(*imr_table|*disint_table);
+
 }
