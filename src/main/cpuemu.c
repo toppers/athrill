@@ -305,9 +305,9 @@ ProfStatType cpuemu_tool2_prof;
 
 static DbgCpuCallbackFuncEnableType enable_dbg;
 
-static inline bool cpuemu_thread_run_nodbg(int core_id_num)
+static inline std_bool cpuemu_thread_run_nodbg(int core_id_num)
 {
-	bool is_halt;
+	std_bool is_halt;
 	CoreIdType i;
 	Std_ReturnType err;
 	/**
@@ -342,11 +342,12 @@ static inline bool cpuemu_thread_run_nodbg(int core_id_num)
 			is_halt = FALSE;
 		}
 	}
+	cpuemu_dev_clock.is_halt = is_halt;
 	return is_halt;
 }
-static inline bool cpuemu_thread_run_dbg(int core_id_num)
+static inline std_bool cpuemu_thread_run_dbg(int core_id_num)
 {
-	bool is_halt;
+	std_bool is_halt;
 	CoreIdType i;
 	Std_ReturnType err;
 
@@ -411,12 +412,13 @@ static inline bool cpuemu_thread_run_dbg(int core_id_num)
 			is_halt = FALSE;
 		}
 	}
+	cpuemu_dev_clock.is_halt = is_halt;
 	return is_halt;
 }
 
 void *cpuemu_thread_run(void* arg)
 {
-	bool is_halt;
+	std_bool is_halt;
 	int core_id_num = cpu_config_get_core_id_num();
 	static bool (*do_cpu_run) (int);
 	int core_id;

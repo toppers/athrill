@@ -130,15 +130,16 @@ typedef struct {
 	/*
 	 * 本機能のON/OFFをする
 	 */
-	bool	enable_skip;
+	std_bool	enable_skip;
 	/*
 	 * デバイスが時間飛ばし可能かどうかを判断した結果を格納する
 	 */
-	bool	can_skip_clock;
+	std_bool	can_skip_clock;
 	/*
 	 * 全デバイス中で次の割り込みが発生するまでの時間の最小値
 	 */
 	uint64 	min_intr_interval;
+	std_bool	is_halt;
 } DeviceClockType;
 
 #ifndef ATHRILL_EXT_DEVICE
