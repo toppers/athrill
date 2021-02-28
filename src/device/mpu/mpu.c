@@ -42,11 +42,30 @@ static inline bool has_permission(MpuAddressRegionType *region, CoreIdType core_
 }
 #endif
 
+// オリジナルのsearch_region
+// 最適化の際はこちらをwrite用、search_region_rをreadように使用することで同じページ内へのアクセスを
+// 発生しやすくする。ここを治す場合はsearch_region_rも同じように直すこと
 static inline MpuAddressRegionType *search_region(CoreIdType core_id, uint32 addr, uint32 search_size)
 {
 	uint32 i;
 
 	//printf("addr=0x%x\n", addr);
+
+#ifdef SEARCH_REGION_OPTIMIZE
+	// 4Kを1ページとすることでキャッシュを効かせる
+	// cache for rom/ram
+	static uint32 previous_page = 0;
+	static uint32 previous_mask = 0;
+	static int previous_index = -1;
+	#define GET_PAGE(address) ((address) & (uint32)(~(uint32)0x3ff))
+
+	// check previous page first
+	if ( addr && ( GET_PAGE(addr) == previous_page) ) {
+			return &mpu_address_map.dynamic_map[previous_index];
+	}
+
+#endif
+
 
 	for (i = 0U; i < mpu_address_map.dynamic_map_num; i++) {
 		uint32 start = mpu_address_map.dynamic_map[i].start;
@@ -70,6 +89,10 @@ static inline MpuAddressRegionType *search_region(CoreIdType core_id, uint32 add
 				return NULL;
 			}
 			//printf("2:passed1:%u:0x%p\n", i,  &mpu_address_map.map[i]);
+#ifdef SEARCH_REGION_OPTIMIZE
+			previous_page = GET_PAGE(addr);
+			previous_index = i;
+#endif
 			return &mpu_address_map.dynamic_map[i];
 		}
 	}
@@ -102,6 +125,94 @@ static inline MpuAddressRegionType *search_region(CoreIdType core_id, uint32 add
 	printf("%s():search_region:not found error:addr=0x%x\n", __FUNCTION__, addr);
 	return NULL;
 }
+
+// Read region
+// 
+#ifdef SEARCH_REGION_OPTIMIZE
+static inline MpuAddressRegionType *search_region_r(CoreIdType core_id, uint32 addr, uint32 search_size)
+{
+	uint32 i;
+
+	//printf("addr=0x%x\n", addr);
+
+#ifdef SEARCH_REGION_OPTIMIZE
+	// cache for rom/ram
+	// 4Kを1ページとすることでキャッシュを効かせる
+	static uint32 previous_page = 0;
+	static uint32 previous_mask = 0;
+	static int previous_index = -1;
+//	#define GET_PAGE(address) ((address) & (uint32)(~(uint32)0x3ff))
+
+	// check previous page first
+	if ( addr && ( GET_PAGE(addr) == previous_page) ) {
+			return &mpu_address_map.dynamic_map[previous_index];
+	}
+
+#endif
+
+
+	for (i = 0U; i < mpu_address_map.dynamic_map_num; i++) {
+		uint32 start = mpu_address_map.dynamic_map[i].start;
+		uint32 end = mpu_address_map.dynamic_map[i].start  + mpu_address_map.dynamic_map[i].size;
+		uint32 paddr_str = (addr & mpu_address_map.dynamic_map[i].mask);
+		uint32 paddr_end = paddr_str + search_size;
+
+		if (	((start <= paddr_str) && (paddr_str < end)) &&
+				((start <  paddr_end) && (paddr_end <= end))
+			) {
+
+#if 0
+			//printf("1:passed1\n");
+			if (has_permission( &mpu_address_map.dynamic_map[i], core_id) == FALSE) {
+				printf("search_region:permission error:addr=0x%x\n", addr);
+				return NULL;
+			}
+#endif
+			if (mpu_address_map.dynamic_map[i].data == NULL) {
+				//MALLOC not malloced region
+				return NULL;
+			}
+			//printf("2:passed1:%u:0x%p\n", i,  &mpu_address_map.map[i]);
+#ifdef SEARCH_REGION_OPTIMIZE
+			previous_page = GET_PAGE(addr);
+			previous_index = i;
+#endif
+			return &mpu_address_map.dynamic_map[i];
+		}
+	}
+
+
+	for (i = 0U; i < MPU_CONFIG_REGION_NUM; i++) {
+		uint32 start = mpu_address_map.map[i].start;
+		uint32 end = mpu_address_map.map[i].start  + mpu_address_map.map[i].size;
+		uint32 paddr_str = (addr & mpu_address_map.map[i].mask);
+		uint32 paddr_end = paddr_str + search_size;
+
+#if 0
+		printf("%u:start=0x%x end=0x%x mask=0x%x\n", i, start, end, mpu_address_map.map[i].mask);
+		printf("%u:pstart=0x%x pend=0x%x\n", i, paddr_str, paddr_end);
+#endif
+		if (	((start <= paddr_str) && (paddr_str < end)) &&
+				((start <  paddr_end) && (paddr_end <= end))
+			) {
+#if 0
+			//printf("1:passed1\n");
+			if (has_permission( &mpu_address_map.map[i], core_id) == FALSE) {
+				printf("search_region:permission error:addr=0x%x\n", addr);
+				return NULL;
+			}
+#endif
+			//printf("2:passed1:%u:0x%p\n", i,  &mpu_address_map.map[i]);
+			return &mpu_address_map.map[i];
+		}
+	}
+	printf("%s():search_region:not found error:addr=0x%x\n", __FUNCTION__, addr);
+	return NULL;
+}
+#else
+// Original 
+#define search_region_r search_region
+#endif
 
 static MpuAddressRegionType *mpu_address_search_region(uint32 addr, uint32 size)
 {
@@ -299,7 +410,7 @@ MpuAddressRegionEnumType mpu_address_region_type_get(uint32 addr, std_bool *is_m
 
 Std_ReturnType mpu_get_data8(CoreIdType core_id, uint32 addr, uint8 *data)
 {
-	MpuAddressRegionType *region = search_region(core_id, addr, 1U);
+	MpuAddressRegionType *region = search_region_r(core_id, addr, 1U);
 	if (region == NULL) {
 		printf("%s():addr=0x%x\n", __FUNCTION__, addr);
 		return STD_E_SEGV;
@@ -315,7 +426,7 @@ Std_ReturnType mpu_get_data8(CoreIdType core_id, uint32 addr, uint8 *data)
 }
 Std_ReturnType mpu_get_data16(CoreIdType core_id, uint32 addr, uint16 *data)
 {
-	MpuAddressRegionType *region = search_region(core_id, addr, 2U);
+	MpuAddressRegionType *region = search_region_r(core_id, addr, 2U);
 	if (region == NULL) {
 		printf("%s():addr=0x%x\n", __FUNCTION__, addr);
 		return STD_E_SEGV;
@@ -332,7 +443,7 @@ Std_ReturnType mpu_get_data16(CoreIdType core_id, uint32 addr, uint16 *data)
 
 Std_ReturnType mpu_get_data32(CoreIdType core_id, uint32 addr, uint32 *data)
 {
-	MpuAddressRegionType *region = search_region(core_id, addr, 4U);
+	MpuAddressRegionType *region = search_region_r(core_id, addr, 4U);
 	if (region == NULL) {
 		printf("%s():addr=0x%x\n", __FUNCTION__, addr);
 		return STD_E_SEGV;
