@@ -307,7 +307,7 @@ static DbgCpuCallbackFuncEnableType enable_dbg;
 
 static inline bool cpuemu_thread_run_nodbg(int core_id_num)
 {
-	bool is_halt;
+	std_bool is_halt;
 	CoreIdType i = 0;
 	Std_ReturnType err;
 	/**
@@ -346,6 +346,8 @@ static inline bool cpuemu_thread_run_nodbg(int core_id_num)
 #ifndef DOPTIMIZE_USE_ONLY_1CPU	
 	}
 #endif
+	cpuemu_dev_clock.is_halt = is_halt;
+	
 	return is_halt;
 }
 static inline bool cpuemu_thread_run_dbg(int core_id_num)
