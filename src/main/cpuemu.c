@@ -308,7 +308,7 @@ static DbgCpuCallbackFuncEnableType enable_dbg;
 static inline bool cpuemu_thread_run_nodbg(int core_id_num)
 {
 	bool is_halt;
-	CoreIdType i;
+	CoreIdType i = 0;
 	Std_ReturnType err;
 	/**
 	 * デバイス実行実行
@@ -322,7 +322,9 @@ static inline bool cpuemu_thread_run_nodbg(int core_id_num)
 	 * CPU 実行
 	 */
 	is_halt = TRUE;
+#ifndef DOPTIMIZE_USE_ONLY_1CPU	
 	for (i = 0; i < core_id_num; i++) {
+#endif
 		virtual_cpu.current_core = &virtual_cpu.cores[i];
 		/**
 		 * CPU 実行開始通知
@@ -341,7 +343,9 @@ static inline bool cpuemu_thread_run_nodbg(int core_id_num)
 		if (virtual_cpu.cores[i].core.is_halt != TRUE) {
 			is_halt = FALSE;
 		}
+#ifndef DOPTIMIZE_USE_ONLY_1CPU	
 	}
+#endif
 	return is_halt;
 }
 static inline bool cpuemu_thread_run_dbg(int core_id_num)
