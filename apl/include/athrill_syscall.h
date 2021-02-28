@@ -183,6 +183,15 @@ struct api_arg_v850_set_intpri {
     sys_addr disint_table;
 };
 
+// for performance measuring
+struct api_arg_reset_time {
+
+};
+struct api_arg_show_time {
+
+
+};
+
 
 typedef enum {
     SYS_API_ID_NONE = 0,
@@ -214,6 +223,8 @@ typedef enum {
     SYS_API_ID_EV3_SERIAL_OPEN,
 	SYS_API_ID_EXIT,
     SYS_API_ID_V850_SET_INTPRI,
+    SYS_API_ID_RESET_TIME,
+    SYS_API_ID_SHOW_TIME,
     SYS_API_ID_NUM,
 } AthrillSyscallApiIdType;
 
@@ -755,6 +766,21 @@ static inline void athrill_v850_set_intpri(sys_addr imr_table,sys_addr disint_ta
     ATHRILL_SYSCALL(&args);
 
 }
+
+static inline void athrill_reset_time()
+{
+    volatile AthrillSyscallArgType args;
+    args.api_id = SYS_API_ID_RESET_TIME;
+    ATHRILL_SYSCALL(&args);
+}
+
+static inline void athrill_show_time()
+{
+    volatile AthrillSyscallArgType args;
+    args.api_id = SYS_API_ID_SHOW_TIME;
+    ATHRILL_SYSCALL(&args);
+}
+
 
 #endif /* ATHRILL_SYSCALL_DEVICE */
 

@@ -59,6 +59,10 @@ static void athrill_syscall_exit(AthrillSyscallArgType *arg);
 
 static void athrill_syscall_v850_set_intpri(AthrillSyscallArgType *arg);
 
+static void athrill_syscall_reset_time(AthrillSyscallArgType *arg);
+static void athrill_syscall_show_time(AthrillSyscallArgType *arg);
+
+
 
 
 
@@ -96,6 +100,8 @@ static struct athrill_syscall_functable syscall_table[SYS_API_ID_NUM] = {
     { athrill_syscall_exit },
 
     { athrill_syscall_v850_set_intpri },
+    { athrill_syscall_reset_time },
+    { athrill_syscall_show_time }
 };
 
 void athrill_syscall_device(uint32 addr)
@@ -1075,5 +1081,30 @@ static void athrill_syscall_v850_set_intpri(AthrillSyscallArgType *args)
     }
     // last index is uint8
     *write_top = (uint8_t)(*imr_table|*disint_table);
+
+}
+
+#include <time.h>
+static struct timespec start_time;
+void athrill_syscall_reset_time(AthrillSyscallArgType *arg)
+{
+    clock_gettime(CLOCK_MONOTONIC,&start_time);
+    printf("Start %d.%d\n",start_time.tv_sec,start_time.tv_nsec);fflush(stdout);
+}
+
+void athrill_syscall_show_time(AthrillSyscallArgType *arg)
+{
+    struct timespec cur;
+    clock_gettime(CLOCK_MONOTONIC,&cur);
+    unsigned int tim;
+
+    if ( cur.tv_nsec >= start_time.tv_nsec ) {
+        tim = (cur.tv_sec - start_time.tv_sec)*1000 + (cur.tv_nsec - start_time.tv_nsec)/1000000;
+    } else {
+        tim = (cur.tv_sec - start_time.tv_sec-1)*1000 + (1000000000 + cur.tv_nsec - start_time.tv_nsec)/1000000;
+    }
+
+    printf("####End %d.%d Spend Time=%u msec\n",cur.tv_sec,cur.tv_nsec,tim);fflush(stdout);
+
 
 }
