@@ -10,6 +10,7 @@ typedef struct {
 uint32			 bus_access_log_size  = 0;
 BusAccessLogType bus_access_log[BUS_ACCESS_LOG_SIZE];
 
+#undef bus_access_set_log
 void bus_access_set_log(BusAccessType type, uint32 size, uint32 access_addr, uint32 data)
 {
 	if (type == BUS_ACCESS_TYPE_NONE) {
