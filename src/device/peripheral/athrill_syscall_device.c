@@ -1064,12 +1064,11 @@ static void athrill_syscall_v850_set_intpri(AthrillSyscallArgType *args)
     uint8_t *write_top;
     uint16_t *imr_table;
     uint16_t *disint_table;
-    Std_ReturnType err;
 
     // 0xfffff100 is IMR0 in arch/v850_gcc/v850esfk3.h
-    err = mpu_get_pointer(0U, (uint32_t)0xfffff100 ,(uint8_t**)&write_top);
-    err = mpu_get_pointer(0U, (uint32)args->body.api_v850_set_intpri.imr_table ,(uint8_t**)&imr_table);
-    err = mpu_get_pointer(0U, (uint32)args->body.api_v850_set_intpri.disint_table ,(uint8_t**)&disint_table);
+    (void)mpu_get_pointer(0U, (uint32_t)0xfffff100 ,(uint8_t**)&write_top);
+    (void)mpu_get_pointer(0U, (uint32)args->body.api_v850_set_intpri.imr_table ,(uint8_t**)&imr_table);
+    (void)mpu_get_pointer(0U, (uint32)args->body.api_v850_set_intpri.disint_table ,(uint8_t**)&disint_table);
 
     int i;
     // copy first 7 index by uint16_t
@@ -1089,7 +1088,11 @@ static struct timespec start_time;
 void athrill_syscall_reset_time(AthrillSyscallArgType *arg)
 {
     clock_gettime(CLOCK_MONOTONIC,&start_time);
+#ifndef OS_MAC
+    printf("Start %ld.%ld\n",start_time.tv_sec,start_time.tv_nsec);fflush(stdout);
+#else
     printf("Start %d.%d\n",start_time.tv_sec,start_time.tv_nsec);fflush(stdout);
+#endif
 }
 
 void athrill_syscall_show_time(AthrillSyscallArgType *arg)
@@ -1104,7 +1107,11 @@ void athrill_syscall_show_time(AthrillSyscallArgType *arg)
         tim = (cur.tv_sec - start_time.tv_sec-1)*1000 + (1000000000 + cur.tv_nsec - start_time.tv_nsec)/1000000;
     }
 
+#ifndef OS_MAC
+    printf("####End %ld.%ld Spend Time=%u msec\n",cur.tv_sec,cur.tv_nsec,tim);fflush(stdout);
+#else
     printf("####End %d.%d Spend Time=%u msec\n",cur.tv_sec,cur.tv_nsec,tim);fflush(stdout);
+#endif
 
 
 }

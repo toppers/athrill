@@ -55,7 +55,6 @@ static inline MpuAddressRegionType *search_region(CoreIdType core_id, uint32 add
 	// 4Kを1ページとすることでキャッシュを効かせる
 	// cache for rom/ram
 	static uint32 previous_page = 0;
-	static uint32 previous_mask = 0;
 	static int previous_index = -1;
 	#define GET_PAGE(address) ((address) & (uint32)(~(uint32)0x3ff))
 
@@ -139,7 +138,6 @@ static inline MpuAddressRegionType *search_region_r(CoreIdType core_id, uint32 a
 	// cache for rom/ram
 	// 4Kを1ページとすることでキャッシュを効かせる
 	static uint32 previous_page = 0;
-	static uint32 previous_mask = 0;
 	static int previous_index = -1;
 //	#define GET_PAGE(address) ((address) & (uint32)(~(uint32)0x3ff))
 
