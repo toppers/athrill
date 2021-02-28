@@ -16,6 +16,7 @@
 #include "target/target_os_api.h"
 #include <sched.h>
 #include <limits.h>
+#include "athrill_exdev_header.h"
 #ifdef OS_LINUX
 #include <signal.h>
 #endif
@@ -27,7 +28,7 @@
  *  Y: function
  *  Z: bug fix, small changes
  */
-#define ATHRILL_CORE_VERSION "1.1.1"
+#define ATHRILL_CORE_VERSION "1.1.2"
 
 #ifndef ATHRILL_TARGET_ARCH
 #define ATHRILL_TARGET_ARCH "UNKNOWN"
@@ -140,7 +141,8 @@ int main(int argc, const char *argv[])
 
 	if (argc == 1) {
 		printf("Athrill is licensed under the TOPPERS License Agreement (http://www.toppers.jp/en/license.html).\n");
-		printf("ARCH:%s (VERSION CORE:%s TARGET:%s)\n\n", ATHRILL_TARGET_ARCH, ATHRILL_CORE_VERSION, ATHRILL_TARGET_VERSION);
+		printf("ARCH:%s (VERSION CORE:%s TARGET:%s)\n", ATHRILL_TARGET_ARCH, ATHRILL_CORE_VERSION, ATHRILL_TARGET_VERSION);
+		printf("DEVICE:magicno=0x%x version=0x%x\n\n", ATHRILL_EXTERNAL_DEVICE_MAGICNO, ATHRILL_EXTERNAL_DEVICE_VERSION);
 
 		printf("Usage:%s -c<core num> -m <memory config file> [OPTION]... <load_file>\n", "athrill");
 		printf(" %-30s : set core num. if -c is not set, core num = 2.\n", "-c");
