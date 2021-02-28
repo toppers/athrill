@@ -16,6 +16,13 @@ typedef enum {
 extern void bus_access_set_log(BusAccessType type, uint32 size, uint32 access_addr, uint32 data);
 extern Std_ReturnType bus_access_get_log(BusAccessType *type, uint32 *size, uint32 *access_addr, uint32 *data);
 
+
+#ifdef DISABLE_BUS_ACCESS_LOG
+#define bus_access_set_log bus_access_set_log_not_use
+static inline void bus_access_set_log_not_use(BusAccessType type, uint32 size, uint32 access_addr, uint32 data)
+{}
+#endif
+
 /*
  * データ取得するための操作関数群
  */

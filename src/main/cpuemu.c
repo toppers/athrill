@@ -308,7 +308,7 @@ static DbgCpuCallbackFuncEnableType enable_dbg;
 static inline std_bool cpuemu_thread_run_nodbg(int core_id_num)
 {
 	std_bool is_halt;
-	CoreIdType i;
+	CoreIdType i = 0;
 	Std_ReturnType err;
 	/**
 	 * デバイス実行実行
@@ -322,7 +322,9 @@ static inline std_bool cpuemu_thread_run_nodbg(int core_id_num)
 	 * CPU 実行
 	 */
 	is_halt = TRUE;
+#ifndef DOPTIMIZE_USE_ONLY_1CPU	
 	for (i = 0; i < core_id_num; i++) {
+#endif
 		virtual_cpu.current_core = &virtual_cpu.cores[i];
 		/**
 		 * CPU 実行開始通知
@@ -341,7 +343,9 @@ static inline std_bool cpuemu_thread_run_nodbg(int core_id_num)
 		if (virtual_cpu.cores[i].core.is_halt != TRUE) {
 			is_halt = FALSE;
 		}
+#ifndef DOPTIMIZE_USE_ONLY_1CPU	
 	}
+#endif
 	cpuemu_dev_clock.is_halt = is_halt;
 	return is_halt;
 }
@@ -416,6 +420,13 @@ static inline std_bool cpuemu_thread_run_dbg(int core_id_num)
 	return is_halt;
 }
 
+#ifdef ATHRILL_PROFILE
+#include <signal.h>
+#include <setjmp.h>
+void intr_handler(int sig);
+jmp_buf buf;
+#endif
+
 void *cpuemu_thread_run(void* arg)
 {
 	std_bool is_halt;
@@ -458,6 +469,13 @@ void *cpuemu_thread_run(void* arg)
 	uint64 *clockp = &cpuemu_dev_clock.clock;
 	bool enable_skip = cpuemu_dev_clock.enable_skip;
 
+#ifdef ATHRILL_PROFILE
+  if ( signal(SIGINT, intr_handler) == SIG_ERR ) {
+    exit(1);
+  }
+
+  if ( setjmp(buf) == 0 ) {
+#endif
 	while (TRUE) {
 		if ((*clockp)>= end_clock) {
 			dbg_log_sync();
@@ -518,9 +536,18 @@ void *cpuemu_thread_run(void* arg)
 		}
 #endif /* CPUEMU_CLOCK_BUG_FIX */
 	}
-
+#ifdef ATHRILL_PROFILE
+  }
+#endif
 	return NULL;
 }
+
+#ifdef ATHRILL_PROFILE
+void intr_handler(int sig) {
+  printf("Interrupt : %d\n", sig);
+  longjmp(buf, 1);
+}
+#endif
 
 
 typedef struct {
