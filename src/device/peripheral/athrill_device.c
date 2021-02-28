@@ -157,18 +157,29 @@ static inline AthrillDeviceMmapInfoTableEntryType *getMmapInfo(void *addr)
 	return NULL;
 }
 
+// 最適化のために、ポインタを覚えておくようにする
+// staticにすると値が最適化で値が変化しない可能性があるので、グローバルにしておく
+volatile uint32 *athrill_syscall_p = 0;
+
 static void do_athrill_device_func_call(void)
 {
     Std_ReturnType err;
     uint32 data;
 
-    if (athrill_device_func_call_addr == 0x0) {
-        return;
-    }
+    if ( athrill_syscall_p ) {
+        data = *athrill_syscall_p;
+    } else {
+        if (athrill_device_func_call_addr == 0x0) {
+            return;
+        }
 
-    err = mpu_get_data32(0U, athrill_device_func_call_addr, &data);
-    if (err != 0) {
-        return;
+//    err = mpu_get_data32(0U, athrill_device_func_call_addr, &data);
+        err = mpu_get_pointer(0,athrill_device_func_call_addr,(uint8 **)&athrill_syscall_p);
+        if (err != 0) {
+           return;
+        }
+        data = *athrill_syscall_p;
+
     }
     if (data == 0U) {
         return;
