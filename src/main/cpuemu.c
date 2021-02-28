@@ -414,6 +414,13 @@ static inline bool cpuemu_thread_run_dbg(int core_id_num)
 	return is_halt;
 }
 
+#ifdef ATHRILL_PROFILE
+#include <signal.h>
+#include <setjmp.h>
+void intr_handler(int sig);
+jmp_buf buf;
+#endif
+
 void *cpuemu_thread_run(void* arg)
 {
 	bool is_halt;
@@ -456,6 +463,13 @@ void *cpuemu_thread_run(void* arg)
 	uint64 *clockp = &cpuemu_dev_clock.clock;
 	bool enable_skip = cpuemu_dev_clock.enable_skip;
 
+#ifdef ATHRILL_PROFILE
+  if ( signal(SIGINT, intr_handler) == SIG_ERR ) {
+    exit(1);
+  }
+
+  if ( setjmp(buf) == 0 ) {
+#endif
 	while (TRUE) {
 		if ((*clockp)>= end_clock) {
 			dbg_log_sync();
@@ -516,9 +530,18 @@ void *cpuemu_thread_run(void* arg)
 		}
 #endif /* CPUEMU_CLOCK_BUG_FIX */
 	}
-
+#ifdef ATHRILL_PROFILE
+  }
+#endif
 	return NULL;
 }
+
+#ifdef ATHRILL_PROFILE
+void intr_handler(int sig) {
+  printf("Interrupt : %d\n", sig);
+  longjmp(buf, 1);
+}
+#endif
 
 
 typedef struct {
