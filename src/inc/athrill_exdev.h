@@ -103,6 +103,7 @@ typedef struct {
 	MpuAddressRegionOperationType *ops;
 	void (*devinit) (MpuAddressRegionType *, AthrillExDevOperationType *);
 	void (*supply_clock) (DeviceClockType *);
+	void (*cleanup) (void);
 } AthrillExDeviceType;
 
 #endif /* _ATHRILL_EXDEV_H_ */

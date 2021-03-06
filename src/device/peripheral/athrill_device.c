@@ -259,5 +259,16 @@ void device_supply_clock_exdev(DeviceClockType *dev_clock)
     }
     return;
 }
+void athrill_device_cleanup(void)
+{
+    int i;
+    for (i = 0; i < athrill_exdev.num; i++) {
+	if (athrill_exdev.exdevs[i]->devp->cleanup == NULL) {
+		continue;
+	}
+    	athrill_exdev.exdevs[i]->devp->cleanup();
+    }
+    return;
+}
 
 #endif /* OS_LINUX */

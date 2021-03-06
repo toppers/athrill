@@ -21,6 +21,7 @@
 #include <signal.h>
 #endif
 #include "athrill_memory.h"
+#include "athrill_device.h"
 
 /*
  * version: X.Y.Z
@@ -114,6 +115,19 @@ retry:
 	}
 }
 
+static void athrill_sigterm_handler(int arg)
+{
+	athrill_device_cleanup();
+	sync();
+	sync();
+	sync();
+	sync();
+	sync();
+	exit(0);
+	return;
+}
+
+
 /*
  * コマンドオプション仕様
  * -i		インタラクションモード
@@ -168,6 +182,7 @@ int main(int argc, const char *argv[])
 #endif
 #ifdef OS_LINUX
 	signal(SIGPIPE, SIG_IGN);
+	signal(SIGTERM, athrill_sigterm_handler);
 #endif
 
 	opt = parse_args(argc, argv);

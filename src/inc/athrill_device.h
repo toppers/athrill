@@ -12,6 +12,7 @@ extern void device_add_athrill_exdev(void *devp, void *region);
 
 extern void device_supply_clock_athrill_device(void);
 extern void device_supply_clock_exdev(DeviceClockType *dev_clock);
+extern void athrill_device_cleanup(void);
 
 
 typedef struct {
