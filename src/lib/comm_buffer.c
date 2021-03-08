@@ -36,6 +36,7 @@ Std_ReturnType comm_fifo_buffer_add(CommFifoBufferType *fifop, const char* datap
 	uint32 i;
 	Std_ReturnType err;
 
+	*res = 0;
 	if (fifop->count >= fifop->max_size) {
 		return STD_E_LIMIT;
 	}
@@ -67,6 +68,7 @@ Std_ReturnType comm_fifo_buffer_get(CommFifoBufferType *fifop, char* datap, uint
 	uint32 i;
 	Std_ReturnType err;
 
+	*res = 0;
 	if (fifop->count == 0) {
 		return STD_E_NOENT;
 	}
