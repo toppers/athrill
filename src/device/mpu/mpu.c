@@ -258,16 +258,7 @@ uint8 *mpu_address_get_ram(uint32 addr, uint32 size)
 uint8 *mpu_address_set_rom_ram(MpuAddressGetType getType, uint32 addr, uint32 size, void *mmap_addr)
 {
 	MpuAddressRegionType *region = NULL;
-#ifdef OS_LINUX
-	if (getType == MpuAddressGetType_MMAP) {
-		region = search_region(0U, addr, 1U);
-		if (region != NULL) {
-			region->data = mmap_addr;
-			printf("INFO: MMAPDED addr=0x%x size=0x%x\n", region->start, region->size);
-			return mmap_addr;
-		}
-	}
-#endif
+
 	region = mpu_address_search_region(addr, size);
 
 	if (region == NULL) {
