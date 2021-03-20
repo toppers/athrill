@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include "std_types.h"
 #include "mros_usr_config.h"
 #include "mros_os_config.h"
 #include "mros_packet_config.h"
@@ -25,6 +26,8 @@ extern "C" {
 
 extern char *mros_master_ipaddr;
 extern char *mros_node_ipaddr;
+extern uint32 mros_slave_port_no;
+extern uint32 mros_publisher_port_no;
 extern char *mros_uri_slave;
 
 /*

@@ -133,7 +133,7 @@ static mRosReturnType mros_proc_slave_request_topic(mRosCommTcpClientType *clien
 		mRosEncodeArgType arg;
 		arg.type = MROS_PACKET_DATA_REQUEST_TOPIC_RES;
 		arg.args_int = 1;
-		arg.argi[0] = MROS_PUBLISHER_PORT_NO;
+		arg.argi[0] = mros_publisher_port_no;
 		arg.args_char = 2;
 		arg.argv[0] ="TCPROS";
 		arg.argv[1] = mros_node_ipaddr;

@@ -16,7 +16,7 @@ void do_test_server(void)
 		return;
 	}
 	(void)mros_comm_socket_set_blocking(&server.socket, MROS_FALSE, MROS_SLAVE_TIMEOUT);
-	ret =  mros_comm_tcp_server_bind(&server, MROS_SLAVE_PORT_NO);
+	ret =  mros_comm_tcp_server_bind(&server, mros_slave_port_no);
 	if (ret != MROS_E_OK) {
 		syslog(LOG_NOTICE, "mros_comm_tcp_server_bind()=%d", ret);
 		return;

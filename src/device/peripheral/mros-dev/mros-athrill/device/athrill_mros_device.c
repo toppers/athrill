@@ -157,6 +157,8 @@ static int athrill_mros_device_sub_init(AthrillMrosDevSubReqType *reqs, int req_
 
 char *mros_master_ipaddr = MROS_MASTER_IPADDR;
 char *mros_node_ipaddr = MROS_NODE_IPADDR;
+uint32 mros_slave_port_no = MROS_SLAVE_PORT_NO;
+uint32 mros_publisher_port_no = MROS_PUBLISHER_PORT_NO;
 static char mros_uri_slave_buffer[4096];
 char *mros_uri_slave = &mros_uri_slave_buffer[0];
 
@@ -169,9 +171,13 @@ static void *athrill_mros_device_main(void *arg)
 	memset(mros_uri_slave_buffer, 0, sizeof(mros_uri_slave_buffer));
 	(void)cpuemu_get_devcfg_string("DEBUG_FUNC_MROS_MASTER_IPADDR", &mros_master_ipaddr);
 	(void)cpuemu_get_devcfg_string("DEBUG_FUNC_MROS_NODE_IPADDR", &mros_node_ipaddr);
+	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_MROS_SLAVE_PORT_NO", &mros_slave_port_no);
+	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_MROS_PUBLISHER_PORT_NO", &mros_publisher_port_no);
 	printf("mros_master_ipaddr=%s\n", mros_master_ipaddr);
-	snprintf(mros_uri_slave_buffer, sizeof(mros_uri_slave_buffer), "http://%s:%d", mros_node_ipaddr, MROS_SLAVE_PORT_NO);
+	printf("mros_slave_port_no=%d\n", mros_slave_port_no);
+	snprintf(mros_uri_slave_buffer, sizeof(mros_uri_slave_buffer), "http://%s:%d", mros_node_ipaddr, mros_slave_port_no);
 	printf("mros_uri_slave=%s\n", mros_uri_slave);
+	printf("mros_publisher_port_no=%d\n", mros_publisher_port_no);
 
 	set_main_task();
 	main_task();
