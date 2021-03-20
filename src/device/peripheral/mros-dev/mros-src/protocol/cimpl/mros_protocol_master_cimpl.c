@@ -221,11 +221,6 @@ static mRosReturnType mros_protocol_master_register_subscriber(mRosProtocolMaste
 	}
 	while (ptr != MROS_NULL) {
 		mRosCommTcpClientType client;
-		if (ipaddr == mros_protocol_master.self_ipaddr) {
-			ptr = mros_xmlpacket_subres_get_next_uri(ptr, rpc_regc_res.reply_packet, &ipaddr, &port);
-			continue;
-		}
-
 		ret = mros_comm_tcp_client_ip32_init(&client, ipaddr, port);
 		if (ret != MROS_E_OK) {
 			ROS_ERROR("%s %s() %u ret=%d", __FILE__, __FUNCTION__, __LINE__, ret);
