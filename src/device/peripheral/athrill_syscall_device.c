@@ -1058,29 +1058,24 @@ static void athrill_syscall_exit(AthrillSyscallArgType *arg)
     return;
 }
 
-
 static void athrill_syscall_v850_set_intpri(AthrillSyscallArgType *args)
 {
-    uint8_t *write_top;
     uint16_t *imr_table;
     uint16_t *disint_table;
 
     // 0xfffff100 is IMR0 in arch/v850_gcc/v850esfk3.h
-    (void)mpu_get_pointer(0U, (uint32_t)0xfffff100 ,(uint8_t**)&write_top);
     (void)mpu_get_pointer(0U, (uint32)args->body.api_v850_set_intpri.imr_table ,(uint8_t**)&imr_table);
     (void)mpu_get_pointer(0U, (uint32)args->body.api_v850_set_intpri.disint_table ,(uint8_t**)&disint_table);
 
-    int i;
-    // copy first 7 index by uint16_t
-    for ( i = 0; i < 7; i++ ) {
-        *(uint16_t*)write_top = (*imr_table|*disint_table);
-        write_top += 2;
-        imr_table++;
-        disint_table++;
-    }
-    // last index is uint8
-    *write_top = (uint8_t)(*imr_table|*disint_table);
-
+    (void)mpu_put_data16(0U, 0xFFFFF100, (imr_table[0]|disint_table[0]));
+    (void)mpu_put_data16(0U, 0xFFFFF102, (imr_table[1]|disint_table[1]));
+    (void)mpu_put_data16(0U, 0xFFFFF104, (imr_table[2]|disint_table[2]));
+    (void)mpu_put_data16(0U, 0xFFFFF106, (imr_table[3]|disint_table[3]));
+    (void)mpu_put_data16(0U, 0xFFFFF108, (imr_table[4]|disint_table[4]));
+    (void)mpu_put_data16(0U, 0xFFFFF10A, (imr_table[5]|disint_table[5]));
+    (void)mpu_put_data16(0U, 0xFFFFF10C, (imr_table[6]|disint_table[6]));
+    (void)mpu_put_data8( 0U, 0xFFFFF10E,  (uint8_t)( imr_table[7] | disint_table[7] ));
+    return;
 }
 
 #include <time.h>
