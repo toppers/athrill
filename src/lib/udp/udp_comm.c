@@ -15,6 +15,11 @@ Std_ReturnType udp_comm_create_ipaddr(const UdpCommConfigType *config, UdpCommTy
 	}
 	comm->srv_sock = err;
 
+#ifdef ENABLE_REUSE_UDP_SOCKET
+	int yes = 1;
+	setsockopt(comm->srv_sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&yes, sizeof(yes));	
+#endif
+
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(config->server_port);
 	if (my_ipaddr == NULL) {
