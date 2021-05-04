@@ -14,25 +14,30 @@ static void cui_close_udp(void);
 static int  cui_getline_udp(char *line, int size);
 static void cui_write_udp(char *line, int size);
 
-static UdpFileOpType cui_fileop_udp = {
-	.config = {
-			.server_port = CPUEMU_CONFIG_CUI_EMULATOR_PORTNO,
-			.client_port = CPUEMU_CONFIG_CUI_CLIENT_PORTNO,
-			.is_wait = TRUE,
-	},
-	.op = {
-			.cui_getline = cui_getline_udp,
-			.cui_write = cui_write_udp,
-			.cui_close = cui_close_udp,
-	},
-};
+static UdpFileOpType cui_fileop_udp;
 
-void cui_ops_udp_init(void)
+void cui_ops_udp_init(uint16 server_port, uint16 client_port)
 {
 	Std_ReturnType err;
 
-	printf("REMOTE:server port %u\n", cui_fileop_udp.config.server_port);
-	printf("REMOTE:client port %u\n", cui_fileop_udp.config.client_port);
+	UdpFileOpType cui_fileop_udp_tmp = {
+		.config = {
+				.server_port = server_port,
+				.client_port = client_port,
+				.is_wait = TRUE,
+		},
+		.op = {
+				.cui_getline = cui_getline_udp,
+				.cui_write = cui_write_udp,
+				.cui_close = cui_close_udp,
+		},
+
+	};
+
+	cui_fileop_udp = cui_fileop_udp_tmp;
+
+	printf("REMOTE:athrill listen port %u\n", cui_fileop_udp.config.server_port);
+	printf("REMOTE:client listen port %u\n", cui_fileop_udp.config.client_port);
 
 	err = udp_comm_create(&cui_fileop_udp.config, &cui_fileop_udp.comm);
 	if (err != STD_E_OK) {

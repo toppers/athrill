@@ -36,7 +36,7 @@ mRosReturnType mros_protocol_slave_init(void)
 	mros_protocol_slave.packet.total_size = sizeof(mRosSlavePacketBufferType);
 	mros_protocol_slave.packet.data = &mros_slave_packet_buffer.buffer;
 	mros_protocol_slave.state = MROS_PROTOCOL_SLAVE_STATE_WAITING;
-	ret =  mros_comm_tcp_server_bind(&mros_protocol_slave.server_comm, MROS_SLAVE_PORT_NO);
+	ret =  mros_comm_tcp_server_bind(&mros_protocol_slave.server_comm, mros_slave_port_no);
 	if (ret != MROS_E_OK) {
 		ROS_ERROR("%s %s() %u ret=%d", __FILE__, __FUNCTION__, __LINE__, ret);
 		return ret;

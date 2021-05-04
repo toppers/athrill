@@ -3,6 +3,7 @@
 #include "option/option.h"
 #include "cpu_control/dbg_cpu_control.h"
 #include "cpu_control/dbg_cpu_thread_control.h"
+#include "cpuemu_config.h"
 #include "cpuemu_ops.h"
 #include "cui/cui_ops.h"
 #include "cui/stdio/cui_ops_stdio.h"
@@ -222,7 +223,11 @@ int main(int argc, const char *argv[])
 
 	if (opt->is_interaction == TRUE) {
 		if (opt->is_remote == TRUE) {
-			cui_ops_udp_init();
+			uint32 athrill_listen_port = CPUEMU_CONFIG_CUI_EMULATOR_PORTNO;
+			uint32 client_listen_port = CPUEMU_CONFIG_CUI_CLIENT_PORTNO;
+			(void)cpuemu_get_devcfg_value("DEBUG_FUNC_REMOTE_ATHRILL_LISTEN_PORT_NO", &athrill_listen_port);
+			(void)cpuemu_get_devcfg_value("DEBUG_FUNC_REMOTE_CLIENT_LISTEN_PORT_NO", &client_listen_port);
+			cui_ops_udp_init((uint16)client_listen_port, (uint16)athrill_listen_port);
 		}
 		else {
 			cui_ops_stdio_init();

@@ -46,7 +46,7 @@ extern mRosReturnType mros_packet_encoder_init(void);
  */
 /*
  *	arg.type = MROS_PACKET_DATA_REQUEST_TOPIC_RES;
- *	arg.argi[0] = MROS_PUBLISHER_PORT_NO;
+ *	arg.argi[0] = mros_publisher_port_no;
  *	arg.argv[0] ="TCPROS";
  *	arg.argv[1] = MROS_NODE_IPADDR;
  */

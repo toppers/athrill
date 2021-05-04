@@ -133,7 +133,7 @@ static mRosReturnType mros_proc_slave_request_topic(mRosCommTcpClientType *clien
 		mRosEncodeArgType arg;
 		arg.type = MROS_PACKET_DATA_REQUEST_TOPIC_RES;
 		arg.args_int = 1;
-		arg.argi[0] = MROS_PUBLISHER_PORT_NO;
+		arg.argi[0] = mros_publisher_port_no;
 		arg.args_char = 2;
 		arg.argv[0] ="TCPROS";
 		arg.argv[1] = mros_node_ipaddr;
@@ -255,10 +255,6 @@ static mRosReturnType mros_proc_slave_publisher_update(mRosCommTcpClientType *cl
 	ret = MROS_E_OK;
 	ptr = mros_xmlpacket_pubupreq_get_first_uri(&mros_proc_slave_decoded_requst.request.publisher_update.topic_name.res.tail[1], &tcp_conn.ipaddr, &tcp_conn.port);
 	while (ptr != MROS_NULL) {
-		if (tcp_conn.ipaddr == self_ipaddr) {
-			ptr = mros_xmlpacket_pubupreq_get_next_uri(ptr, packet, &tcp_conn.ipaddr, &tcp_conn.port);
-			continue;
-		}
 		if (mros_proc_connector_get_first(topic_id, MROS_TOPIC_CONNECTOR_PUB, MROS_NODE_TYPE_OUTER, &tcp_conn) != MROS_ID_NONE) {
 			ptr = mros_xmlpacket_pubupreq_get_next_uri(ptr, packet, &tcp_conn.ipaddr, &tcp_conn.port);
 			continue;
