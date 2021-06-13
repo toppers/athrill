@@ -486,7 +486,7 @@ void *cpuemu_thread_run(void* arg)
 		is_halt = do_cpu_run(core_id_num);
 
 		if (enable_skip == TRUE) {
-			if ((is_halt == TRUE) && (cpuemu_dev_clock.can_skip_clock == TRUE)) {
+			if ((is_halt == TRUE) && (cpuemu_dev_clock.can_skip_clock == TRUE) && (cpuemu_dev_clock.min_intr_interval != DEVICE_CLOCK_MAX_INTERVAL)) {
 #ifdef OS_LINUX
 				uint64 skipc_usec = 0;
 				if (enable_dbg.enable_sync_time > 0) {
