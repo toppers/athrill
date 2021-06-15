@@ -1,3 +1,5 @@
 *.o
 *.a
+athrill2
+athrill_remote
 RELEASE/
