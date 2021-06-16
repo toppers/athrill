@@ -28,6 +28,14 @@ mRosReturnType mros_comm_tcp_server_bind(mRosCommTcpServerType *server, mros_int
     mRosSockAddrInType addr;
 
     mros_comm_inet_local_sockaddr_init(&addr, port);
+
+    int yes = 1;
+    ret = mros_comm_setsockopt(server->socket.sock_fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&yes, sizeof(yes));
+    if (ret != MROS_E_OK) {
+        ROS_ERROR("%s %s() %u ret=%d", __FILE__, __FUNCTION__, __LINE__, ret);
+        return MROS_E_SYSERR;
+    }
+
     ret = mros_comm_bind(server->socket.sock_fd, (mRosSockAddrType*)&addr, sizeof(mRosSockAddrInType));
 	if (ret != MROS_E_OK) {
 		ROS_ERROR("%s %s() %u ret=%d", __FILE__, __FUNCTION__, __LINE__, ret);

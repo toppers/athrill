@@ -45,8 +45,7 @@ int lwip_getsockopt (int s, int level, int optname, void *optval, socklen_t *opt
 
 int lwip_setsockopt (int s, int level, int optname, const void *optval, socklen_t optlen)
 {
-	//TODO
-	return 0;
+	return setsockopt(s, level, optname, optval, optlen);
 }
 
 int lwip_close(int s)
