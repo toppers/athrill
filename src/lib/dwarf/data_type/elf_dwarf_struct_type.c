@@ -52,6 +52,7 @@ static void elf_dwarf_build_struct_member(DwarfDataStructType *obj, ElfDwarfDieT
 		case DW_AT_artificial:
 		case DW_AT_const_value:
 		case DW_AT_external:
+		case DW_AT_specification:
 			break;
 		default:
 			printf("attr_type=0x%x\n", attr_type);
