@@ -783,6 +783,8 @@ static TokenContainerType memcfg_token_container;
 static void analize_memmap_arguments(const TokenContainerType *token, const MemoryAddressMapType *map, MemoryAddressType *memp)
 {
 	int i;
+	memp->region_executable = FALSE;
+	memp->region_elf_load_from_vaddr = FALSE;
 	if (token->num <= 3) {
 		return;
 	}
