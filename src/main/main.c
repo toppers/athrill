@@ -167,7 +167,7 @@ int main(int argc, const char *argv[])
 		printf(" %-30s : set athrill memory configuration. rom, ram region is configured on your system.\n", "-m<memory config file>");
 		//printf(" %-30s : set communication path with an another emulator.\n", "-p<fifo config file>");
 		printf(" %-30s : set device parameter.\n", "-d<device config file>");
-		return -11;
+		return 0;
 	}
 
 	winsock_init();
