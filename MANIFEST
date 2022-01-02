@@ -1,5 +1,5 @@
 PACKAGE athrill
-VERSION 1.1.1
+VERSION 1.1.2
 
 MANIFEST
 README.ja.md
@@ -157,6 +157,8 @@ src/device/peripheral/serial/fifo/serial_fifo.c
 src/device/peripheral/serial/fifo/serial_fifo.h
 src/device/peripheral/target/device_ex_serial_ops.h
 src/inc/athrill_device.h
+src/inc/athrill_exdev.h
+src/inc/athrill_exdev_header.h
 src/inc/athrill_mpthread.h
 src/inc/cpu_config_ops.h
 src/inc/cpuemu_ops.h

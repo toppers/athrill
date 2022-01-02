@@ -1,0 +1,63 @@
+name: package build
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - 'RC*'
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+        with:
+          submodules: true  # Fetch athrill repo
+          fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
+
+      - name: Archive package
+        id: get_archive
+        run: |
+          git clone https://github.com/mitsut/toppers_utils.git
+          perl toppers_utils/makerelease
+          FILE_NAME="$(ls -1 RELEASE/ | sed -n 1p)"
+          echo ::set-output name=FILE_NAME::${FILE_NAME}
+
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+
+      - name: Get commit summary
+        id: get_commit_summary
+        run: |
+          PREVIOUS_TAG=$(git tag --sort=-creatordate | sed -n 2p)
+          echo "PREVIOUS_TAG: $PREVIOUS_TAG"
+          COMMIT_SUMMARY="$(git log --oneline --pretty=tformat:"%h %s" $PREVIOUS_TAG..${{ github.ref }})"
+          COMMIT_SUMMARY="${COMMIT_SUMMARY//$'\n'/'%0A'}"
+          echo ::set-output name=COMMIT_SUMMARY::$COMMIT_SUMMARY
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          release_name: Release ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ${{ steps.get_commit_summary.outputs.COMMIT_SUMMARY }}
+          draft: true
+          prerelease: true
+
+      - uses: actions/upload-release-asset@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          # 添付ファイルのパス (必須)
+          asset_path: ./RELEASE/${{ steps.get_archive.outputs.FILE_NAME }}
+          # 添付ファイルの表示名 (必須)
+          asset_name: ${{ steps.get_archive.outputs.FILE_NAME }}
+          # 添付ファイルに対応する content-type (必須)
+          asset_content_type: application/zip
