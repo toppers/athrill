@@ -191,6 +191,7 @@ static Std_ReturnType Elf_LoadProgram(const Elf32_Ehdr *elf_image, MemoryAddress
 			set_malloc_region(memap, i);
 		}
 	}
+#ifdef	OS_LINUX	/* Windows not support */
 	for (i = 0; i < memap->dev_num; i++) {
 		ptr = mpu_address_set_dev(memap->dev[i].start, memap->dev[i].size, memap->dev[i].extdev_handle);
 		if (ptr == NULL) {
@@ -198,6 +199,7 @@ static Std_ReturnType Elf_LoadProgram(const Elf32_Ehdr *elf_image, MemoryAddress
 			return STD_E_INVALID;
 		}
 	}
+#endif /* OS_LINUX */
 	/*
 	 * set cache from elf file.
 	 */

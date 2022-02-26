@@ -310,9 +310,11 @@ static inline int athrill_newlib_open_r_flag(int org_flags)
 	ATHRILL_OPEN_R_FLAG_TARGET2INF(flags, org_flags, O_APPEND);
 	ATHRILL_OPEN_R_FLAG_TARGET2INF(flags, org_flags, O_CREAT);
 	ATHRILL_OPEN_R_FLAG_TARGET2INF(flags, org_flags, O_EXCL);
+#if OS_LINUX    /* Windows not support */
 	ATHRILL_OPEN_R_FLAG_TARGET2INF(flags, org_flags, O_NOCTTY);
 	ATHRILL_OPEN_R_FLAG_TARGET2INF(flags, org_flags, O_NONBLOCK);
 	ATHRILL_OPEN_R_FLAG_TARGET2INF(flags, org_flags, O_SYNC);
+#endif /* OS_LINUX */
 	ATHRILL_OPEN_R_FLAG_TARGET2INF(flags, org_flags, O_TRUNC);
 	ATHRILL_OPEN_R_FLAG_TARGET2INF(flags, org_flags, O_RDONLY);
 	ATHRILL_OPEN_R_FLAG_TARGET2INF(flags, org_flags, O_WRONLY);
@@ -326,9 +328,11 @@ static inline int athrill_syscall_open_r_flag(int inf_flags)
 	ATHRILL_OPEN_R_FLAG_INF2TARGET(flags, inf_flags, O_APPEND);
 	ATHRILL_OPEN_R_FLAG_INF2TARGET(flags, inf_flags, O_CREAT);
 	ATHRILL_OPEN_R_FLAG_INF2TARGET(flags, inf_flags, O_EXCL);
+#if OS_LINUX
 	ATHRILL_OPEN_R_FLAG_INF2TARGET(flags, inf_flags, O_NOCTTY);
 	ATHRILL_OPEN_R_FLAG_INF2TARGET(flags, inf_flags, O_NONBLOCK);
 	ATHRILL_OPEN_R_FLAG_INF2TARGET(flags, inf_flags, O_SYNC);
+#endif  /* OS_LINUX */
 	ATHRILL_OPEN_R_FLAG_INF2TARGET(flags, inf_flags, O_TRUNC);
 	ATHRILL_OPEN_R_FLAG_INF2TARGET(flags, inf_flags, O_RDONLY);
 	ATHRILL_OPEN_R_FLAG_INF2TARGET(flags, inf_flags, O_WRONLY);
