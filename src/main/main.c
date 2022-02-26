@@ -43,6 +43,7 @@ static FILE *save_operation_fp = NULL;
 
 static void load_cui_operation(void)
 {
+#ifdef 	OS_LINUX	/* Windows not support */
 	DbgCmdExecutorType *res;
 	char *filename;
 	size_t buffer_size = 1024;
@@ -71,6 +72,7 @@ static void load_cui_operation(void)
 			res->run(res);
 		}
 	}
+#endif	/* OS_LINUX	 */
 	return;
 }
 static void save_cui_operation(const char* op)
@@ -116,6 +118,7 @@ retry:
 	}
 }
 
+#ifdef OS_LINUX
 static void athrill_sigterm_handler(int arg)
 {
 	athrill_device_cleanup();
@@ -127,6 +130,7 @@ static void athrill_sigterm_handler(int arg)
 	exit(0);
 	return;
 }
+#endif
 
 
 /*
