@@ -61,20 +61,20 @@ void mros_comm_socket_close(mRosCommSocketType *socket)
 
 static mRosReturnType mros_comm_socket_select(mRosCommSocketType *socket, mros_uint32 timeout, mros_boolean read, mros_boolean write) {
 
-	mRosFdSetType fd_set;
+	mRosFdSetType set;
 	mRosTimeValType tmo;
 
-	MROS_FD_ZERO(&fd_set);
-    MROS_FD_SET(socket->sock_fd, &fd_set);
+	MROS_FD_ZERO(&set);
+    MROS_FD_SET(socket->sock_fd, &set);
 
     mRosFdSetType* r_set = MROS_NULL;
     mRosFdSetType* w_set = MROS_NULL;
 
     if (read == MROS_TRUE) {
-    	r_set = &fd_set;
+    	r_set = &set;
     }
     if (write == MROS_TRUE) {
-    	w_set = &fd_set;
+    	w_set = &set;
     }
     mros_comm_set_timeval(timeout, &tmo);
     mRosReturnType ret = mros_comm_select(MROS_FD_SETSIZE, r_set, w_set, MROS_NULL, &tmo);
@@ -82,7 +82,7 @@ static mRosReturnType mros_comm_socket_select(mRosCommSocketType *socket, mros_u
 		ROS_ERROR("%s %s() %u ret=%d", __FILE__, __FUNCTION__, __LINE__, ret);
     	return MROS_E_SYSERR;
     }
-    if ((ret == 0 || !MROS_FD_ISSET(socket->sock_fd, &fd_set))) {
+    if ((ret == 0 || !MROS_FD_ISSET(socket->sock_fd, &set))) {
     	return MROS_E_NOENT;
     }
     return MROS_E_OK;
