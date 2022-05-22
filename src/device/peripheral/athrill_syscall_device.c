@@ -3,6 +3,7 @@
 #define ATHRILL_SYSCALL_DEVICE
 #include "athrill_syscall.h"
 #include <stdio.h>
+#include <stdint.h>
 #include <sys/fcntl.h>
 #include <sys/types.h>
 #ifdef  OS_LINUX
