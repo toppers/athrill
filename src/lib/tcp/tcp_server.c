@@ -1,7 +1,11 @@
 #include "tcp/tcp_server.h"
 #include <sys/types.h>
+#ifdef  OS_LINUX
 #include <sys/socket.h>
 #include <netinet/in.h>
+#else
+#include <winsock2.h>
+#endif
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -39,8 +43,11 @@ Std_ReturnType tcp_server_create(const TcpServerConfigType *config, TcpServerTyp
 Std_ReturnType tcp_server_accept(const TcpServerType *server, TcpConnectionType *connection)
 {
 	struct sockaddr_in addr;
+#ifdef  OS_LINUX
     socklen_t len = sizeof(struct sockaddr_in);
-
+#else
+    int len = sizeof(struct sockaddr_in);
+#endif
 	//printf("tcp_server_accept: fd=%d\n", server->socket.fd);
     connection->socket.fd = accept(server->socket.fd, (struct sockaddr *)&addr, &len);
     if (connection->socket.fd < 0) {

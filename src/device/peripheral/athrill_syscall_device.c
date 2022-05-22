@@ -5,10 +5,14 @@
 #include <stdio.h>
 #include <sys/fcntl.h>
 #include <sys/types.h>
+#ifdef  OS_LINUX
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <sys/select.h>
+#else
+#include <winsock2.h>
+#endif
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -128,7 +132,13 @@ static void athrill_syscall_none(AthrillSyscallArgType *arg)
 }
 static void athrill_syscall_socket(AthrillSyscallArgType *arg)
 {
+#ifdef OS_LINUX
     int sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+#else
+    int sockfd = socket(AF_INET, SOCK_STREAM , 0);
+    u_long val=1;
+    ioctlsocket(sockfd, FIONBIO, &val);
+#endif
     if (sockfd < 0) {
     	printf("ERROR:%s(): errno=%d\n", __FUNCTION__, errno);
         return;
@@ -143,7 +153,11 @@ static void athrill_syscall_sense(AthrillSyscallArgType *arg)
     struct timeval tv;
     int retval;
     int val;
+#ifdef  OS_LINUX
     socklen_t len = sizeof(val);
+#else
+    int len = sizeof(val);
+#endif
 
     FD_ZERO(&fds);
     FD_SET(arg->body.api_sense.sockfd, &fds);
@@ -228,7 +242,11 @@ static void athrill_syscall_accept(AthrillSyscallArgType *arg)
     Std_ReturnType err;
     struct sockaddr_in client_addr;
     struct sys_sockaddr_in *sockaddrp;
+#ifdef  OS_LINUX
     socklen_t addrlen;
+#else
+    int addrlen;
+#endif
     sys_uint32 *addrlenp;
 
     err = mpu_get_pointer(0U, arg->body.api_accept.sockaddr, (uint8 **)&sockaddrp);
@@ -387,7 +405,11 @@ static void athrill_syscall_send(AthrillSyscallArgType *arg)
     if (err != 0) {
         return;
     }
+#ifdef  OS_LINUX
     ret = send(arg->body.api_send.sockfd, bufp, arg->body.api_send.len, MSG_DONTWAIT);
+#else
+    ret = send(arg->body.api_send.sockfd, bufp, arg->body.api_send.len, 0);
+#endif
     if (ret < 0) {
         arg->ret_value = -errno;
     }
@@ -405,7 +427,11 @@ static void athrill_syscall_recv(AthrillSyscallArgType *arg)
     if (err != 0) {
         return;
     }
+#ifdef  OS_LINUX
     ret = recv(arg->body.api_recv.sockfd, bufp, arg->body.api_recv.len, MSG_DONTWAIT);
+#else
+    ret = recv(arg->body.api_recv.sockfd, bufp, arg->body.api_recv.len, 0);
+#endif
     if (ret < 0) {
         arg->ret_value = -errno;
     }
@@ -503,11 +529,19 @@ static int create_directory(const char* dir)
 {
     int ret = 0;
 
+#ifdef  OS_LINUX
     if ( (mkdir(dir,0777) == -1) && (errno != EEXIST) ) {
         printf("create_directory() mkdir failed path=%s errno=0x%x",
             dir, errno);
         ret = -1;
     } 
+#else
+    if ( (_mkdir(dir) == -1) && (errno != EEXIST) ) {
+        printf("create_directory() mkdir failed path=%s errno=0x%x",
+            dir, errno);
+        ret = -1;
+    } 
+#endif
     return ret;
 }
 
@@ -761,7 +795,11 @@ static void athrill_syscall_set_virtfs_top(AthrillSyscallArgType *arg)
         err = mpu_get_pointer(0U, arg->body.api_set_virtfs_top.top_dir,(uint8**)&top_dir);
         ASSERT(err == 0);
 
+#ifdef  OS_LINUX
         if ( (mkdir(top_dir,0777) == -1) && (errno != EEXIST) ) {
+#else
+        if ( (_mkdir(top_dir) == -1) && (errno != EEXIST) ) {
+#endif
             printf("SYSCAL]set_virtfs_top mkdir failed path=%s errno=0x%x",
             top_dir, errno);
         } else {
@@ -958,7 +996,11 @@ static int create_pipe(const char *path, int is_read )
     int ret;
     if ( stat(path, &stat_buf) == 0 ) {
         // as pipe name exist, remove it first
+#ifdef  OS_LINUX
         int tmp_fd = open(path, O_RDONLY|O_NONBLOCK);
+#else
+        int tmp_fd = open(path, O_RDONLY);
+#endif
         char buf[255];
 
         // clear pipe
@@ -970,7 +1012,11 @@ static int create_pipe(const char *path, int is_read )
          ret = mkfifo(path, 0666);
     }
     int mode = (is_read ? O_RDONLY : O_RDWR );
+#ifdef  OS_LINUX
     int fd = open(path,  mode | O_NONBLOCK);
+#else
+    int fd = open(path,  mode );
+#endif
     //printf("open: path=%s fd=%d errno=%d\n",path,fd,errno);
 
     return fd;
