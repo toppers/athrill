@@ -1,7 +1,11 @@
 #include "tcp/tcp_client.h"
 #include <sys/types.h>
+#ifdef  OS_LINUX
 #include <sys/socket.h>
 #include <netinet/in.h>
+#else
+#include <winsock2.h>
+#endif
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>

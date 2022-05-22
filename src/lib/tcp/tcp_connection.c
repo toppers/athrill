@@ -1,6 +1,10 @@
 #include "tcp_connection.h"
 #include <sys/types.h>
+#ifdef	OS_LINUX
 #include <sys/socket.h>
+#else
+#include <winsock2.h>
+#endif
 #include <errno.h>
 #include <stdio.h>
 
@@ -27,7 +31,11 @@ Std_ReturnType tcp_connection_send_nblk(TcpConnectionType *connection, const cha
 	ssize_t snd_size;
 
 	*res = 0;
+#ifdef	OS_LINUX
 	snd_size = send(connection->socket.fd, data, size, MSG_DONTWAIT);
+#else
+	snd_size = send(connection->socket.fd, data, size, 0);
+#endif
 	if (snd_size < 0) {
 		if (errno != EAGAIN) {
 			printf("ERROR: tcp_connection_send() errno=%d\n", errno);
@@ -47,7 +55,11 @@ Std_ReturnType tcp_connection_receive_nblk(TcpConnectionType *connection, char *
 {
 	ssize_t rcv_size;
 	*res = 0;
+#ifdef	OS_LINUX
 	rcv_size = recv(connection->socket.fd, data, size, MSG_DONTWAIT);
+#else
+	rcv_size = recv(connection->socket.fd, data, size, 0);
+#endif
 	if (rcv_size < 0) {
 		if (errno != EAGAIN) {
 			printf("ERROR: tcp_connection_receive() errno=%d\n", errno);

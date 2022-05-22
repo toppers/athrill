@@ -1,9 +1,13 @@
 #include "tcp_socket.h"
 #include <unistd.h>
 #include <sys/types.h>
+#ifdef	OS_LINUX
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#else
+#include <winsock2.h>
+#endif
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
