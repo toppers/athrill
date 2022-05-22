@@ -49,8 +49,8 @@
  */
 #define TARGET_OS_SOCKET_TYPE	int
 #else
-#include <windows.h>
 #include <winsock2.h>
+#include <windows.h>
 /*
  * Winsock
  */
