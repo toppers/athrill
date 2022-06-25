@@ -31,6 +31,7 @@ extern void cpuemu_get_register(CoreIdType core_id, TargetCoreType *cpu);
 extern void *cpuemu_thread_run(void* arg);
 extern uint64 cpuemu_get_cpu_end_clock(void);
 extern void cpuemu_set_cpu_end_clock(uint64 clock);
+extern void cpuemu_set_entry_addr(uint32 entry_addr);
 
 
 extern Std_ReturnType cpuemu_set_comm_fifocfg(const char* fifocfg);

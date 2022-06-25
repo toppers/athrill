@@ -32,10 +32,12 @@ Std_ReturnType binary_load(uint8 *binary_data, uint32 load_addr, uint32 binary_d
 	return STD_E_OK;
 }
 
-Std_ReturnType elf_load(uint8 *elf_data, MemoryAddressMapType *memap)
+Std_ReturnType elf_load(uint8 *elf_data, MemoryAddressMapType *memap, uint32* entry_addr)
 {
 	Std_ReturnType err;
 	uint32 disable_debug_data_type = 0;
+
+	*entry_addr = ((const Elf32_Ehdr*)elf_data)->e_entry;
 
 	err = Elf_Check((const Elf32_Ehdr*)elf_data);
 	if (err != STD_E_OK) {
