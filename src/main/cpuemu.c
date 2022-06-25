@@ -34,6 +34,7 @@
 static DeviceClockType cpuemu_dev_clock;
 std_bool private_cpuemu_is_cui_mode = FALSE;
 static uint64 cpuemu_cpu_end_clock = -1LLU;
+static uint32 cpuemu_cpu_entry_addr = 0U;
 static void cpuemu_env_parse_devcfg_string(TokenStringType* strp);
 
 Std_ReturnType cpuemu_symbol_set(void)
@@ -144,6 +145,12 @@ uint64 cpuemu_get_cpu_end_clock(void)
 void cpuemu_set_cpu_end_clock(uint64 clock)
 {
 	cpuemu_cpu_end_clock = clock;
+	return;
+}
+
+void cpuemu_set_entry_addr(uint32 entry_addr)
+{
+	cpuemu_cpu_entry_addr = entry_addr;
 	return;
 }
 
@@ -439,7 +446,7 @@ void *cpuemu_thread_run(void* arg)
 	enable_dbg.enable_watch = TRUE;
 	enable_dbg.enable_prof = TRUE;
 	enable_dbg.enable_sync_time = FALSE;
-	enable_dbg.reset_pc = 0x0;
+	enable_dbg.reset_pc = cpuemu_cpu_entry_addr;
 	cpuemu_dev_clock.enable_skip = FALSE;
 
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_BT", &enable_dbg.enable_bt);

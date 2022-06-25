@@ -156,6 +156,7 @@ int main(int argc, const char *argv[])
 	Std_ReturnType err;
 	CmdOptionType *opt;
 	MemoryAddressMapType memmap;
+	uint32 entry_addr;
 	memset(&memmap, 0, sizeof(MemoryAddressMapType));
 
 	if (argc == 1) {
@@ -218,13 +219,14 @@ int main(int argc, const char *argv[])
 		binary_load((uint8*)opt->load_file.buffer, 0U, opt->load_file.size);
 	}
 	else {
-		elf_load((uint8*)opt->load_file.buffer, &memmap);
+		elf_load((uint8*)opt->load_file.buffer, &memmap, &entry_addr);
 		if (cpuemu_symbol_set() != STD_E_OK) {
 			return -1;
 		}
 		file_address_mapping_init();
 	}
 
+	cpuemu_set_entry_addr(entry_addr);
 	if (opt->is_interaction == TRUE) {
 		if (opt->is_remote == TRUE) {
 			uint32 athrill_listen_port = CPUEMU_CONFIG_CUI_EMULATOR_PORTNO;
