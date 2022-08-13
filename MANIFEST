@@ -1,5 +1,5 @@
 PACKAGE athrill
-VERSION 1.1.2
+VERSION 1.1.3
 
 MANIFEST
 README.ja.md
@@ -7,10 +7,9 @@ README.md
 
 apl/include/athrill_syscall.h
 apl/src/athrill-syscall.c
-
-bin/linux/athrill_extfunc.sh
 bin/linux/athrill-run
 bin/linux/athrill-run-remote
+bin/linux/athrill_extfunc.sh
 bin/linux/athrill_terminal
 bin/linux/geany.sh
 bin/linux/variable_conflict_check.groovy
@@ -26,10 +25,9 @@ build/core/linux/Makefile.main
 build/core/linux/Makefile.mpu
 build/core/linux/Makefile.mros
 build/core/linux/Makefile.std
+command/remote/remote_cui_client/Makefile
 command/remote/remote_cui_client/cpuemu_config.h
 command/remote/remote_cui_client/main.c
-command/remote/remote_cui_client/Makefile
-
 src/bus/bus.c
 src/bus/bus.h
 src/cpu/cpu.h
@@ -49,9 +47,9 @@ src/debugger/executor/dbg_executor.h
 src/debugger/interaction/front/parser/concrete_parser/dbg_std_parser.c
 src/debugger/interaction/front/parser/concrete_parser/dbg_std_parser.h
 src/debugger/interaction/front/parser/dbg_parser.c
+src/debugger/interaction/front/parser/dbg_parser.h
 src/debugger/interaction/front/parser/dbg_parser_config.c
 src/debugger/interaction/front/parser/dbg_parser_config.h
-src/debugger/interaction/front/parser/dbg_parser.h
 src/debugger/interaction/inc/dbg_interaction_std_ids.h
 src/debugger/interaction/inc/target/rh850/dbg_interaction_target_ids.h
 src/debugger/interaction/inc/target/v850e2m/dbg_interaction_target_ids.h
@@ -81,8 +79,8 @@ src/device/peripheral/mros-dev/mros-athrill/target/lwip/init.h
 src/device/peripheral/mros-dev/mros-athrill/target/lwip/lwip_linux.c
 src/device/peripheral/mros-dev/mros-athrill/target/lwip/netdb.h
 src/device/peripheral/mros-dev/mros-athrill/target/lwip/sockets.h
-src/device/peripheral/mros-dev/mros-athrill/target/os/kernel_cfg.h
 src/device/peripheral/mros-dev/mros-athrill/target/os/kernel.h
+src/device/peripheral/mros-dev/mros-athrill/target/os/kernel_cfg.h
 src/device/peripheral/mros-dev/mros-athrill/target/os/mros_exclusive_ops_linux.c
 src/device/peripheral/mros-dev/mros-athrill/target/os/os_asp.c
 src/device/peripheral/mros-dev/mros-athrill/target/os/t_syslog.h
@@ -219,8 +217,8 @@ src/lib/file.h
 src/lib/hash.c
 src/lib/hash.h
 src/lib/list.h
-src/lib/loader/elf_common.h
 src/lib/loader/elf.h
+src/lib/loader/elf_common.h
 src/lib/object_container.h
 src/lib/symbol_ops.c
 src/lib/symbol_ops.h
