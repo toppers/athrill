@@ -438,7 +438,7 @@ void *cpuemu_thread_run(void* arg)
 {
 	std_bool is_halt;
 	int core_id_num = cpu_config_get_core_id_num();
-	static bool (*do_cpu_run) (int);
+	static std_bool (*do_cpu_run) (int);
 	int core_id;
 
 	enable_dbg.enable_bt = TRUE;
