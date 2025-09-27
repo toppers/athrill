@@ -1,21 +1,22 @@
-#ifndef _MROS_TYPES_H_
-#define _MROS_TYPES_H_
-
-/* 共通型定義など… */
-
-/* プラットフォーム別セクション属性 */
-#if defined(__APPLE__)
-  /* macOS: Mach-O は __SEGMENT,__section の形式 */
-  #define MROS_SECTION_DEF __attribute__((section("__DATA,__nc_bss"))) __attribute__((used))
-#elif defined(__linux__)
-  /* Linux: ELF はそのまま */
-  #define MROS_SECTION_DEF __attribute__((section("NC_BSS")))
-#elif defined(_WIN32) && defined(_MSC_VER)
-  /* Windows (MSVC) */
-  #define MROS_SECTION_DEF __declspec(allocate(".nc_bss"))
-#else
-  /* それ以外は属性なし */
-  #define MROS_SECTION_DEF
+#ifndef _MROS_EXCLUSIVE_AREA_H_
+#define _MROS_EXCLUSIVE_AREA_H_
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#endif /* _MROS_TYPES_H_ */
+#include "mros_exclusive_ops.h"
+#include "mros_wait_queue.h"
+#include "mros_types.h"
+
+extern mRosExclusiveObjectType mros_exclusive_area;
+extern mRosWaitQueueType mros_master_wait_queue;
+extern mRosWaitQueueType mros_subscribe_wait_queue;
+
+extern void mros_exclusive_area_init(mRosTaskIdType mas_task_id,
+                                     mRosTaskIdType sub_task_id);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _MROS_EXCLUSIVE_AREA_H_ */
