@@ -30,18 +30,15 @@ static inline void athrill_mem_init(AthrillMemEntryType *entryp)
 
 static inline void *athrill_mem_alloc(uint32 size)
 {
-	static int alloc_count = 0;
 	ASSERT(size <= ATHRILL_MEM_ENTRY_SIZE);
 	if (athrill_mem_head.headp == NULL) {
 		athrill_mem_head.headp = malloc(sizeof(AthrillMemEntryType));
-		alloc_count++;
 		ASSERT(athrill_mem_head.headp != NULL);
 		athrill_mem_head.currp = athrill_mem_head.headp;
 		athrill_mem_init(athrill_mem_head.headp);
 	}
 	if (size > athrill_mem_head.currp->freesize) {
 		AthrillMemEntryType *new_entryp = malloc(sizeof(AthrillMemEntryType));
-		alloc_count++;
 		ASSERT(new_entryp != NULL);
 		athrill_mem_init(new_entryp);
 		new_entryp->next = athrill_mem_head.currp;

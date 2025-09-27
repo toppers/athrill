@@ -134,7 +134,26 @@ static void athrill_syscall_none(AthrillSyscallArgType *arg)
 static void athrill_syscall_socket(AthrillSyscallArgType *arg)
 {
 #ifdef OS_LINUX
+#if defined(__linux__)
     int sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+#else // darwin
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        printf("ERROR:%s(): errno=%d (%s)\n", __FUNCTION__, errno, strerror(errno));
+        return;
+    }
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    if (flags == -1) {
+        printf("ERROR:%s(): fcntl(F_GETFL) errno=%d (%s)\n", __FUNCTION__, errno, strerror(errno));
+        close(sockfd);
+        return;
+    }
+    if (fcntl(sockfd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        printf("ERROR:%s(): fcntl(F_SETFL) errno=%d (%s)\n", __FUNCTION__, errno, strerror(errno));
+        close(sockfd);
+        return;
+    }
+#endif
 #else
     int sockfd = socket(AF_INET, SOCK_STREAM , 0);
     u_long val=1;
