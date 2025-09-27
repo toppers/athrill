@@ -19,7 +19,12 @@ CFLAGS		:= $(WFLAGS)
 CFLAGS		+= $(IFLAGS)
 CFLAGS		+= -DOS_LINUX
 
-LFLAGS		:= -Wl,--allow-multiple-definition
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+  LFLAGS := -Wl,-multiply_defined,suppress
+else
+  LFLAGS	:= -Wl,--allow-multiple-definition
+endif
 
 LIBS		:= -lpthread
 
