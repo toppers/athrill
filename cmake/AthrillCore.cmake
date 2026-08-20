@@ -25,6 +25,7 @@ set(ATHRILL_WINDOWS_COMPAT_INCLUDE_DIR
 
 set(ATHRILL_MAIN_SOURCES
     "${ATHRILL_SRC_DIR}/main/cpuemu.c"
+    "${ATHRILL_SRC_DIR}/main/option/argument_parser.c"
     "${ATHRILL_SRC_DIR}/main/option/option.c"
     "${ATHRILL_SRC_DIR}/debugger/executor/cpu_control/dbg_cpu_callback.c"
     "${ATHRILL_SRC_DIR}/debugger/executor/cpu_control/dbg_cpu_control.c"

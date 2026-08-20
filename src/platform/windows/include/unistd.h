@@ -3,7 +3,6 @@
 
 #include <io.h>
 #include <process.h>
-#include <getopt.h>
 #include <BaseTsd.h>
 
 #ifndef _SSIZE_T_DEFINED
