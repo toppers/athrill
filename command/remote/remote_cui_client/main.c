@@ -1,6 +1,6 @@
 #include "udp/udp_comm.h"
 #include "target/target_os_api.h"
-#include <getopt.h>
+#include "option/argument_parser.h"
 #include <string.h>
 #include <stdio.h>
 #include "cpuemu_config.h"
@@ -13,7 +13,7 @@ typedef struct {
 	bool    is_parse_error;
 } CmdOptionType;
 
-CmdOptionType parse_option(int argc, const char* argv[]);
+CmdOptionType parse_option(int argc, const char* argv[], int *first_command_index);
 
 static int cmd_buffer_len = 0;
 static char cmd_buffer[4096];
@@ -24,10 +24,11 @@ int main(int argc, const char* argv[])
 	UdpCommConfigType config;
 	UdpCommType comm;
 	int len;
+	int first_command_index;
 
-	CmdOptionType opt = parse_option(argc, argv);
+	CmdOptionType opt = parse_option(argc, argv, &first_command_index);
 
-	if (argc - optind < 1 || opt.is_help || opt.is_parse_error) {
+	if (argc - first_command_index < 1 || opt.is_help || opt.is_parse_error) {
 		printf("Usage: athrill_remote [OPTION]... COMMAND\n");
 		printf("       -a, --athrill-listen-port<port no>       : set Athrill listen port.\n");
 		printf("       -r, --remote-client-listen-port<port no> : set athrill_remote listen port.\n");
@@ -41,7 +42,7 @@ int main(int argc, const char* argv[])
 		printf("remote_client_listen_port: %d\n", opt.remote_client_listen_port);
 	}
 
-	for (i = optind; i < argc; i++) {
+	for (i = first_command_index; i < argc; i++) {
 		len = strlen(argv[i]);
 		if ((cmd_buffer_len + (len + 2)) > UDP_BUFFER_LEN) {
 			printf("argument length is too large.len=%d\n", len);
@@ -90,7 +91,7 @@ int main(int argc, const char* argv[])
 	return 0;
 }
 
-CmdOptionType parse_option(int argc, const char* argv[]) {
+CmdOptionType parse_option(int argc, const char* argv[], int *first_command_index) {
 	CmdOptionType options = {
 		.athrill_listen_port = CPUEMU_CONFIG_CUI_CLIENT_PORTNO,
 		.remote_client_listen_port = CPUEMU_CONFIG_CUI_EMULATOR_PORTNO,
@@ -99,22 +100,25 @@ CmdOptionType parse_option(int argc, const char* argv[]) {
 		.is_parse_error = FALSE,
 	};
 
-	struct option longopts[] = {
-		{ "remote-client-listen-port", required_argument, NULL, 'r' },
-		{ "athrill-listen-port",       required_argument, NULL, 'a' },
-		{ "verbose",                   no_argument,       NULL, 'v' },
-		{ "help",                      no_argument,       NULL, 'h' },
-		{ 0,                           0,                 0,     0  },
+	const ArgumentParserLongOption longopts[] = {
+		{ "remote-client-listen-port", 1, 'r' },
+		{ "athrill-listen-port",       1, 'a' },
+		{ "verbose",                   0, 'v' },
+		{ "help",                      0, 'h' },
+		{ NULL,                        0, 0   },
 	};
 
-	int opt, longindex;
-	while ((opt = getopt_long(argc, (char**)argv, "a:r:vh", longopts, &longindex)) != -1) {
+	ArgumentParserState parser;
+	int opt;
+	argument_parser_init(&parser);
+	while ((opt = argument_parser_next_long(
+			&parser, argc, argv, "a:r:vh", longopts)) != -1) {
 		switch (opt) {
 		case 'r':
-			options.remote_client_listen_port = atoi(optarg);
+			options.remote_client_listen_port = atoi(parser.argument);
 			break;
 		case 'a':
-			options.athrill_listen_port = atoi(optarg);
+			options.athrill_listen_port = atoi(parser.argument);
 			break;
 		case 'v':
 			options.is_verbose = TRUE;
@@ -127,8 +131,8 @@ CmdOptionType parse_option(int argc, const char* argv[]) {
 			break;
 		}
 	}
+	*first_command_index = parser.index;
 
 	return options;
 
 }
-

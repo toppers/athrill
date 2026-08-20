@@ -8,9 +8,15 @@
 #include <errno.h>
 #include <stdio.h>
 
+#ifdef OS_LINUX
+typedef ssize_t TcpIoSizeType;
+#else
+typedef int TcpIoSizeType;
+#endif
+
 Std_ReturnType tcp_connection_send(TcpConnectionType *connection, const char *data, uint32 size, uint32 *res)
 {
-	ssize_t snd_size;
+	TcpIoSizeType snd_size;
 
 	*res = 0;
 	snd_size = send(connection->socket.fd, data, size, 0);
@@ -28,7 +34,7 @@ Std_ReturnType tcp_connection_send(TcpConnectionType *connection, const char *da
 }
 Std_ReturnType tcp_connection_send_nblk(TcpConnectionType *connection, const char *data, uint32 size, uint32 *res)
 {
-	ssize_t snd_size;
+	TcpIoSizeType snd_size;
 
 	*res = 0;
 #ifdef	OS_LINUX
@@ -53,7 +59,7 @@ Std_ReturnType tcp_connection_send_nblk(TcpConnectionType *connection, const cha
 
 Std_ReturnType tcp_connection_receive_nblk(TcpConnectionType *connection, char *data, uint32 size, uint32 *res)
 {
-	ssize_t rcv_size;
+	TcpIoSizeType rcv_size;
 	*res = 0;
 #ifdef	OS_LINUX
 	rcv_size = recv(connection->socket.fd, data, size, MSG_DONTWAIT);
@@ -77,7 +83,7 @@ Std_ReturnType tcp_connection_receive_nblk(TcpConnectionType *connection, char *
 
 Std_ReturnType tcp_connection_receive(TcpConnectionType *connection, char *data, uint32 size, uint32 *res)
 {
-	ssize_t rcv_size;
+	TcpIoSizeType rcv_size;
 	*res = 0;
 	rcv_size = recv(connection->socket.fd, data, size, 0);
 	if (rcv_size < 0) {

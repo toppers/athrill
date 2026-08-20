@@ -9,7 +9,9 @@
 #include "elf_dwarf_info.h"
 #include "elf_dwarf_loc.h"
 #include "elf_dwarf_data_type.h"
-#include "athrill_device.h"
+#ifdef EXDEV_ENABLE
+#include "shared_library.h"
+#endif
 #include "assert.h"
 #include <string.h>
 #include <stdio.h>
@@ -193,15 +195,17 @@ static Std_ReturnType Elf_LoadProgram(const Elf32_Ehdr *elf_image, MemoryAddress
 			set_malloc_region(memap, i);
 		}
 	}
-#ifdef	OS_LINUX	/* Windows not support */
+#ifdef EXDEV_ENABLE
 	for (i = 0; i < memap->dev_num; i++) {
 		ptr = mpu_address_set_dev(memap->dev[i].start, memap->dev[i].size, memap->dev[i].extdev_handle);
 		if (ptr == NULL) {
 			printf("Invalid dev file: can not load dev addr=0x%x\n", memap->dev[i].start);
+			athrill_shared_library_close(memap->dev[i].extdev_handle);
+			memap->dev[i].extdev_handle = NULL;
 			return STD_E_INVALID;
 		}
 	}
-#endif /* OS_LINUX */
+#endif
 	/*
 	 * set cache from elf file.
 	 */

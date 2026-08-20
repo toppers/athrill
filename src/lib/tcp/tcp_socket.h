@@ -3,9 +3,10 @@
 
 #include "std_types.h"
 #include "std_errno.h"
+#include "target/target_os_api.h"
 
 typedef struct {
-	int fd;
+	TARGET_OS_SOCKET_TYPE fd;
 } TcpSocketType;
 
 extern Std_ReturnType tcp_socket_open(TcpSocketType *socket);

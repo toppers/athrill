@@ -1,9 +1,9 @@
 #include "option/option.h"
+#include "option/argument_parser.h"
 #include "file.h"
 #include <stdlib.h>
 #include <errno.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <string.h>
 
 static CmdOptionType cmd_option;
@@ -43,6 +43,7 @@ static int cmd_atoi32(char *arg, uint32 *out)
 CmdOptionType *parse_args(int argc, const char* argv[])
 {
 	  int opt;
+	  ArgumentParserState parser;
 
 	  cmd_option.fifocfgpath = NULL;
 	  cmd_option.load_filepath = NULL;
@@ -50,8 +51,9 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 	  cmd_option.is_interaction = FALSE;
 	  cmd_option.is_remote = FALSE;
 	  cmd_option.timeout = 0;
+	  argument_parser_init(&parser);
 
-	  while ((opt = getopt(argc, (char**)argv, "irbt:p:d:c:m:")) != -1) {
+	  while ((opt = argument_parser_next(&parser, argc, argv, "irbt:p:d:c:m:")) != -1) {
 		  switch (opt) {
 		  case 'i':
 	    	cmd_option.is_interaction = TRUE;
@@ -63,34 +65,34 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 		    cmd_option.is_binary_data = TRUE;
 	        break;
 	      case 't':
-					if (cmd_atoi(optarg, &cmd_option.timeout) < 0) {
-							printf("error! -t %s\n", optarg);
+					if (cmd_atoi((char *)parser.argument, &cmd_option.timeout) < 0) {
+							printf("error! -t %s\n", parser.argument);
 						return NULL;
 					}
 	        break;
 	      case 'c':
-					if (cmd_atoi32(optarg, &cmd_option.core_id_num) < 0) {
-							printf("error! -c %s\n", optarg);
+					if (cmd_atoi32((char *)parser.argument, &cmd_option.core_id_num) < 0) {
+							printf("error! -c %s\n", parser.argument);
 						return NULL;
 					}
 	        break;
 	      case 'p':
-	    	memcpy(cmd_option.buffer_fifopath, optarg, strlen(optarg));
-	    	cmd_option.buffer_fifopath[strlen(optarg)] = '\0';
+			memcpy(cmd_option.buffer_fifopath, parser.argument, strlen(parser.argument));
+			cmd_option.buffer_fifopath[strlen(parser.argument)] = '\0';
 	        cmd_option.fifocfgpath = cmd_option.buffer_fifopath;
 	        break;
 	      case 'm':
-	    	memcpy(cmd_option.buffer_memfile, optarg, strlen(optarg));
-	    	cmd_option.buffer_memfile[strlen(optarg)] = '\0';
+			memcpy(cmd_option.buffer_memfile, parser.argument, strlen(parser.argument));
+			cmd_option.buffer_memfile[strlen(parser.argument)] = '\0';
 	        cmd_option.memfilepath = cmd_option.buffer_memfile;
 	        break;
 	      case 'd':
-	    	memcpy(cmd_option.buffer_devcfgpath, optarg, strlen(optarg));
-	    	cmd_option.buffer_devcfgpath[strlen(optarg)] = '\0';
+			memcpy(cmd_option.buffer_devcfgpath, parser.argument, strlen(parser.argument));
+			cmd_option.buffer_devcfgpath[strlen(parser.argument)] = '\0';
 	        cmd_option.devcfgpath = cmd_option.buffer_devcfgpath;
 	        break;
 	      default:
-	        printf("parse_args:error! \'%c\' \'%c\'\n", opt, optopt);
+	        printf("parse_args:error! \'%c\' \'%c\'\n", opt, parser.error_option);
 	        return NULL;
 	    }
 	  }
@@ -100,13 +102,13 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 	  printf("t = %llu\n", cmd_option.timeout);
 	  printf("p = %s\n", (cmd_option.fifocfgpath != NULL) ? cmd_option.fifocfgpath : "NULL");
 #endif
-		if (optind >= argc) {
+		if (parser.index >= argc) {
 			printf("ERROR: not found <load file>\n");
 			return NULL;
 		}
-	  memcpy(cmd_option.load_file.filepath.str, argv[optind], strlen(argv[optind]));
-	  cmd_option.load_file.filepath.str[strlen(argv[optind])] = '\0';
-	  cmd_option.load_file.filepath.len = strlen(argv[optind]);
+	  memcpy(cmd_option.load_file.filepath.str, argv[parser.index], strlen(argv[parser.index]));
+	  cmd_option.load_file.filepath.str[strlen(argv[parser.index])] = '\0';
+	  cmd_option.load_file.filepath.len = strlen(argv[parser.index]);
       cmd_option.load_filepath = (char *)cmd_option.load_file.filepath.str;
 
       if (file_load(&cmd_option.load_file) == FALSE) {

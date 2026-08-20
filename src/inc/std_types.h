@@ -38,11 +38,11 @@ typedef uint32 CoreIdType;
 #endif /* UINT_C */
 
 
-#ifdef __i386__
+#if defined(__i386__) || defined(_M_IX86)
 #define CAST_UINT32_TO_ADDR(uint32_data) ( (void*)((uint32)(uint32_data)) )
-#elif __x86_64__
+#elif defined(__x86_64__) || defined(_M_X64) || defined(_M_AMD64)
 #define CAST_UINT32_TO_ADDR(uint32_data) ( (void*)((uint64)(uint32_data)) )
-#elif defined(__arm64) || defined(__arm64__) || defined(__aarch64__)
+#elif defined(__arm64) || defined(__arm64__) || defined(__aarch64__) || defined(_M_ARM64)
 #define CAST_UINT32_TO_ADDR(uint32_data) ( (void*)((uint64)(uint32_data)) )
 #else
 #error "unknown arch."

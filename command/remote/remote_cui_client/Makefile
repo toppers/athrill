@@ -12,6 +12,7 @@ IFLAGS		+= -I$(ROOTDIR)/lib
 VPATH		:= $(TARGETDIR)
 VPATH		+= $(ROOTDIR)/lib/winsock_wrapper
 VPATH		+= $(ROOTDIR)/lib/udp
+VPATH		+= $(ROOTDIR)/main/option
 
 
 
@@ -30,6 +31,7 @@ LIBS		:= -lpthread
 
 OBJS		:= main.o
 OBJS		+= udp_comm.o
+OBJS		+= argument_parser.o
 
 
 .SUFFIXES:	.c .o

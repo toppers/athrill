@@ -19,13 +19,13 @@
 #include "option/option.h"
 #include <fcntl.h>
 #include <string.h>
+#include "shared_library.h"
 #ifdef OS_LINUX
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include "errno.h"
-#include <dlfcn.h>
 #endif /* OS_LINUX */
 #include "athrill_device.h"
 #include "assert.h"
@@ -132,9 +132,9 @@ void cpuemu_init(void *(*cpu_run)(void *), void *opt)
 	else {
 		private_cpuemu_is_cui_mode = FALSE;
 	}
-#ifdef OS_LINUX
+#ifdef EXDEV_ENABLE
 	device_init_athrill_device();
-#endif /* OS_LINUX */
+#endif /* EXDEV_ENABLE */
 	return;
 }
 
@@ -320,9 +320,9 @@ static inline std_bool cpuemu_thread_run_nodbg(int core_id_num)
 	/**
 	 * デバイス実行実行
 	 */
-#ifdef OS_LINUX
+#ifdef EXDEV_ENABLE
 	device_supply_clock_athrill_device();
-#endif /* OS_LINUX */
+#endif /* EXDEV_ENABLE */
 	device_supply_clock(&cpuemu_dev_clock);
 
 	/**
@@ -371,9 +371,9 @@ static inline std_bool cpuemu_thread_run_dbg(int core_id_num)
 	 * デバイス実行実行
 	 */
 	CPUEMU_DEV_TOTAL_PROF_START();
-#ifdef OS_LINUX
+#ifdef EXDEV_ENABLE
 	device_supply_clock_athrill_device();
-#endif /* OS_LINUX */
+#endif /* EXDEV_ENABLE */
 	device_supply_clock(&cpuemu_dev_clock);
 	CPUEMU_DEV_TOTAL_PROF_END();
 
@@ -927,24 +927,42 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			analize_memmap_arguments(&memcfg_token_container, map, memp);
 			printf("MALLOC");
 		}
+#endif /* OS_LINUX */
+#ifdef EXDEV_ENABLE
 		else if (!strcmp("DEV", (char*)memcfg_token_container.array[0].body.str.str)) {
+			char error_message[512];
 			char *filepath = (char*)memcfg_token_container.array[2].body.str.str;
-			void *handle = dlopen(filepath, RTLD_NOW);
+			AthrillSharedLibraryHandle handle = athrill_shared_library_open(
+				filepath, error_message, sizeof(error_message));
+			AthrillExDeviceHeaderType *ext_dev_header;
+
 			if (handle == NULL) {
-				printf("ERROR: Can not find shared library %s reason=%s\n", filepath, dlerror());
+				printf("ERROR: Can not load shared library %s reason=%s\n", filepath, error_message);
 				continue;
 			}
-			AthrillExDeviceHeaderType *ext_dev_headr = dlsym(handle, "athrill_ex_device");
-			if (ext_dev_headr == NULL) {
-				printf("ERROR: Can not find symbol(athrill_ex_device) on %s\n", filepath);
+			ext_dev_header = athrill_shared_library_symbol(
+				handle, "athrill_ex_device", error_message, sizeof(error_message));
+			if (ext_dev_header == NULL) {
+				printf(
+					"ERROR: Can not find symbol(athrill_ex_device) on %s reason=%s\n",
+					filepath,
+					error_message);
+				athrill_shared_library_close(handle);
 				continue;
 			}
-			if (ext_dev_headr->magicno != ATHRILL_EXTERNAL_DEVICE_MAGICNO) {
-				printf("ERROR: magicno is invalid(0x%x) on %s\n", ext_dev_headr->magicno, filepath);
+			if (ext_dev_header->magicno != ATHRILL_EXTERNAL_DEVICE_MAGICNO) {
+				printf("ERROR: magicno is invalid(0x%x) on %s\n", ext_dev_header->magicno, filepath);
+				athrill_shared_library_close(handle);
 				continue;
 			}
-			if (ext_dev_headr->version != ATHRILL_EXTERNAL_DEVICE_VERSION) {
-				printf("ERROR: version is invalid(0x%x) on %s\n", ext_dev_headr->version, filepath);
+			if (ext_dev_header->version != ATHRILL_EXTERNAL_DEVICE_VERSION) {
+				printf("ERROR: version is invalid(0x%x) on %s\n", ext_dev_header->version, filepath);
+				athrill_shared_library_close(handle);
+				continue;
+			}
+			if (ext_dev_header->memory_size <= 0) {
+				printf("ERROR: memory size is invalid(%d) on %s\n", ext_dev_header->memory_size, filepath);
+				athrill_shared_library_close(handle);
 				continue;
 			}
 			map->dev_num++;
@@ -953,10 +971,11 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			memp = &map->dev[map->dev_num - 1];
 			memp->type = MemoryAddressImplType_DEV;
 			memp->extdev_handle = handle;
-			memp->size = ext_dev_headr->memory_size;
+			memp->size = (uint32)ext_dev_header->memory_size;
+			memp->mmap_addr = NULL;
 			printf("DEV");
 		}
-#endif /* OS_LINUX */
+#endif
 		else {
 			printf("WARNING: unknown memory type=%s\n", (char*)memcfg_token_container.array[0].body.str.str);
 			continue;
@@ -1079,4 +1098,3 @@ void cpuemu_raise_intr(uint32 intno)
 	(void)intc_raise_intr(intno);
 	return;
 }
-
