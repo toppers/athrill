@@ -4,6 +4,12 @@
 #include <io.h>
 #include <process.h>
 #include <getopt.h>
+#include <BaseTsd.h>
+
+#ifndef _SSIZE_T_DEFINED
+#define _SSIZE_T_DEFINED
+typedef SSIZE_T ssize_t;
+#endif
 
 #define access _access
 #define close _close

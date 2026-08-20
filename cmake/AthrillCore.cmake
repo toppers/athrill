@@ -175,6 +175,7 @@ function(athrill_apply_common_settings target_name)
     if(MSVC)
         target_compile_features("${target_name}" PRIVATE c_std_11)
         target_compile_options("${target_name}" PRIVATE
+            /utf-8
             /W4
             $<$<CONFIG:Release>:/O2>
         )
