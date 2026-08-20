@@ -1,14 +1,15 @@
-#ifdef OS_LINUX
-
 #include "athrill_device.h"
 #include "mpu_ops.h"
 #include "symbol_ops.h"
 #include <string.h>
+#ifdef OS_LINUX
 #include <sys/file.h>
+#endif
 #include "assert.h"
 #include "std_device_ops.h"
 #include "athrill_exdev.h"
 #include "cpuemu_ops.h"
+#include "shared_library.h"
 
 
 AthrillExDevOperationType athrill_exdev_operation;
@@ -56,6 +57,7 @@ static Std_ReturnType athrill_device_get_memory(uint32 addr, uint8 **data)
 typedef struct {
 	AthrillExDeviceType *devp;
 	MpuAddressRegionType *region;
+	AthrillSharedLibraryHandle library_handle;
 } AthrillExtDevEntryType;
 typedef struct {
 	uint32 num;
@@ -120,12 +122,13 @@ void device_init_athrill_exdev(void)
 
     return;
 }
-void device_add_athrill_exdev(void *devp, void *region)
+void device_add_athrill_exdev(void *devp, void *region, void *library_handle)
 {
 	AthrillExtDevEntryType *entryp = malloc(sizeof(AthrillExtDevEntryType));
 	ASSERT(entryp != NULL);
 	entryp->devp = (AthrillExDeviceType*)devp;
 	entryp->region = (MpuAddressRegionType*)region;
+	entryp->library_handle = library_handle;
 	athrill_exdev.num++;
 	athrill_exdev.exdevs = realloc(athrill_exdev.exdevs,
 			 sizeof(AthrillExtDevEntryType*) * athrill_exdev.num);
@@ -133,6 +136,8 @@ void device_add_athrill_exdev(void *devp, void *region)
 	athrill_exdev.exdevs[athrill_exdev.num - 1] = entryp;
 	return;
 }
+
+#ifdef OS_LINUX
 void athrill_device_set_mmap_info(AthrillDeviceMmapInfoType *info)
 {
 	int inx = athrill_mmap_table.count;
@@ -156,6 +161,7 @@ static inline AthrillDeviceMmapInfoTableEntryType *getMmapInfo(void *addr)
 	}
 	return NULL;
 }
+#endif
 
 // 最適化のために、ポインタを覚えておくようにする
 // staticにすると値が最適化で値が変化しない可能性があるので、グローバルにしておく
@@ -185,9 +191,10 @@ static void do_athrill_device_func_call(void)
         return;
     }
 
+#ifdef OS_LINUX
     AthrillDeviceMmapInfoTableEntryType *mmapInfo = getMmapInfo(CAST_UINT32_TO_ADDR(data));
     if (mmapInfo == NULL) {
-        athrill_syscall_device(data);
+		athrill_syscall_device(data);
     }
     else {
     	int err;
@@ -201,6 +208,9 @@ static void do_athrill_device_func_call(void)
     	}
 		ASSERT(err == 0);
     }
+#else
+	(void)data;
+#endif
 
     (void)mpu_put_data32(0U, athrill_device_func_call_addr, 0U);
 	return;
@@ -263,12 +273,15 @@ void athrill_device_cleanup(void)
 {
     int i;
     for (i = 0; i < athrill_exdev.num; i++) {
-	if (athrill_exdev.exdevs[i]->devp->cleanup == NULL) {
-		continue;
-	}
-    	athrill_exdev.exdevs[i]->devp->cleanup();
+		AthrillExtDevEntryType *entry = athrill_exdev.exdevs[i];
+		if (entry->devp->cleanup != NULL) {
+			entry->devp->cleanup();
+		}
+		athrill_shared_library_close(entry->library_handle);
+		free(entry);
     }
+	free(athrill_exdev.exdevs);
+	athrill_exdev.exdevs = NULL;
+	athrill_exdev.num = 0U;
     return;
 }
-
-#endif /* OS_LINUX */

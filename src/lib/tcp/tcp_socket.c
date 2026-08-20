@@ -15,7 +15,11 @@
 Std_ReturnType tcp_socket_open(TcpSocketType *sock)
 {
 	sock->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#ifdef OS_LINUX
 	if (sock->fd < 0) {
+#else
+	if (sock->fd == INVALID_SOCKET) {
+#endif
 		printf("%s %s() %u errno=%d\n", __FILE__, __FUNCTION__, __LINE__,  errno);
 		return STD_E_INVALID;
 	}
@@ -25,10 +29,17 @@ Std_ReturnType tcp_socket_open(TcpSocketType *sock)
 
 void tcp_socket_close(TcpSocketType *socket)
 {
+#ifdef OS_LINUX
 	if (socket->fd >= 0) {
-		close(socket->fd);
+		target_os_api_closesocket(socket->fd);
 		socket->fd = -1;
 	}
+#else
+	if (socket->fd != INVALID_SOCKET) {
+		target_os_api_closesocket(socket->fd);
+		socket->fd = INVALID_SOCKET;
+	}
+#endif
 	return;
 }
 

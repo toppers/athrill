@@ -53,6 +53,9 @@ set(ATHRILL_DEVICE_THREAD_SOURCES
 
 set(ATHRILL_DEVICE_EXDEV_SOURCES
     "${ATHRILL_SRC_DIR}/device/peripheral/athrill_device.c"
+)
+
+set(ATHRILL_DEVICE_EXDEV_POSIX_SOURCES
     "${ATHRILL_SRC_DIR}/device/peripheral/athrill_syscall_device.c"
 )
 
@@ -88,20 +91,20 @@ set(ATHRILL_MPU_SOURCES
 )
 
 set(ATHRILL_STD_COMMON_SOURCES
+    "${ATHRILL_SRC_DIR}/lib/shared_library.c"
+    "${ATHRILL_SRC_DIR}/lib/comm_buffer.c"
     "${ATHRILL_SRC_DIR}/lib/hash.c"
     "${ATHRILL_SRC_DIR}/lib/token.c"
     "${ATHRILL_SRC_DIR}/lib/file.c"
     "${ATHRILL_SRC_DIR}/lib/winsock_wrapper/winsock_wrapper.c"
     "${ATHRILL_SRC_DIR}/lib/udp/udp_comm.c"
-)
-
-set(ATHRILL_STD_POSIX_SOURCES
-    "${ATHRILL_SRC_DIR}/lib/comm_buffer.c"
     "${ATHRILL_SRC_DIR}/lib/tcp/tcp_socket.c"
     "${ATHRILL_SRC_DIR}/lib/tcp/tcp_client.c"
     "${ATHRILL_SRC_DIR}/lib/tcp/tcp_connection.c"
     "${ATHRILL_SRC_DIR}/lib/tcp/tcp_server.c"
 )
+
+set(ATHRILL_STD_POSIX_SOURCES)
 
 set(ATHRILL_MROS_SRC_DIR
     "${ATHRILL_SRC_DIR}/device/peripheral/mros-dev/mros-src")
