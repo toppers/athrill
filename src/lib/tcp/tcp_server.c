@@ -50,7 +50,11 @@ Std_ReturnType tcp_server_accept(const TcpServerType *server, TcpConnectionType 
 #endif
 	//printf("tcp_server_accept: fd=%d\n", server->socket.fd);
     connection->socket.fd = accept(server->socket.fd, (struct sockaddr *)&addr, &len);
+#ifdef OS_LINUX
     if (connection->socket.fd < 0) {
+#else
+    if (connection->socket.fd == INVALID_SOCKET) {
+#endif
 		printf("%s %s() %u ret=%d\n", __FILE__, __FUNCTION__, __LINE__,  errno);
 		return STD_E_NOENT;
     }

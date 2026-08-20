@@ -4,12 +4,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef OS_LINUX
-#include <dlfcn.h>
-#endif /* OS_LINUX */
 #include "assert.h"
 #include "mpu_malloc.h"
+#ifdef EXDEV_ENABLE
 #include "athrill_device.h"
+#include "athrill_exdev.h"
+#include "shared_library.h"
+#endif
 
 static Std_ReturnType memory_get_data8(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint8 *data);
 static Std_ReturnType memory_get_data16(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint16 *data);
@@ -310,12 +311,12 @@ uint8 *mpu_address_set_rom_ram(MpuAddressGetType getType, uint32 addr, uint32 si
 		return region->data;
 	}
 }
-#ifdef OS_LINUX
-#include "cpu.h"
-#include "athrill_exdev.h"
+#ifdef EXDEV_ENABLE
 uint8 *mpu_address_set_dev(uint32 addr, uint32 size, void *handler)
 {
 	MpuAddressRegionType *region = NULL;
+	char error_message[512];
+	AthrillExDeviceType *exdev;
 
 	region = mpu_address_search_region(addr, size);
 	if (region != NULL) {
@@ -323,7 +324,13 @@ uint8 *mpu_address_set_dev(uint32 addr, uint32 size, void *handler)
 				addr, size, region->start, region->size);
 		return NULL;
 	}
-	AthrillExDeviceType *exdev = dlsym(handler, "athrill_ex_device");
+	exdev = athrill_shared_library_symbol(
+		handler, "athrill_ex_device", error_message, sizeof(error_message));
+	if (exdev == NULL) {
+		printf("ERROR: addr=0x%x size=%u can not load exdev symbol: %s\n",
+				addr, size, error_message);
+		return NULL;
+	}
 	if (exdev->devinit == NULL) {
 		printf("ERROR: addr=0x%x size=%u not found ex_device_init\n", addr, size);
 		return NULL;
@@ -357,10 +364,13 @@ uint8 *mpu_address_set_dev(uint32 addr, uint32 size, void *handler)
 	mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1].data		= (uint8*)exdev->datap;
 	mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1].ops			= exdev->ops;
 
-	device_add_athrill_exdev(exdev, &mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1]);
+	device_add_athrill_exdev(
+		exdev,
+		&mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1],
+		handler);
 	return mpu_address_map.dynamic_map[mpu_address_map.dynamic_map_num -1].data;
 }
-#endif /* OS_LINUX */
+#endif
 
 void mpu_address_set_malloc_region(uint32 addr, uint32 size)
 {

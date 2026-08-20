@@ -176,6 +176,9 @@ int main(int argc, const char *argv[])
 	}
 
 	winsock_init();
+#ifdef EXDEV_ENABLE
+	(void)atexit(athrill_device_cleanup);
+#endif
 #if 0
 	struct sched_param sp;
 
