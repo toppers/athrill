@@ -194,6 +194,17 @@ extern "C" std_bool athrill_hakoniwa_stage(uint64 clock, uint32 cpu_mhz,
 	if (step_limit_clock != 0 && clock >= step_limit_clock) {
 		asset_time_usec += asset_delta_usec;
 		step_limit_clock = 0;
+		/*
+		 * The next step still fits under the world time read last: take it
+		 * without reading shared memory. get_worldtime() is called only
+		 * when this check fails.
+		 */
+		const uint64 next_usec = asset_time_usec + asset_delta_usec;
+		if (running && next_usec <= world_time_usec) {
+			step_limit_clock = next_usec * (uint64)cpu_mhz;
+			cap_skip_interval(step_limit_clock - clock, min_intr_interval);
+			return TRUE;
+		}
 	}
 	/*
 	 * Same rule as core-pro's hako_asset_impl_execute(): report the asset
