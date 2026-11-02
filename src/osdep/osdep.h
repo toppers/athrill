@@ -20,6 +20,8 @@ typedef struct {
 } OsdepMappedFile;
 
 extern void osdep_install_terminate_handler(void (*cleanup)(void));
+/* Runs the installed cleanup and exits if SIGTERM arrived; call it from the main loop. */
+extern void osdep_handle_terminate_request(void);
 extern void osdep_elaps_reset(struct DeviceClockType *clock);
 extern void osdep_elaps_start(struct DeviceClockType *clock);
 extern void osdep_elaps_end(struct DeviceClockType *clock);

@@ -128,13 +128,15 @@ static bool handle_event(void)
 	case HAKO_EVENT_RESET:
 		running = false;
 		ready = false;
-		(void)hakoniwa_asset_reset_feedback_ok(asset_name);
+		/* Report the reset only once it has been done, and report failure. */
 		if (reset_callback == NULL || reset_callback() != 0) {
 			std::cerr << "hakoniwa: athrill reset failed\n";
+			(void)hakoniwa_asset_reset_feedback(asset_name, false);
 			athrill_hakoniwa_finalize();
 			exit(1);
 		}
 		world_time_usec = 0;
+		(void)hakoniwa_asset_reset_feedback_ok(asset_name);
 		return true;
 	case HAKO_EVENT_ERROR:
 		std::cerr << "hakoniwa: polling event error\n";
@@ -226,6 +228,7 @@ extern "C" std_bool athrill_hakoniwa_stage(uint64 clock, uint32 cpu_mhz,
 	uint64 *min_intr_interval)
 {
 	if (asset_name == NULL || finalized) return TRUE;
+	osdep_handle_terminate_request();
 	if (running) {
 		pace_real_time(clock, cpu_mhz);
 	}
@@ -257,7 +260,8 @@ extern "C" std_bool athrill_hakoniwa_stage(uint64 clock, uint32 cpu_mhz,
 		if (owns_conductor) {
 			(void)hakoniwa_master_execute();
 		}
-		/* Events must be polled while waiting: STOP/RESET can arrive here. */
+		/* SIGTERM and events must be polled while waiting too. */
+		osdep_handle_terminate_request();
 		if (handle_event()) {
 			clock = 0;
 			world_limit_clock = 0;

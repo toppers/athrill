@@ -8,6 +8,10 @@ void osdep_install_terminate_handler(void (*cleanup)(void))
 	(void)cleanup;
 }
 
+void osdep_handle_terminate_request(void)
+{
+}
+
 void osdep_elaps_reset(struct DeviceClockType *clock)
 {
 	(void)clock;

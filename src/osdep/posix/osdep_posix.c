@@ -15,19 +15,17 @@
 #include <unistd.h>
 
 static void (*osdep_cleanup)(void);
+static volatile sig_atomic_t osdep_terminate_requested = 0;
 
+/*
+ * Only record the request: the cleanup (Hakoniwa unregister, output) is
+ * not async-signal-safe and runs from the main loop instead, see
+ * osdep_handle_terminate_request().
+ */
 static void osdep_sigterm_handler(int arg)
 {
 	(void)arg;
-	if (osdep_cleanup != NULL) {
-		osdep_cleanup();
-	}
-	sync();
-	sync();
-	sync();
-	sync();
-	sync();
-	exit(0);
+	osdep_terminate_requested = 1;
 }
 
 void osdep_install_terminate_handler(void (*cleanup)(void))
@@ -35,6 +33,18 @@ void osdep_install_terminate_handler(void (*cleanup)(void))
 	osdep_cleanup = cleanup;
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGTERM, osdep_sigterm_handler);
+}
+
+void osdep_handle_terminate_request(void)
+{
+	if (osdep_terminate_requested == 0) {
+		return;
+	}
+	if (osdep_cleanup != NULL) {
+		osdep_cleanup();
+	}
+	sync();
+	exit(0);
 }
 
 void osdep_elaps_reset(struct DeviceClockType *clock)
