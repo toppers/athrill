@@ -21,6 +21,14 @@ static pthread_cond_t dbg_cv;
 static pthread_cond_t cpu_cv;
 static volatile DbgCpuThrStateType dbgthr_state = THREAD_STATE_RUNNING;
 static volatile DbgCpuThrStateType cputhr_state = THREAD_STATE_WAIT;
+/*
+ * Wake-up request for the CPU thread, guarded by dbg_mutex.
+ * The debugger may ask the CPU to run before the CPU thread has reached
+ * pthread_cond_wait() (commands arrive at once through a pipe). A bare
+ * signal would be lost then and the CPU would never run; the flag keeps
+ * the request until the CPU thread takes it.
+ */
+static std_bool cputhr_wakeup_requested = FALSE;
 
 void cputhr_control_init(void)
 {
@@ -69,7 +77,10 @@ void cputhr_control_cpu_wait(void)
 {
 	pthread_mutex_lock(&dbg_mutex);
 	cputhr_state = THREAD_STATE_WAIT;
-	pthread_cond_wait(&cpu_cv, &dbg_mutex);
+	while (cputhr_wakeup_requested == FALSE) {
+		pthread_cond_wait(&cpu_cv, &dbg_mutex);
+	}
+	cputhr_wakeup_requested = FALSE;
 	cputhr_state = THREAD_STATE_RUNNING;
 	pthread_mutex_unlock(&dbg_mutex);
 	return;
@@ -87,11 +98,10 @@ void cputhr_control_dbg_wait(void)
 void cputhr_control_dbg_wakeup_cpu_and_wait_for_cpu_stopped(void)
 {
 	pthread_mutex_lock(&dbg_mutex);
-	if (cputhr_state == THREAD_STATE_WAIT) {
-		cputhr_state = THREAD_STATE_RUNNING;
-		pthread_cond_signal(&cpu_cv);
-	}
-	while (cputhr_state == THREAD_STATE_RUNNING) {
+	cputhr_wakeup_requested = TRUE;
+	pthread_cond_signal(&cpu_cv);
+	/* Stopped again: the request was taken and the CPU is waiting. */
+	while ((cputhr_wakeup_requested == TRUE) || (cputhr_state == THREAD_STATE_RUNNING)) {
 		pthread_mutex_unlock(&dbg_mutex);
 
 		target_os_api_sleep(50);
@@ -119,6 +129,7 @@ void cputhr_control_dbg_waitfor_cpu_stopped(void)
 void cputhr_control_dbg_wakeup_cpu(void)
 {
 	pthread_mutex_lock(&dbg_mutex);
+	cputhr_wakeup_requested = TRUE;
 	pthread_cond_signal(&cpu_cv);
 	pthread_mutex_unlock(&dbg_mutex);
 }
