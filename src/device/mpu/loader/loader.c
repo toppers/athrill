@@ -18,14 +18,36 @@
 
 static Std_ReturnType Elf_Check(const Elf32_Ehdr *elf_image);
 static Std_ReturnType Elf_LoadProgram(const Elf32_Ehdr *elf_image, MemoryAddressMapType *memap);
+static Std_ReturnType Elf64_Check(const Elf64_Ehdr *elf_image);
+static Std_ReturnType Elf64_LoadProgram(const Elf64_Ehdr *elf_image, MemoryAddressMapType *memap);
 
 Std_ReturnType elf_reload(uint8 *elf_data, MemoryAddressMapType *memap)
 {
-	const Elf32_Ehdr *elf_image = (const Elf32_Ehdr *)elf_data;
+    const Elf32_Ehdr *elf_image = (const Elf32_Ehdr *)elf_data;
 	Elf32_Phdr *phdr;
 	uint8 *ptr;
 	uint32 i;
 
+	if (elf_image->e_ident[EI_CLASS] == ELFCLASS64) {
+		const Elf64_Ehdr *image64 = (const Elf64_Ehdr *)elf_data;
+		if (Elf64_Check(image64) != STD_E_OK) return STD_E_INVALID;
+		for (i = 0; i < memap->rom_num; i++) {
+			if (mpu_get_pointer(CPU_CONFIG_CORE_ID_0, memap->rom[i].start, &ptr) != STD_E_OK) return STD_E_INVALID;
+			memset(ptr, 0, memap->rom[i].size * 1024);
+		}
+		for (i = 0; i < memap->ram_num; i++) {
+			if (memap->ram[i].type == MemoryAddressImplType_MALLOC) continue;
+			if (mpu_get_pointer(CPU_CONFIG_CORE_ID_0, memap->ram[i].start, &ptr) != STD_E_OK) return STD_E_INVALID;
+			memset(ptr, 0, memap->ram[i].size * 1024);
+		}
+		for (i = 0; i < image64->e_phnum; i++) {
+			const Elf64_Phdr *p = (const Elf64_Phdr *)(elf_data + image64->e_phoff + image64->e_phentsize * i);
+			if (p->p_type != PT_LOAD || mpu_address_get_rom((uint32)p->p_paddr, (uint32)p->p_filesz) == NULL) continue;
+			if (mpu_get_pointer(CPU_CONFIG_CORE_ID_0, (uint32)p->p_paddr, &ptr) != STD_E_OK) return STD_E_INVALID;
+			memcpy(ptr, elf_data + p->p_offset, (size_t)p->p_filesz);
+		}
+		return STD_E_OK;
+	}
 	if (Elf_Check(elf_image) != STD_E_OK) {
 		return STD_E_INVALID;
 	}
@@ -68,6 +90,27 @@ Std_ReturnType elf_load(uint8 *elf_data, MemoryAddressMapType *memap, uint32* en
 {
 	Std_ReturnType err;
 	uint32 disable_debug_data_type = 0;
+
+	if (((const Elf32_Ehdr*)elf_data)->e_ident[EI_CLASS] == ELFCLASS64) {
+		const Elf64_Ehdr *image64 = (const Elf64_Ehdr *)elf_data;
+		if (Elf64_Check(image64) != STD_E_OK) return STD_E_INVALID;
+		if (image64->e_entry > UINT32_MAX) {
+			printf("Invalid ELF64: entry point 0x%llx is above the 32-bit Athrill bus\n", (unsigned long long)image64->e_entry);
+			return STD_E_INVALID;
+		}
+		*entry_addr = (uint32)image64->e_entry;
+		err = Elf64_LoadProgram(image64, memap);
+		if (err != STD_E_OK) return err;
+		/* The section/symbol reader is class-aware.  DWARF consumers continue to
+		 * work when the producer uses the existing 32-bit DWARF forms. */
+		err = elf_symbol_load(elf_data);
+		if (err != STD_E_OK) return err;
+		(void)elf_dwarf_line_load(elf_data);
+		(void)elf_dwarf_abbrev_load(elf_data);
+		(void)elf_dwarf_info_load(elf_data);
+		(void)elf_dwarf_loc_load(elf_data);
+		return STD_E_OK;
+	}
 
 	*entry_addr = ((const Elf32_Ehdr*)elf_data)->e_entry;
 
@@ -138,6 +181,16 @@ static Std_ReturnType Elf_Check(const Elf32_Ehdr *elf_image)
 	if (elf_image->e_version != EV_CURRENT) {
 		return STD_E_INVALID;
 	}
+	return STD_E_OK;
+}
+
+static Std_ReturnType Elf64_Check(const Elf64_Ehdr *elf_image)
+{
+	if (IS_ELF(*elf_image) == FALSE || elf_image->e_ident[EI_CLASS] != ELFCLASS64 ||
+		elf_image->e_ident[EI_DATA] != ELFDATA2LSB || elf_image->e_ident[EI_VERSION] != EV_CURRENT ||
+		elf_image->e_ident[EI_OSABI] != ELFOSABI_SYSV || elf_image->e_ident[EI_ABIVERSION] != 0U ||
+		elf_image->e_type != ET_EXEC || elf_image->e_machine != ELF_MACHINE_TYPE ||
+		elf_image->e_version != EV_CURRENT) return STD_E_INVALID;
 	return STD_E_OK;
 }
 
@@ -272,4 +325,46 @@ static Std_ReturnType Elf_LoadProgram(const Elf32_Ehdr *elf_image, MemoryAddress
 		printf("Elf loading was succeeded:0x%x - 0x%x : %u.%u KB\n", phdr->p_paddr, phdr->p_paddr + phdr->p_memsz, phdr->p_filesz/1024, phdr->p_filesz % 1024);
 	}
 	return 0;
+}
+
+static Std_ReturnType Elf64_LoadProgram(const Elf64_Ehdr *elf_image, MemoryAddressMapType *memap)
+{
+	Std_ReturnType err;
+	uint32 i;
+	uint8 *ptr = NULL;
+	for (i = 0; i < memap->rom_num; i++) {
+		ptr = mpu_address_set_rom_ram((MpuAddressGetType)memap->rom[i].type, memap->rom[i].start, memap->rom[i].size * 1024, NULL);
+		if (ptr == NULL) return STD_E_INVALID;
+		set_cache_code_from_map(&memap->rom[i]);
+	}
+	for (i = 0; i < memap->ram_num; i++) {
+		if (memap->ram[i].type != MemoryAddressImplType_MALLOC) {
+			ptr = mpu_address_set_rom_ram((MpuAddressGetType)memap->ram[i].type, memap->ram[i].start, memap->ram[i].size * 1024, memap->ram[i].mmap_addr);
+			if (ptr == NULL) return STD_E_INVALID;
+		} else {
+			uint32 start = memap->ram[i].start, j, n = memap->ram[i].size / MPU_MALLOC_REGION_UNIT_SIZE;
+			for (j = 0; j < n; j++, start += MPU_MALLOC_REGION_UNIT_SIZE * 1024)
+				(void)mpu_address_set_rom_ram((MpuAddressGetType)memap->ram[i].type, start, MPU_MALLOC_REGION_UNIT_SIZE * 1024, NULL);
+		}
+		set_cache_code_from_map(&memap->ram[i]);
+	}
+	for (i = 0; i < memap->ram_num; i++) if (memap->ram[i].type == MemoryAddressImplType_MALLOC) set_malloc_region(memap, i);
+	for (i = 0; i < elf_image->e_phnum; i++) {
+		const Elf64_Phdr *p = (const Elf64_Phdr *)((const uint8 *)elf_image + elf_image->e_phoff + elf_image->e_phentsize * i);
+		if (p->p_type != PT_LOAD) continue;
+		if (p->p_paddr > UINT32_MAX || p->p_vaddr > UINT32_MAX || p->p_filesz > UINT32_MAX || p->p_memsz > UINT32_MAX ||
+			p->p_paddr + p->p_memsz > UINT64_C(0x100000000)) {
+			printf("Invalid ELF64: PT_LOAD address range 0x%llx..0x%llx is above the 32-bit Athrill bus\n",
+				(unsigned long long)p->p_paddr, (unsigned long long)(p->p_paddr + p->p_memsz));
+			return STD_E_INVALID;
+		}
+		if ((p->p_flags & PF_X) != 0) virtual_cpu_cache_code_add_with_check((uint32)p->p_memsz, (uint32)p->p_vaddr);
+		ptr = mpu_address_get_rom((uint32)p->p_paddr, (uint32)p->p_filesz);
+		if (ptr == NULL) continue;
+		err = mpu_get_pointer(CPU_CONFIG_CORE_ID_0, (uint32)p->p_paddr, &ptr);
+		if (err != STD_E_OK) return STD_E_INVALID;
+		memcpy(ptr, (const uint8 *)elf_image + p->p_offset, (size_t)p->p_filesz);
+		printf("ELF64 loading succeeded: 0x%08x - 0x%08x\n", (uint32)p->p_paddr, (uint32)(p->p_paddr + p->p_memsz));
+	}
+	return STD_E_OK;
 }

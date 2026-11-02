@@ -31,6 +31,10 @@
 #include "std_types.h"
 #include "loader/elf_common.h"
 
+#ifndef EM_RISCV
+#define EM_RISCV 243
+#endif
+
 /*
  * ELF definitions common to all 32-bit architectures.
  */
@@ -103,5 +107,46 @@ typedef struct {
 	unsigned char st_other;       /* Symbol visibility */
 	Elf32_Section st_shndx;       /* Section index */
 } Elf32_Sym;
+
+/* ELF64 records are kept here (rather than using the host's <elf.h>) so the
+ * loader has the same fixed-width, cross-platform representation everywhere. */
+typedef uint64 Elf64_Addr;
+typedef uint64 Elf64_Off;
+typedef uint16_t Elf64_Half;
+typedef uint32_t Elf64_Word;
+typedef int32_t Elf64_Sword;
+typedef uint64 Elf64_Xword;
+
+typedef struct {
+    unsigned char e_ident[EI_NIDENT];
+    Elf64_Half e_type, e_machine;
+    Elf64_Word e_version;
+    Elf64_Addr e_entry;
+    Elf64_Off e_phoff, e_shoff;
+    Elf64_Word e_flags;
+    Elf64_Half e_ehsize, e_phentsize, e_phnum, e_shentsize, e_shnum, e_shstrndx;
+} Elf64_Ehdr;
+typedef struct {
+    Elf64_Word p_type, p_flags;
+    Elf64_Off p_offset;
+    Elf64_Addr p_vaddr, p_paddr;
+    Elf64_Xword p_filesz, p_memsz, p_align;
+} Elf64_Phdr;
+typedef struct {
+    Elf64_Word sh_name, sh_type;
+    Elf64_Xword sh_flags;
+    Elf64_Addr sh_addr;
+    Elf64_Off sh_offset;
+    Elf64_Xword sh_size;
+    Elf64_Word sh_link, sh_info;
+    Elf64_Xword sh_addralign, sh_entsize;
+} Elf64_Shdr;
+typedef struct {
+    Elf64_Word st_name;
+    unsigned char st_info, st_other;
+    Elf64_Half st_shndx;
+    Elf64_Addr st_value;
+    Elf64_Xword st_size;
+} Elf64_Sym;
 
 #endif /* __ELF_H__ */

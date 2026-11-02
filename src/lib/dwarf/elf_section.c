@@ -29,6 +29,10 @@ static ElfSymbolSectionType 		elf_symbol_section;
 static ElfStringTableSectionType	elf_string_table_section;
 static char *section_name = NULL;
 static uint8 *elf_binary_data = NULL;
+static std_bool elf_is_64 = FALSE;
+static Elf64_Sym *elf64_symbols = NULL;
+static uint32 elf64_symbol_num = 0;
+static uint8 *elf64_string_data = NULL;
 
 Std_ReturnType elf_symbol_load(uint8 *elf_data)
 {
@@ -41,6 +45,26 @@ Std_ReturnType elf_symbol_load(uint8 *elf_data)
 	Elf32_Shdr *shdr;
 
 	elf_binary_data = elf_data;
+	elf_is_64 = (hdr->e_ident[EI_CLASS] == ELFCLASS64);
+	if (elf_is_64) {
+		Elf64_Ehdr *h64 = (Elf64_Ehdr *)elf_data;
+		Elf64_Shdr *symhdr = NULL;
+		elf64_symbols = NULL;
+		elf64_string_data = NULL;
+		elf64_symbol_num = 0;
+		if (h64->e_shnum == 0 || h64->e_shentsize < sizeof(Elf64_Shdr)) return STD_E_INVALID;
+		for (i = 0; i < h64->e_shnum; i++) {
+			Elf64_Shdr *s = (Elf64_Shdr *)(elf_data + h64->e_shoff + (uint64)i * h64->e_shentsize);
+			if (s->sh_type == SHT_SYMTAB) { symhdr = s; break; }
+		}
+		if (symhdr == NULL || symhdr->sh_link >= h64->e_shnum || symhdr->sh_size > 0xffffffffULL) return STD_E_INVALID;
+		Elf64_Shdr *strhdr = (Elf64_Shdr *)(elf_data + h64->e_shoff + (uint64)symhdr->sh_link * h64->e_shentsize);
+		if (strhdr->sh_type != SHT_STRTAB) return STD_E_INVALID;
+		elf64_symbols = (Elf64_Sym *)(elf_data + symhdr->sh_offset);
+		elf64_symbol_num = (uint32)(symhdr->sh_size / (symhdr->sh_entsize ? symhdr->sh_entsize : sizeof(Elf64_Sym)));
+		elf64_string_data = elf_data + strhdr->sh_offset;
+		return STD_E_OK;
+	}
 
 	sec_shr_index = hdr->e_shstrndx;
 	shdr_num = hdr->e_shnum;
@@ -92,6 +116,7 @@ Std_ReturnType elf_symbol_load(uint8 *elf_data)
 
 Std_ReturnType elfsym_get_symbol_num(uint32 *sym_num)
 {
+	if (elf_is_64) { if (elf64_symbols == NULL) return STD_E_INVALID; *sym_num = elf64_symbol_num; return STD_E_OK; }
 	if ((elf_symbol_section.shdr == NULL) || (elf_string_table_section.shdr == NULL)) {
 		return STD_E_INVALID;
 	}
@@ -102,6 +127,16 @@ Std_ReturnType elfsym_get_symbol_num(uint32 *sym_num)
 Std_ReturnType elfsym_get_symbol(uint32 index, ElfSymbolType *elfsym)
 {
 	Elf32_Sym *sym;
+	if (elf_is_64) {
+		Elf64_Sym *s;
+		if (elf64_symbols == NULL || index >= elf64_symbol_num) return STD_E_INVALID;
+		s = &elf64_symbols[index];
+		if (s->st_value > 0xffffffffULL || s->st_size > 0xffffffffULL) return STD_E_INVALID;
+		elfsym->addr = (uint32)s->st_value; elfsym->size = (uint32)s->st_size;
+		switch (s->st_info & 0x0f) { case STT_OBJECT: elfsym->type=SYMBOL_TYPE_OBJECT; break; case STT_FUNC: elfsym->type=SYMBOL_TYPE_FUNC; break; case STT_NOTYPE: elfsym->type=SYMBOL_TYPE_NOTYPE; break; default: elfsym->type=SYMBOL_TYPE_NOSUP; }
+		elfsym->name = (char *)(elf64_string_data + s->st_name);
+		return STD_E_OK;
+	}
 	if ((elf_symbol_section.shdr == NULL) || (elf_string_table_section.shdr == NULL)) {
 		return STD_E_INVALID;
 	}
@@ -138,6 +173,22 @@ Std_ReturnType elf_section_get(uint8 *elf_data, char *key, uint8 **section_data,
 	Elf32_Ehdr *hdr = (Elf32_Ehdr*)elf_data;
 	Elf32_Shdr *shdr;
 	uint32 key_len = strlen(key);
+	if (((Elf32_Ehdr *)elf_data)->e_ident[EI_CLASS] == ELFCLASS64) {
+		Elf64_Ehdr *h = (Elf64_Ehdr *)elf_data;
+		Elf64_Shdr *names;
+		char *name_data;
+		if (h->e_shstrndx >= h->e_shnum) return STD_E_NOENT;
+		names = (Elf64_Shdr *)(elf_data + h->e_shoff + (uint64)h->e_shstrndx * h->e_shentsize);
+		name_data = (char *)(elf_data + names->sh_offset);
+		for (i=0; i<h->e_shnum; i++) {
+			Elf64_Shdr *s=(Elf64_Shdr *)(elf_data+h->e_shoff+(uint64)i*h->e_shentsize);
+			if (strcmp(key, name_data+s->sh_name)==0) {
+				if (s->sh_size > 0xffffffffULL) return STD_E_INVALID;
+				*section_data=elf_data+s->sh_offset; *section_size=(uint32)s->sh_size; return STD_E_OK;
+			}
+		}
+		return STD_E_NOENT;
+	}
 
 	sec_shr_index = hdr->e_shstrndx;
 	shdr_num = hdr->e_shnum;
