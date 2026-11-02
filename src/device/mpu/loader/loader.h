@@ -7,5 +7,6 @@
 
 extern Std_ReturnType binary_load(uint8 *binary_data, uint32 load_addr, uint32 binary_data_len);
 extern Std_ReturnType elf_load(uint8 *elf_data, MemoryAddressMapType *memap, uint32* entry_addr);
+extern Std_ReturnType elf_reload(uint8 *elf_data, MemoryAddressMapType *memap);
 
 #endif /* _LOADER_H_ */

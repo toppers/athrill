@@ -123,6 +123,7 @@ typedef struct DeviceClockType {
 
 #ifndef ATHRILL_EXT_DEVICE
 extern void device_init(CpuType *cpu, DeviceClockType *dev_clock);
+extern void device_reset(CpuType *cpu, DeviceClockType *dev_clock);
 extern void device_supply_clock(DeviceClockType *dev_clock);
 /*
  * デバイスクロック参照

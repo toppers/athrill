@@ -19,6 +19,36 @@
 static Std_ReturnType Elf_Check(const Elf32_Ehdr *elf_image);
 static Std_ReturnType Elf_LoadProgram(const Elf32_Ehdr *elf_image, MemoryAddressMapType *memap);
 
+Std_ReturnType elf_reload(uint8 *elf_data, MemoryAddressMapType *memap)
+{
+	const Elf32_Ehdr *elf_image = (const Elf32_Ehdr *)elf_data;
+	Elf32_Phdr *phdr;
+	uint8 *ptr;
+	uint32 i;
+
+	if (Elf_Check(elf_image) != STD_E_OK) {
+		return STD_E_INVALID;
+	}
+	/* elf_load() creates the MPU mappings and debug metadata.  On reset the
+	 * mappings already exist, so restore only the bytes that startup created. */
+	for (i = 0; i < memap->rom_num; i++) {
+		if (mpu_get_pointer(CPU_CONFIG_CORE_ID_0, memap->rom[i].start, &ptr) != STD_E_OK) return STD_E_INVALID;
+		memset(ptr, 0, memap->rom[i].size * 1024);
+	}
+	for (i = 0; i < memap->ram_num; i++) {
+		if (memap->ram[i].type == MemoryAddressImplType_MALLOC) continue;
+		if (mpu_get_pointer(CPU_CONFIG_CORE_ID_0, memap->ram[i].start, &ptr) != STD_E_OK) return STD_E_INVALID;
+		memset(ptr, 0, memap->ram[i].size * 1024);
+	}
+	for (i = 0; i < elf_image->e_phnum; i++) {
+		phdr = (Elf32_Phdr *)(((uint8 *)elf_image) + elf_image->e_phoff + elf_image->e_phentsize * i);
+		if (phdr->p_type != PT_LOAD || mpu_address_get_rom(phdr->p_paddr, phdr->p_filesz) == NULL) continue;
+		if (mpu_get_pointer(CPU_CONFIG_CORE_ID_0, phdr->p_paddr, &ptr) != STD_E_OK) return STD_E_INVALID;
+		memcpy(ptr, ((uint8 *)elf_image) + phdr->p_offset, phdr->p_filesz);
+	}
+	return STD_E_OK;
+}
+
 Std_ReturnType binary_load(uint8 *binary_data, uint32 load_addr, uint32 binary_data_len)
 {
 	Std_ReturnType err;

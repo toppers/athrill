@@ -8,6 +8,7 @@ extern "C" {
 #include "cpu.h"
 #include "bus.h"
 #include "cpuemu_ops.h"
+#include "hakoniwa/athrill_hakoniwa.h"
 #include "bus.h"
 #include "std_device_ops.h"
 #include "std_cpu_ops.h"
@@ -148,6 +149,16 @@ void cpuemu_set_entry_addr(uint32 entry_addr)
 	return;
 }
 
+void cpuemu_reset(void)
+{
+	osdep_elaps_reset(&cpuemu_dev_clock);
+	cpu_init();
+	device_reset(&virtual_cpu, &cpuemu_dev_clock);
+	for (CoreIdType i = 0; i < virtual_cpu.core_id_num; i++) {
+		cpu_set_core_pc(i, cpuemu_cpu_entry_addr);
+	}
+}
+
 void cpuemu_get_elaps(CpuEmuElapsType *elaps)
 {
 	int core_id;
@@ -270,6 +281,10 @@ static inline std_bool cpuemu_thread_run_nodbg(int core_id_num)
 	device_supply_clock_athrill_device();
 #endif /* EXDEV_ENABLE */
 	device_supply_clock(&cpuemu_dev_clock);
+	if (athrill_hakoniwa_stage(cpuemu_dev_clock.clock, virtual_cpu.cpu_freq,
+		&cpuemu_dev_clock.min_intr_interval) == FALSE) {
+		return TRUE;
+	}
 
 	/**
 	 * CPU 実行
@@ -313,6 +328,10 @@ static inline std_bool cpuemu_thread_run_dbg(int core_id_num)
 	device_supply_clock_athrill_device();
 #endif /* EXDEV_ENABLE */
 	device_supply_clock(&cpuemu_dev_clock);
+	if (athrill_hakoniwa_stage(cpuemu_dev_clock.clock, virtual_cpu.cpu_freq,
+		&cpuemu_dev_clock.min_intr_interval) == FALSE) {
+		return TRUE;
+	}
 
 	/**
 	 * CPU 実行
@@ -409,7 +428,7 @@ void *cpuemu_thread_run(void* arg)
 	while (TRUE) {
 		if ((*clockp)>= end_clock) {
 			dbg_log_sync();
-			//printf("EXIT for timeout(%I64u).\n", cpuemu_dev_clock.clock);
+			athrill_hakoniwa_finalize();
 			std::cout << "EXIT for timeout(" << cpuemu_dev_clock.clock << ").\n";
 			exit(1);
 		}
@@ -430,6 +449,9 @@ void *cpuemu_thread_run(void* arg)
 	}
 	return NULL;
 }
+
+uint64 cpuemu_get_clock(void) { return cpuemu_dev_clock.clock; }
+uint32 cpuemu_get_cpu_frequency(void) { return virtual_cpu.cpu_freq; }
 
 
 

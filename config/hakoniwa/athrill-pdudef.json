@@ -1,0 +1,9 @@
+{
+  "robots": [
+    {
+      "name": "athrill",
+      "shm_pdu_readers": [],
+      "shm_pdu_writers": []
+    }
+  ]
+}

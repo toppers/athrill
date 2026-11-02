@@ -22,6 +22,13 @@ typedef struct {
 
 	char*				memfilepath;
 	char				buffer_memfile[4096];
+
+	char	*hakoniwa_asset_name;
+	char	*hakoniwa_pdudef_path;
+	uint64	hakoniwa_delta_usec;
+	uint64	hakoniwa_max_delay_usec;
+	uint64	hakoniwa_real_sleep_msec;
+	std_bool hakoniwa_disable_conductor;
 } CmdOptionType;
 
 extern CmdOptionType *parse_args(int argc, const char* argv[]);

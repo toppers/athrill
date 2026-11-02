@@ -22,6 +22,16 @@ extern "C" {
 #include "athrill_exdev_header.h"
 #include "athrill_memory.h"
 #include "athrill_device.h"
+#include "hakoniwa/athrill_hakoniwa.h"
+}
+
+static uint8 *hakoniwa_elf_data;
+static MemoryAddressMapType *hakoniwa_memmap;
+static int hakoniwa_reset_athrill(void)
+{
+	if (elf_reload(hakoniwa_elf_data, hakoniwa_memmap) != STD_E_OK) return 1;
+	cpuemu_reset();
+	return 0;
 }
 
 /*
@@ -141,6 +151,14 @@ int main(int argc, const char *argv[])
 	MemoryAddressMapType memmap;
 	uint32 entry_addr = 0U;
 	memset(&memmap, 0, sizeof(MemoryAddressMapType));
+	for (int i = 1; i < argc; i++) {
+		if ((strcmp(argv[i], "--hakoniwa") == 0
+				|| strncmp(argv[i], "--hakoniwa=", 12) == 0)
+				&& athrill_hakoniwa_is_enabled() == FALSE) {
+			std::cerr << "athrill2 was built without Hakoniwa support (ATHRILL_ENABLE_HAKONIWA=OFF)\n";
+			return 1;
+		}
+	}
 
 	if (argc == 1) {
 		std::cout << "Athrill is licensed under the TOPPERS License Agreement (http://www.toppers.jp/en/license.html).\n";
@@ -155,6 +173,12 @@ int main(int argc, const char *argv[])
 		std::cout << ' ' << std::left << std::setw(30) << "-m<memory config file>" << std::right << " : set athrill memory configuration. rom, ram region is configured on your system.\n";
 		//printf(" %-30s : set communication path with an another emulator.\n", "-p<fifo config file>");
 		std::cout << ' ' << std::left << std::setw(30) << "-d<device config file>" << std::right << " : set device parameter.\n";
+		std::cout << ' ' << std::left << std::setw(30) << "--hakoniwa <asset_name>" << std::right << " : run as a Hakoniwa lockstep asset.\n";
+		std::cout << ' ' << std::left << std::setw(30) << "--pdudef <pdudef.json>" << std::right << " : set the Hakoniwa PDU definition.\n";
+		std::cout << ' ' << std::left << std::setw(30) << "--delta-usec <usec>" << std::right << " : set the Hakoniwa step (default: 1000).\n";
+		std::cout << ' ' << std::left << std::setw(30) << "--max-delay-usec <usec>" << std::right << " : set conductor max delay (default: 20000).\n";
+		std::cout << ' ' << std::left << std::setw(30) << "--disable-conductor" << std::right << " : use an external Hakoniwa conductor.\n";
+		std::cout << ' ' << std::left << std::setw(30) << "--real-sleep-msec <msec>" << std::right << " : sleep <msec> of wall-clock time after every <msec> of simulated time (default: no sleep).\n";
 		return 0;
 	}
 
@@ -171,6 +195,10 @@ int main(int argc, const char *argv[])
 		return 1;
 	}
 	std::cout << "core id num=" << opt->core_id_num << '\n';
+	if (opt->hakoniwa_asset_name != NULL && opt->is_interaction == TRUE) {
+		std::cerr << "-i is not supported together with --hakoniwa\n";
+		return 1;
+	}
 	if (opt->fifocfgpath != NULL) {
 		err = cpuemu_set_comm_fifocfg(opt->fifocfgpath);
 		if (err != STD_E_OK) {
@@ -219,7 +247,18 @@ int main(int argc, const char *argv[])
 	}
 	else {
 		cpuemu_init(NULL, opt);
-		cpuemu_set_cpu_end_clock(opt->timeout);
+		cpuemu_set_cpu_end_clock(opt->hakoniwa_asset_name != NULL && opt->timeout == 0
+			? (uint64)-1 : opt->timeout);
+		if (opt->hakoniwa_asset_name != NULL) {
+			hakoniwa_elf_data = (uint8 *)opt->load_file.buffer;
+			hakoniwa_memmap = &memmap;
+			if (athrill_hakoniwa_initialize(opt->hakoniwa_asset_name,
+				opt->hakoniwa_pdudef_path, opt->hakoniwa_delta_usec,
+				opt->hakoniwa_max_delay_usec, opt->hakoniwa_real_sleep_msec,
+				opt->hakoniwa_disable_conductor, hakoniwa_reset_athrill) != 0) {
+				return 1;
+			}
+		}
 		(void)cpuemu_thread_run(NULL);
 	}
 

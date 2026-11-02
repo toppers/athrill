@@ -2,6 +2,8 @@ include_guard(GLOBAL)
 
 enable_language(CXX)
 
+option(ATHRILL_ENABLE_HAKONIWA "Enable Hakoniwa lockstep asset support" OFF)
+
 get_filename_component(ATHRILL_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 set(ATHRILL_SRC_DIR "${ATHRILL_ROOT}/src")
 set(ATHRILL_APL_DIR "${ATHRILL_ROOT}/apl")
@@ -34,11 +36,37 @@ else()
         "${ATHRILL_SRC_DIR}/osdep/posix/osdep_posix.c")
 endif()
 
+set(ATHRILL_HAKONIWA_LIBRARIES)
+set(ATHRILL_HAKONIWA_RPATH)
+if(ATHRILL_ENABLE_HAKONIWA)
+    find_package(hakoniwa-core CONFIG REQUIRED)
+    set(ATHRILL_HAKONIWA_SOURCE
+        "${ATHRILL_SRC_DIR}/hakoniwa/athrill_hakoniwa.cpp")
+    set(ATHRILL_HAKONIWA_LIBRARIES
+        hakoniwa-core::assets
+        hakoniwa-core::shakoc)
+    find_library(ATHRILL_HAKONIWA_PDU_ENDPOINT
+        NAMES hakoniwa_pdu_endpoint
+        PATHS "${CMAKE_PREFIX_PATH}/lib"
+        REQUIRED)
+    list(APPEND ATHRILL_HAKONIWA_LIBRARIES "${ATHRILL_HAKONIWA_PDU_ENDPOINT}")
+    get_target_property(_athrill_hakoniwa_library
+        hakoniwa-core::assets IMPORTED_LOCATION_NOCONFIG)
+    if(_athrill_hakoniwa_library)
+        get_filename_component(ATHRILL_HAKONIWA_RPATH
+            "${_athrill_hakoniwa_library}" DIRECTORY)
+    endif()
+else()
+    set(ATHRILL_HAKONIWA_SOURCE
+        "${ATHRILL_SRC_DIR}/hakoniwa/athrill_hakoniwa_disabled.cpp")
+endif()
+
 set(ATHRILL_MAIN_SOURCES
     "${ATHRILL_SRC_DIR}/main/cpuemu.cpp"
     "${ATHRILL_OSDEP_SOURCE}"
     "${ATHRILL_SRC_DIR}/main/option/argument_parser.c"
     "${ATHRILL_SRC_DIR}/main/option/option.c"
+    "${ATHRILL_HAKONIWA_SOURCE}"
     "${ATHRILL_SRC_DIR}/debugger/executor/cpu_control/dbg_cpu_callback.c"
     "${ATHRILL_SRC_DIR}/debugger/executor/cpu_control/dbg_cpu_control.c"
     "${ATHRILL_SRC_DIR}/debugger/executor/cpu_control/dbg_cpu_thread_control.c"
