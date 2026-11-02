@@ -38,7 +38,7 @@ void dbg_notify_cpu_clock_supply_start(const TargetCoreType *core)
 		 need_stop = TRUE;
 		 funcid = symbol_pc2funcid(pc, &funcaddr);
 		 if (funcid >= 0) {
-			 printf("\nHIT break:0x%x %s(+0x%x)\n", pc, symbol_funcid2funcname(funcid), pc - funcaddr);
+			 printf("\nHIT break:0x%x %s(+0x%" ATHRILL_ADDR_HEX_FORMAT ")\n", pc, symbol_funcid2funcname(funcid), pc - funcaddr);
 		 }
 		 else {
 			 printf("\nHIT break:0x%x\n", pc);
@@ -111,14 +111,14 @@ void dbg_notify_cpu_clock_supply_end(const TargetCoreType *core, const DbgCpuCal
 				inx = cpuctrl_is_break_read_access(access_addr, size);
 				if (inx >= 0) {
 					need_stop = TRUE;
-					printf("\nore%d HIT watch data : read access : [%u] 0x%x 0x%x %u\n", core->core_id, inx, access_addr, last_data, size);
+					printf("\nore%d HIT watch data : read access : [%u] 0x%" ATHRILL_ADDR_HEX_FORMAT " 0x%x %u\n", core->core_id, inx, access_addr, last_data, size);
 				}
 			}
 			else if (type == BUS_ACCESS_TYPE_WRITE) {
 				inx = cpuctrl_is_break_write_access(access_addr, size);
 				if (inx >= 0) {
 					need_stop = TRUE;
-					printf("\ncore%d HIT watch data : write access : [%u] 0x%x 0x%x %u\n", core->core_id, inx, access_addr, last_data, size);
+					printf("\ncore%d HIT watch data : write access : [%u] 0x%" ATHRILL_ADDR_HEX_FORMAT " 0x%x %u\n", core->core_id, inx, access_addr, last_data, size);
 				}
 			}
 		}

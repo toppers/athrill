@@ -146,7 +146,7 @@ static void print_base_type_data(PrintControlType *ctrl, DwarfDataBaseType *obj,
 		printf("Unknown base type");
 		break;
 	}
-	printf(" (%s:%u) @ 0x%x(0x%x)\n", obj->info.typename, type_size, ctrl->vaddr + off, off);
+	printf(" (%s:%u) @ 0x%" ATHRILL_ADDR_HEX_FORMAT "(0x%x)\n", obj->info.typename, type_size, ctrl->vaddr + off, off);
 	return;
 }
 static void print_space(PrintControlType *ctrl)
@@ -337,7 +337,7 @@ static void print_pointer_type_data(PrintControlType *ctrl, DwarfDataPointerType
 	print_ref_typename(ctrl, (DwarfDataType *)type);
 	printf(": %u )", type->info.size);
 	printf(" 0x%x", elf_get_data32(&top_addr[off], 0));
-	printf("  @ 0x%x(0x%x)\n", ctrl->vaddr + off, off);
+	printf("  @ 0x%" ATHRILL_ADDR_HEX_FORMAT "(0x%x)\n", ctrl->vaddr + off, off);
 	return;
 }
 
@@ -367,7 +367,7 @@ static void print_enum_type_data(PrintControlType *ctrl, DwarfDataEnumulatorType
 		memp = (DwarfDataEnumMember *)type->members->data[i];
 		if (memp->const_value == value) {
 			printf("%s.%s(%d)", type->info.typename, memp->name, memp->const_value);
-			printf("  @ 0x%x(0x%x)\n", ctrl->vaddr + off, off);
+			printf("  @ 0x%" ATHRILL_ADDR_HEX_FORMAT "(0x%x)\n", ctrl->vaddr + off, off);
 			return;
 		}
 	}

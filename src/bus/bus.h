@@ -32,7 +32,7 @@ static inline Std_ReturnType bus_get_data8(CoreIdType core_id, AthrillAddrType a
 
 	err = mpu_get_data8(core_id, addr, data);
 	if (err != STD_E_OK) {
-		printf("ERROR:can not load data:addr=0x%x size=1byte\n", addr);
+		printf("ERROR:can not load data:addr=0x%" ATHRILL_ADDR_HEX_FORMAT " size=1byte\n", addr);
 	}
 	bus_access_set_log(BUS_ACCESS_TYPE_READ, 1U, addr, *data);
 	return err;
@@ -43,7 +43,7 @@ static inline Std_ReturnType bus_get_data16(CoreIdType core_id, AthrillAddrType 
 
 	err = mpu_get_data16(core_id, addr, data);
 	if (err != STD_E_OK) {
-		printf("ERROR:can not load data:addr=0x%x size=2byte\n", addr);
+		printf("ERROR:can not load data:addr=0x%" ATHRILL_ADDR_HEX_FORMAT " size=2byte\n", addr);
 	}
 	bus_access_set_log(BUS_ACCESS_TYPE_READ, 2U, addr, *data);
 	return err;
@@ -54,7 +54,7 @@ static inline Std_ReturnType bus_get_data32(CoreIdType core_id, AthrillAddrType 
 
 	err = mpu_get_data32(core_id, addr, data);
 	if (err != STD_E_OK) {
-		printf("ERROR:can not load data:addr=0x%x size=4byte\n", addr);
+		printf("ERROR:can not load data:addr=0x%" ATHRILL_ADDR_HEX_FORMAT " size=4byte\n", addr);
 	}
 	bus_access_set_log(BUS_ACCESS_TYPE_READ, 4U, addr, *data);
 	return err;

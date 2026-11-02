@@ -212,7 +212,7 @@ static void set_cache_code_from_map(const MemoryAddressType *memory_map)
 {
 	if (memory_map->region_executable != FALSE) {
 		virtual_cpu_cache_code_add_with_check((memory_map->size * 1024), memory_map->start);
-		printf("MEMSETTING SET CACHE RIGION:addr=0x%x size=%u [KB]\n", memory_map->start, memory_map->size);
+		printf("MEMSETTING SET CACHE RIGION:addr=0x%" ATHRILL_ADDR_HEX_FORMAT " size=%" ATHRILL_ADDR_DEC_FORMAT " [KB]\n", memory_map->start, memory_map->size);
 	}
 	return;
 }
@@ -250,7 +250,7 @@ static Std_ReturnType Elf_LoadProgram(const Elf32_Ehdr *elf_image, MemoryAddress
 	for (i = 0; i < memap->rom_num; i++) {
 		ptr = mpu_address_set_rom_ram((MpuAddressGetType)memap->rom[i].type, memap->rom[i].start, memap->rom[i].size * 1024, NULL);
 		if (ptr == NULL) {
-			printf("Invalid elf file: can not load rom addr=0x%x\n", memap->rom[i].start);
+			printf("Invalid elf file: can not load rom addr=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", memap->rom[i].start);
 			return STD_E_INVALID;
 		}
 		set_cache_code_from_map(&memap->rom[i]);
@@ -259,7 +259,7 @@ static Std_ReturnType Elf_LoadProgram(const Elf32_Ehdr *elf_image, MemoryAddress
 		if (memap->ram[i].type != MemoryAddressImplType_MALLOC) {
 			ptr = mpu_address_set_rom_ram((MpuAddressGetType)memap->ram[i].type, memap->ram[i].start, memap->ram[i].size * 1024, memap->ram[i].mmap_addr);
 			if (ptr == NULL) {
-				printf("Invalid elf file: can not load ram addr=0x%x\n", memap->ram[i].start);
+				printf("Invalid elf file: can not load ram addr=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", memap->ram[i].start);
 				return STD_E_INVALID;
 			}
 		}
@@ -284,7 +284,7 @@ static Std_ReturnType Elf_LoadProgram(const Elf32_Ehdr *elf_image, MemoryAddress
 	for (i = 0; i < memap->dev_num; i++) {
 		ptr = mpu_address_set_dev(memap->dev[i].start, memap->dev[i].size, memap->dev[i].extdev_handle);
 		if (ptr == NULL) {
-			printf("Invalid dev file: can not load dev addr=0x%x\n", memap->dev[i].start);
+			printf("Invalid dev file: can not load dev addr=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", memap->dev[i].start);
 			athrill_shared_library_close(memap->dev[i].extdev_handle);
 			memap->dev[i].extdev_handle = NULL;
 			return STD_E_INVALID;

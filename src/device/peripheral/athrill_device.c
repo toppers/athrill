@@ -38,13 +38,13 @@ void device_init_athrill_device(void)
     err = symbol_get_gl("athrill_device_func_call", 
         strlen("athrill_device_func_call"), &addr, &size);
     if (err >= 0) {
-		printf("athrill_device_func_call=0x%x\n", addr);
+		printf("athrill_device_func_call=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", addr);
 	    athrill_device_func_call_addr = addr;
     }
     err = symbol_get_gl("athrill_device_raise_interrupt", 
         strlen("athrill_device_raise_interrupt"), &addr, &size);
     if (err >= 0) {
-		printf("athrill_device_raise_interrupt=0x%x\n", addr);
+		printf("athrill_device_raise_interrupt=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", addr);
 	    athrill_device_raise_interrupt_addr = addr;
     }
 

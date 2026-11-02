@@ -87,7 +87,7 @@ void dbg_std_executor_break(void *executor)
 		 }
 		 else {
 			 if (cpuctrl_set_break(addr, BREAK_POINT_TYPE_FOREVER) == TRUE) {
-				 printf("break %s 0x%x\n", parsed_args->symbol.str, addr);
+				 printf("break %s 0x%" ATHRILL_ADDR_HEX_FORMAT "\n", parsed_args->symbol.str, addr);
 				 CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "OK\n"));
 				 arg->result_ok = TRUE;
 			 }
@@ -99,12 +99,12 @@ void dbg_std_executor_break(void *executor)
 	 }
 	 else if (parsed_args->type == DBG_CMD_BBREAK_SET) {
 		 if (cpuctrl_set_break(parsed_args->break_addr, BREAK_POINT_TYPE_FOREVER) == TRUE) {
-			 printf("break 0x%x\n", parsed_args->break_addr);
+			 printf("break 0x%" ATHRILL_ADDR_HEX_FORMAT "\n", parsed_args->break_addr);
 			 CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "OK\n"));
 			 arg->result_ok = TRUE;
 		 }
 		 else {
-			 printf("ERROR: can not break 0x%x\n", parsed_args->break_addr);
+			 printf("ERROR: can not break 0x%" ATHRILL_ADDR_HEX_FORMAT "\n", parsed_args->break_addr);
 			 CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "NG\n"));
 		 }
 	 }
@@ -123,12 +123,12 @@ void dbg_std_executor_break(void *executor)
 		 }
 		 else {
 			 if (cpuctrl_set_break(value.addr, BREAK_POINT_TYPE_FOREVER) == TRUE) {
-				 printf("break 0x%x\n", value.addr);
+				 printf("break 0x%" ATHRILL_ADDR_HEX_FORMAT "\n", value.addr);
 				 CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "OK\n"));
 				 arg->result_ok = TRUE;
 			 }
 			 else {
-				 printf("ERROR: can not break 0x%x\n", value.addr);
+				 printf("ERROR: can not break 0x%" ATHRILL_ADDR_HEX_FORMAT "\n", value.addr);
 				 CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "NG\n"));
 			 }
 		 }
@@ -142,10 +142,10 @@ void dbg_std_executor_break(void *executor)
 			 if (cpuctrl_get_break(i, &addr) == TRUE) {
 				 funcid = symbol_pc2funcid(addr, &funcaddr);
 				 if (funcid >= 0) {
-					 printf("[%u] 0x%x %s(+0x%x)\n", i, addr, symbol_funcid2funcname(funcid), addr - funcaddr);
+					 printf("[%u] 0x%" ATHRILL_ADDR_HEX_FORMAT " %s(+0x%" ATHRILL_ADDR_HEX_FORMAT ")\n", i, addr, symbol_funcid2funcname(funcid), addr - funcaddr);
 				 }
 				 else {
-					 printf("[%u] 0x%x\n", i, addr);
+					 printf("[%u] 0x%" ATHRILL_ADDR_HEX_FORMAT "\n", i, addr);
 				 }
 			 }
 		 }
@@ -179,10 +179,10 @@ static bool dbg_std_executor_watch_data_info(DbgCmdExecutorWatchDataType *arg)
 		 if (cpuctrl_get_data_watch_point(i, &addr, &size, &type) == TRUE) {
 			 glid = symbol_addr2glid(addr, &gladdr);
 			 if (glid >= 0) {
-				 printf("[%u] %-4s 0x%x %u %s(+0x%x)\n", i, watch_type_string(type), addr, size, symbol_glid2glname(glid), addr - gladdr);
+				 printf("[%u] %-4s 0x%" ATHRILL_ADDR_HEX_FORMAT " %u %s(+0x%" ATHRILL_ADDR_HEX_FORMAT ")\n", i, watch_type_string(type), addr, size, symbol_glid2glname(glid), addr - gladdr);
 			 }
 			 else {
-				 printf("[%u] %-4s 0x%x %u\n", i, watch_type_string(type), addr, size);
+				 printf("[%u] %-4s 0x%" ATHRILL_ADDR_HEX_FORMAT " %u\n", i, watch_type_string(type), addr, size);
 			 }
 		 }
 	 }
@@ -237,10 +237,10 @@ static bool dbg_std_executor_watch_data_set(DbgCmdExecutorWatchDataType *arg)
 	}
 
 	if (cpuctrl_set_data_watch(type, addr, size) == TRUE) {
-		 printf("set watch point 0x%x %u\n", addr, size);
+		 printf("set watch point 0x%" ATHRILL_ADDR_HEX_FORMAT " %u\n", addr, size);
 	 }
 	 else {
-		 printf("ERROR: can not set watch point 0x%x %u\n", addr, size);
+		 printf("ERROR: can not set watch point 0x%" ATHRILL_ADDR_HEX_FORMAT " %u\n", addr, size);
 		 return FALSE;
 	 }
 	return TRUE;
@@ -494,7 +494,7 @@ static void print_memory(AthrillAddrType vaddr, uint8 *top_addr, uint32 size)
 	uint32 i;
 	printf("size=%u byte\n", size);
 	for (i = 0; i < size; i++) {
-		printf("%4u 0x%x 0x%x	(%c)\n", i, (vaddr + i), *(top_addr + i), *(top_addr + i));
+		printf("%4u 0x%" ATHRILL_ADDR_HEX_FORMAT " 0x%x	(%c)\n", i, (vaddr + i), *(top_addr + i), *(top_addr + i));
 	}
 	CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "%x  OK", *top_addr));
 	return;
@@ -504,7 +504,7 @@ static void print_memory_type(char *variable_name, AthrillAddrType vaddr, uint8 
 	if (variable_name != NULL) {
 		bool ret = print_variable_with_data_type(variable_name, vaddr, top_addr, size);
 		if (ret == TRUE) {
-			CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "0x%x  %u  OK", vaddr, size));
+			CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "0x%" ATHRILL_ADDR_HEX_FORMAT "  %u  OK", vaddr, size));
 			return;
 		}
 	}
@@ -512,13 +512,13 @@ static void print_memory_type(char *variable_name, AthrillAddrType vaddr, uint8 
 	if (size == 2) {
 		uint16 *data = (uint16*)top_addr;
 		printf("size=%u byte\n", size);
-		printf("0x%x 0x%x\n", (vaddr), *(data));
+		printf("0x%" ATHRILL_ADDR_HEX_FORMAT " 0x%x\n", (vaddr), *(data));
 		CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "%x  OK",  *(data)));
 	}
 	else if (size == 4) {
 		uint32 *data = (uint32*)top_addr;
 		printf("size=%u byte\n", size);
-		printf("0x%x 0x%x\n", (vaddr), *(data));
+		printf("0x%" ATHRILL_ADDR_HEX_FORMAT " 0x%x\n", (vaddr), *(data));
 		CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "%x  OK",  *(data)));
 	}
 	else {
@@ -560,7 +560,7 @@ void dbg_std_executor_print(void *executor)
 		 }
 	 }
 	 else if (parsed_args->type == DBG_CMD_PRINT_ADDR) {
-		 printf("ERROR: not supported:print addr(0x%x)\n", parsed_args->addr);
+		 printf("ERROR: not supported:print addr(0x%" ATHRILL_ADDR_HEX_FORMAT ")\n", parsed_args->addr);
 		 CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "NG\n"));
 	 }
 	 else if (parsed_args->type == DBG_CMD_PRINT_ADDR_SIZE) {
@@ -594,7 +594,7 @@ void dbg_std_executor_memset(void *executor)
 		*data = value;
 		CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "OK\n"));
 	} else {
-		printf("ERROR:can not find addr:0x%x\n", addr);
+		printf("ERROR:can not find addr:0x%" ATHRILL_ADDR_HEX_FORMAT "\n", addr);
 		CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "NG\n"));
 	}
 	 return;
@@ -660,7 +660,7 @@ static void dbg_std_executor_fun_trace_toward_older(uint32 coreId, uint32 bt_num
 		}
 		glid = symbol_addr2glid(sp, &gladdr);
 		stackp = symbol_glid2glname(glid);
-		printf("core%d: <%-30s(0x%03x)> [%3u] <0x%03x> %s\n", coreId, stackp, sp - gladdr, i, funcpcoff, funcname);
+		printf("core%d: <%-30s(0x%03" ATHRILL_ADDR_HEX_FORMAT ")> [%3u] <0x%03x> %s\n", coreId, stackp, sp - gladdr, i, funcpcoff, funcname);
 	}
 	return;
 }
@@ -683,7 +683,7 @@ static void dbg_std_executor_fun_trace_toward_newer(uint32 coreId, uint32 bt_num
 		}
 		glid = symbol_addr2glid(sp, &gladdr);
 		stackp = symbol_glid2glname(glid);
-		printf("core%d: <%-30s(0x%03x)> [%3u] <0x%03x> %s\n", coreId, stackp, sp - gladdr, (lognum - 1 - i), funcpcoff, funcname);
+		printf("core%d: <%-30s(0x%03" ATHRILL_ADDR_HEX_FORMAT ")> [%3u] <0x%03x> %s\n", coreId, stackp, sp - gladdr, (lognum - 1 - i), funcpcoff, funcname);
 	}
 	return;
 }
@@ -854,12 +854,12 @@ static void print_stack_data(uint32 addr)
 
 	 funcid = symbol_pc2funcid(data, &funcaddr);
 	 if (funcid >= 0) {
-		printf("					0x%x 0x%x %s(+0x%x)", addr, data, symbol_funcid2funcname(funcid), data - funcaddr);
+		printf("					0x%x 0x%x %s(+0x%" ATHRILL_ADDR_HEX_FORMAT ")", addr, data, symbol_funcid2funcname(funcid), data - funcaddr);
 	 }
 	 else {
 		glid = symbol_addr2glid(data, &gladdr);
 		if (glid >= 0) {
-			printf("					0x%x 0x%x %s(+0x%x)", addr, data, symbol_glid2glname(glid), data - gladdr);
+			printf("					0x%x 0x%x %s(+0x%" ATHRILL_ADDR_HEX_FORMAT ")", addr, data, symbol_glid2glname(glid), data - gladdr);
 		}
 		else {
 			printf("					0x%x 0x%x", addr, data);
