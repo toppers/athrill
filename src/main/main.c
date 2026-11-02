@@ -30,7 +30,7 @@
  *  Y: function
  *  Z: bug fix, small changes
  */
-#define ATHRILL_CORE_VERSION "1.1.3"
+#define ATHRILL_CORE_VERSION "1.2.0"
 
 #ifndef ATHRILL_TARGET_ARCH
 #define ATHRILL_TARGET_ARCH "UNKNOWN"
