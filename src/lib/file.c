@@ -99,13 +99,14 @@ bool file_ropen_filepath(const char *dir, const char *filename, FileType *file)
 uint32 file_getline(FileType *file, char *line, int size)
 {
 	uint32 n = 0;
-	char c;
-	while (n < size) {
+	int c;	/* int, not char: EOF must stay distinct from the byte 0xff */
+	/* Leave room for the '\0' that callers write after the line. */
+	while ((int)(n + 1U) < size) {
 		c = fgetc(file->fp);
-		if (c < 0 || c == '\n') {
+		if (c == EOF || c == '\n') {
 			break;
 		}
-		line[n] = c;
+		line[n] = (char)c;
 		n++;
 	}
 	return n;
