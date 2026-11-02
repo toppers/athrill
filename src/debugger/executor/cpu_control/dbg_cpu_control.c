@@ -70,7 +70,7 @@ static uint32 current_access_glid = -1;
 
 void dbg_cpu_callback_start(uint32 pc, uint32 sp)
 {
-	uint32 funcpc;
+	AthrillAddrType funcpc;
 	current_pc = pc;
 	current_funcid = symbol_pc2funcid(pc, &funcpc);
 	current_sp = sp;
@@ -197,7 +197,7 @@ static DataAccessInfoType **data_access_info_table_gl;
 
 DataAccessInfoType *cpuctrl_get_func_access_info_table(const char* glname)
 {
-	uint32 addr;
+	AthrillAddrType addr;
 	uint32 size;
 	int glid;
 	glid = symbol_get_gl((char*)glname, strlen(glname), &addr, &size);
@@ -232,7 +232,7 @@ void cpuctrl_set_func_log_trace(uint32 coreId, uint32 pc, uint32 sp)
 {
 	uint32 inx;
 	uint32 next;
-	uint32 funcpc;
+	AthrillAddrType funcpc;
 	char *funcname;
 	int funcid;
 

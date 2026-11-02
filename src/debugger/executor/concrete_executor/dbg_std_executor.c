@@ -135,17 +135,17 @@ void dbg_std_executor_break(void *executor)
 	 }
 	 else if (parsed_args->type == DBG_CMD_BREAK_INFO) {
 		 uint32 i;
-		 AthrillAddrType addr;
+		 uint32 addr;  /* breakpoint table entries are 32-bit */
 		 for (i = 0; i < DBG_CPU_CONTROL_BREAK_SETSIZE; i++) {
 			 int funcid;
 			 AthrillAddrType funcaddr;
 			 if (cpuctrl_get_break(i, &addr) == TRUE) {
 				 funcid = symbol_pc2funcid(addr, &funcaddr);
 				 if (funcid >= 0) {
-					 printf("[%u] 0x%" ATHRILL_ADDR_HEX_FORMAT " %s(+0x%" ATHRILL_ADDR_HEX_FORMAT ")\n", i, addr, symbol_funcid2funcname(funcid), addr - funcaddr);
+					 printf("[%u] 0x%" ATHRILL_ADDR_HEX_FORMAT " %s(+0x%" ATHRILL_ADDR_HEX_FORMAT ")\n", i, addr, symbol_funcid2funcname(funcid), (AthrillAddrType)addr - funcaddr);
 				 }
 				 else {
-					 printf("[%u] 0x%" ATHRILL_ADDR_HEX_FORMAT "\n", i, addr);
+					 printf("[%u] 0x%" ATHRILL_ADDR_HEX_FORMAT "\n", i, (AthrillAddrType)addr);
 				 }
 			 }
 		 }
@@ -169,7 +169,7 @@ static char* watch_type_string(DataWatchPointEumType type)
 static bool dbg_std_executor_watch_data_info(DbgCmdExecutorWatchDataType *arg)
 {
 	 uint32 i;
-	 AthrillAddrType addr;
+	 uint32 addr;  /* watch point table entries are 32-bit */
 	 uint32 size;
 	 DataWatchPointEumType type;
 
@@ -179,10 +179,10 @@ static bool dbg_std_executor_watch_data_info(DbgCmdExecutorWatchDataType *arg)
 		 if (cpuctrl_get_data_watch_point(i, &addr, &size, &type) == TRUE) {
 			 glid = symbol_addr2glid(addr, &gladdr);
 			 if (glid >= 0) {
-				 printf("[%u] %-4s 0x%" ATHRILL_ADDR_HEX_FORMAT " %u %s(+0x%" ATHRILL_ADDR_HEX_FORMAT ")\n", i, watch_type_string(type), addr, size, symbol_glid2glname(glid), addr - gladdr);
+				 printf("[%u] %-4s 0x%" ATHRILL_ADDR_HEX_FORMAT " %u %s(+0x%" ATHRILL_ADDR_HEX_FORMAT ")\n", i, watch_type_string(type), (AthrillAddrType)addr, size, symbol_glid2glname(glid), (AthrillAddrType)addr - gladdr);
 			 }
 			 else {
-				 printf("[%u] %-4s 0x%" ATHRILL_ADDR_HEX_FORMAT " %u\n", i, watch_type_string(type), addr, size);
+				 printf("[%u] %-4s 0x%" ATHRILL_ADDR_HEX_FORMAT " %u\n", i, watch_type_string(type), (AthrillAddrType)addr, size);
 			 }
 		 }
 	 }
