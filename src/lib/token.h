@@ -11,7 +11,7 @@ typedef enum {
 } TokenEnumType;
 
 typedef struct {
-	uint32 value;
+	AthrillAddrType value;
 } TokenValueHexType;
 
 typedef struct {

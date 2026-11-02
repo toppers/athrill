@@ -65,7 +65,7 @@ void dbg_std_executor_break(void *executor)
 	 DbgCmdExecutorType *arg = (DbgCmdExecutorType *)executor;
 	 DbgCmdExecutorBreakType *parsed_args = (DbgCmdExecutorBreakType *)(arg->parsed_args);
 	 uint32 func_len;
-	 uint32 addr;
+	 AthrillAddrType addr;
 	 uint32 size;
 
 	 if (parsed_args->type == DBG_CMD_BBREAK_SET_SYMBOL) {
@@ -135,10 +135,10 @@ void dbg_std_executor_break(void *executor)
 	 }
 	 else if (parsed_args->type == DBG_CMD_BREAK_INFO) {
 		 uint32 i;
-		 uint32 addr;
+		 AthrillAddrType addr;
 		 for (i = 0; i < DBG_CPU_CONTROL_BREAK_SETSIZE; i++) {
 			 int funcid;
-			 uint32 funcaddr;
+			 AthrillAddrType funcaddr;
 			 if (cpuctrl_get_break(i, &addr) == TRUE) {
 				 funcid = symbol_pc2funcid(addr, &funcaddr);
 				 if (funcid >= 0) {
@@ -169,13 +169,13 @@ static char* watch_type_string(DataWatchPointEumType type)
 static bool dbg_std_executor_watch_data_info(DbgCmdExecutorWatchDataType *arg)
 {
 	 uint32 i;
-	 uint32 addr;
+	 AthrillAddrType addr;
 	 uint32 size;
 	 DataWatchPointEumType type;
 
 	 for (i = 0; i < DBG_CPU_CONTROL_WATCH_DATA_SETSIZE; i++) {
 		 int glid;
-		 uint32 gladdr;
+		 AthrillAddrType gladdr;
 		 if (cpuctrl_get_data_watch_point(i, &addr, &size, &type) == TRUE) {
 			 glid = symbol_addr2glid(addr, &gladdr);
 			 if (glid >= 0) {
@@ -204,7 +204,7 @@ static bool dbg_std_executor_watch_data_delete(DbgCmdExecutorWatchDataType *arg)
 }
 static bool dbg_std_executor_watch_data_set(DbgCmdExecutorWatchDataType *arg)
 {
-	uint32 addr;
+	AthrillAddrType addr;
 	uint32 size;
 	DataWatchPointEumType type;
 
@@ -489,7 +489,7 @@ void dbg_std_executor_view(void *executor)
 	return;
 }
 
-static void print_memory(uint32 vaddr, uint8 *top_addr, uint32 size)
+static void print_memory(AthrillAddrType vaddr, uint8 *top_addr, uint32 size)
 {
 	uint32 i;
 	printf("size=%u byte\n", size);
@@ -499,7 +499,7 @@ static void print_memory(uint32 vaddr, uint8 *top_addr, uint32 size)
 	CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "%x  OK", *top_addr));
 	return;
 }
-static void print_memory_type(char *variable_name, uint32 vaddr, uint8 *top_addr, uint32 size)
+static void print_memory_type(char *variable_name, AthrillAddrType vaddr, uint8 *top_addr, uint32 size)
 {
 	if (variable_name != NULL) {
 		bool ret = print_variable_with_data_type(variable_name, vaddr, top_addr, size);
@@ -526,7 +526,7 @@ static void print_memory_type(char *variable_name, uint32 vaddr, uint8 *top_addr
 	}
 	return;
 }
-static void print_memory_by_typename(uint32 vaddr, uint8 *top_addr, char* dataType, char* dataTypeName)
+static void print_memory_by_typename(AthrillAddrType vaddr, uint8 *top_addr, char* dataType, char* dataTypeName)
 {
 	if (print_addr_with_data_type(vaddr, top_addr, dataType, dataTypeName) == TRUE) {
 		CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "OK\n"));
@@ -542,7 +542,7 @@ void dbg_std_executor_print(void *executor)
 	 DbgCmdExecutorPrintType *parsed_args = (DbgCmdExecutorPrintType *)(arg->parsed_args);
 	 uint8 *data;
 	 uint32 gl_len;
-	 uint32 addr;
+	 AthrillAddrType addr;
 	 uint32 size;
 
 	 if (parsed_args->type == DBG_CMD_PRINT_SYMBOL) {
@@ -583,7 +583,7 @@ void dbg_std_executor_memset(void *executor)
 	DbgCmdExecutorType *arg = (DbgCmdExecutorType *)executor;
 	DbgCmdExecutorMemsetType *parsed_args = (DbgCmdExecutorMemsetType *)(arg->parsed_args);
 	uint8 *data;
-	uint32 addr;
+	AthrillAddrType addr;
 	uint8 value;
 
 	addr = parsed_args->addr;
@@ -650,7 +650,7 @@ static void dbg_std_executor_fun_trace_toward_older(uint32 coreId, uint32 bt_num
 	char *funcname;
 	uint32 sp;
 	uint32 glid;
-	uint32 gladdr;
+	AthrillAddrType gladdr;
 	char *stackp;
 
 	for (i = (bt_number - 1); i >= 0; i--) {
@@ -672,7 +672,7 @@ static void dbg_std_executor_fun_trace_toward_newer(uint32 coreId, uint32 bt_num
 	char *funcname;
 	uint32 sp;
 	uint32 glid;
-	uint32 gladdr;
+	AthrillAddrType gladdr;
 	char *stackp;
 	uint32 lognum = cpuctrl_get_func_log_trace_num(coreId);
 
@@ -841,9 +841,9 @@ void dbg_std_executor_data_access_info(void *executor)
 }
 static void print_stack_data(uint32 addr)
 {
-	 uint32 funcaddr;
+	 AthrillAddrType funcaddr;
 	 int funcid;
-	 uint32 gladdr;
+	 AthrillAddrType gladdr;
 	 int glid;
 	 uint32 *datap;
 	 uint32 data;

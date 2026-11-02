@@ -131,8 +131,8 @@ Std_ReturnType elfsym_get_symbol(uint32 index, ElfSymbolType *elfsym)
 		Elf64_Sym *s;
 		if (elf64_symbols == NULL || index >= elf64_symbol_num) return STD_E_INVALID;
 		s = &elf64_symbols[index];
-		if (s->st_value > 0xffffffffULL || s->st_size > 0xffffffffULL) return STD_E_INVALID;
-		elfsym->addr = (uint32)s->st_value; elfsym->size = (uint32)s->st_size;
+		if (s->st_size > 0xffffffffULL) return STD_E_INVALID;
+		elfsym->addr = s->st_value; elfsym->size = (uint32)s->st_size;
 		switch (s->st_info & 0x0f) { case STT_OBJECT: elfsym->type=SYMBOL_TYPE_OBJECT; break; case STT_FUNC: elfsym->type=SYMBOL_TYPE_FUNC; break; case STT_NOTYPE: elfsym->type=SYMBOL_TYPE_NOTYPE; break; default: elfsym->type=SYMBOL_TYPE_NOSUP; }
 		elfsym->name = (char *)(elf64_string_data + s->st_name);
 		return STD_E_OK;

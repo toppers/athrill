@@ -12,7 +12,7 @@ typedef enum {
 } DbgCmdBreakType;
 typedef struct {
 	DbgCmdBreakType		type;
-	uint32 				break_addr;
+	AthrillAddrType 		break_addr;
 	TokenStringType		symbol;
 	uint32				line;
 } DbgCmdExecutorBreakType;
@@ -64,14 +64,14 @@ typedef enum {
 typedef struct {
 	DbgCmdDPrintType	type;
 	TokenStringType		symbol;
-	uint32 				addr;
+	AthrillAddrType 	addr;
 	uint32 				size;
 	TokenStringType		dataType;
 	TokenStringType		dataTypeName;
 } DbgCmdExecutorPrintType;
 extern DbgCmdExecutorType *dbg_parse_print(DbgCmdExecutorType *arg, const TokenContainerType *token_container);
 typedef struct {
-	uint32 				addr;
+	AthrillAddrType 	addr;
 	uint8 				value;
 } DbgCmdExecutorMemsetType;
 extern DbgCmdExecutorType *dbg_parse_memset(DbgCmdExecutorType *arg, const TokenContainerType *token_container);
@@ -115,7 +115,7 @@ typedef struct {
 	DbgCmdDWatchDataType	type;
 	uint8					watch_type;
 	TokenStringType			symbol;
-	uint32 					addr;
+	AthrillAddrType 		addr;
 	uint32 					size;
 	uint32					delno;
 } DbgCmdExecutorWatchDataType;

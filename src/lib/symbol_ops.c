@@ -47,7 +47,7 @@ int symbol_func_add(DbgSymbolType *sym)
 }
 
 
-int symbol_get_func(char *funcname, uint32 func_len, uint32 *addrp, uint32 *size)
+int symbol_get_func(char *funcname, uint32 func_len, AthrillAddrType *addrp, uint32 *size)
 {
 	int i;
 	uint32 len;
@@ -67,7 +67,7 @@ int symbol_get_func(char *funcname, uint32 func_len, uint32 *addrp, uint32 *size
 	}
 	return -1;
 }
-char * symbol_pc2func(uint32 pc)
+char * symbol_pc2func(AthrillAddrType pc)
 {
 	int i;
 
@@ -92,7 +92,7 @@ uint32 symbol_get_entered_sp(int funcid, uint32 core_id)
 	return symbol_func[funcid].enter_sp[core_id];
 }
 
-int symbol_pc2funcid(uint32 pc, uint32 *funcaddr)
+int symbol_pc2funcid(AthrillAddrType pc, AthrillAddrType *funcaddr)
 {
 	int i;
 	static int last_funcid = -1;
@@ -125,7 +125,7 @@ char * symbol_funcid2funcname(int id)
 	}
 	return symbol_func[id].name;
 }
-uint32 symbol_funcid2funcaddr(int id)
+AthrillAddrType symbol_funcid2funcaddr(int id)
 {
 	return symbol_func[id].addr;
 }
@@ -135,7 +135,7 @@ uint32 symbol_funcid2funcsize(int id)
 }
 
 
-int symbol_get_gl(char *gl_name, uint32 gl_len, uint32 *addrp, uint32 *size)
+int symbol_get_gl(char *gl_name, uint32 gl_len, AthrillAddrType *addrp, uint32 *size)
 {
 	int i;
 	uint32 len;
@@ -156,7 +156,7 @@ int symbol_get_gl(char *gl_name, uint32 gl_len, uint32 *addrp, uint32 *size)
 	return -1;
 }
 
-int symbol_addr2glid(uint32 addr, uint32 *gladdr)
+int symbol_addr2glid(AthrillAddrType addr, AthrillAddrType *gladdr)
 {
 	int i;
 	static int last_funcid = -1;
@@ -189,7 +189,7 @@ char * symbol_glid2glname(int id)
 	return symbol_gl[id].name;
 }
 
-uint32 symbol_glid2gladdr(int id)
+AthrillAddrType symbol_glid2gladdr(int id)
 {
 	return symbol_gl[id].addr;
 }

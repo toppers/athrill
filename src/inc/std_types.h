@@ -10,6 +10,26 @@ typedef unsigned char uint8;
 typedef unsigned short uint16;
 typedef unsigned int uint32;
 typedef unsigned long long uint64;
+
+#ifndef ATHRILL_ADDRESS_WIDTH
+#define ATHRILL_ADDRESS_WIDTH 32
+#endif
+
+#if ATHRILL_ADDRESS_WIDTH == 32
+typedef uint32 AthrillAddrType;
+#define ATHRILL_ADDR_HEX_FORMAT "x"
+#define ATHRILL_ADDR_HEX_PADDED_FORMAT "08x"
+#define ATHRILL_ADDR_DEC_FORMAT "u"
+#define ATHRILL_ADDR_MAX 0xFFFFFFFFU
+#elif ATHRILL_ADDRESS_WIDTH == 64
+typedef uint64 AthrillAddrType;
+#define ATHRILL_ADDR_HEX_FORMAT "llx"
+#define ATHRILL_ADDR_HEX_PADDED_FORMAT "016llx"
+#define ATHRILL_ADDR_DEC_FORMAT "llu"
+#define ATHRILL_ADDR_MAX 0xFFFFFFFFFFFFFFFFULL
+#else
+#error "ATHRILL_ADDRESS_WIDTH must be 32 or 64"
+#endif
 #ifndef __cplusplus
 typedef int	bool;
 #endif

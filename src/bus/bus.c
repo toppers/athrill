@@ -3,7 +3,7 @@
 typedef struct {
 	BusAccessType		access_type;
 	uint32				access_size;
-	uint32 				access_addr;
+	AthrillAddrType 	access_addr;
 	uint32				access_last_data;
 } BusAccessLogType;
 
@@ -11,7 +11,7 @@ uint32			 bus_access_log_size  = 0;
 BusAccessLogType bus_access_log[BUS_ACCESS_LOG_SIZE];
 
 #undef bus_access_set_log
-void bus_access_set_log(BusAccessType type, uint32 size, uint32 access_addr, uint32 data)
+void bus_access_set_log(BusAccessType type, uint32 size, AthrillAddrType access_addr, uint32 data)
 {
 	if (type == BUS_ACCESS_TYPE_NONE) {
 		bus_access_log_size = 0;
@@ -28,7 +28,7 @@ void bus_access_set_log(BusAccessType type, uint32 size, uint32 access_addr, uin
 	return;
 }
 
-Std_ReturnType bus_access_get_log(BusAccessType *type, uint32 *size, uint32 *access_addr, uint32 *last_data)
+Std_ReturnType bus_access_get_log(BusAccessType *type, uint32 *size, AthrillAddrType *access_addr, uint32 *last_data)
 {
 	if (bus_access_log_size == 0) {
 		return STD_E_NOENT;

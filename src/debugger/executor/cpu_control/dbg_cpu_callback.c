@@ -33,7 +33,7 @@ void dbg_notify_cpu_clock_supply_start(const TargetCoreType *core)
 		//printf("[DBG>");
 	}
 	else if ((cpuctrl_is_break_point(pc) == TRUE)) {
-		 uint32 funcaddr;
+		 AthrillAddrType funcaddr;
 		 int funcid;
 		 need_stop = TRUE;
 		 funcid = symbol_pc2funcid(pc, &funcaddr);
@@ -79,7 +79,7 @@ void dbg_notify_cpu_clock_supply_end(const TargetCoreType *core, const DbgCpuCal
 	uint32 sp = cpu_get_sp(core);
 	BusAccessType type;
 	uint32 size;
-	uint32 access_addr;
+	AthrillAddrType access_addr;
 	bool need_stop = FALSE;
 
 	/*

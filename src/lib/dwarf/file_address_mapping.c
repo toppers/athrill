@@ -95,7 +95,7 @@ static void file_address_mapping_add(KeyAddressType *key, ValueFileType *value)
 	return;
 }
 
-Std_ReturnType file_address_mapping_get(uint32 addr, ValueFileType *value)
+Std_ReturnType file_address_mapping_get(AthrillAddrType addr, ValueFileType *value)
 {
 	uint32 i;
 	KeyValueMappingType *map;
@@ -297,6 +297,5 @@ static void do_spc_build(ElfDwarfLineParsedOpCodeType *op, ElfDwarfLineStateMach
 
 	return;
 }
-
 
 

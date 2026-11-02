@@ -10,7 +10,7 @@
 #include "target/target_os_api.h"
 
 typedef struct {
-	uint32 vaddr;
+	AthrillAddrType vaddr;
 	uint32 level;
 } PrintControlType;
 
@@ -509,7 +509,7 @@ bool print_local_variable_type(char *variable_name)
 	sint32 vaddr;
 	uint32 pc = cpu_get_current_core_pc();
 	int funcId;
-	uint32 funcaddr;
+	AthrillAddrType funcaddr;
 	char *func_Name;
 	bool needPrint = TRUE;
 
@@ -545,7 +545,7 @@ bool print_local_variable_type(char *variable_name)
 }
 
 
-bool print_variable_with_data_type(char *variable_name, uint32 vaddr, uint8 *top_addr, uint32 size)
+bool print_variable_with_data_type(char *variable_name, AthrillAddrType vaddr, uint8 *top_addr, uint32 size)
 {
 	DwarfDataVariableType *variable;
 	DwarfDataType *type;
@@ -566,7 +566,7 @@ bool print_variable_with_data_type(char *variable_name, uint32 vaddr, uint8 *top
 	return print_any_data_type(&ctrl, type, top_addr, 0);
 }
 
-bool print_addr_with_data_type(uint32 vaddr, uint8 *top_addr, char* dataType, char* dataTypeName)
+bool print_addr_with_data_type(AthrillAddrType vaddr, uint8 *top_addr, char* dataType, char* dataTypeName)
 {
 	PrintControlType ctrl;
 	DwarfDataType *type;
@@ -588,4 +588,3 @@ bool print_addr_with_data_type(uint32 vaddr, uint8 *top_addr, char* dataType, ch
 	}
 	return print_any_data_type(&ctrl, type, top_addr, 0);
 }
-

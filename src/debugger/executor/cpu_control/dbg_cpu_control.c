@@ -468,7 +468,7 @@ static void cpuctrl_access_context_add(uint8 access_type, DataAccessInfoType *ac
 {
 	DataAccessContextType context;
 	int glid;
-	uint32 gladdr;
+	AthrillAddrType gladdr;
 	uint32 index = 0;
 	DataAccessContextType *dp = NULL;
 	CpuEmuElapsType elaps;
@@ -530,12 +530,12 @@ static void cpuctrl_access_context_add(uint8 access_type, DataAccessInfoType *ac
 
 	return;
 }
-static void cpuctrl_set_access(uint32 access_type, uint32 access_addr, uint32 size)
+static void cpuctrl_set_access(uint32 access_type, AthrillAddrType access_addr, uint32 size)
 {
 	uint32 i;
 	sint32 prev_glid = -1;
 	sint32 glid;
-	uint32 gladdr;
+	AthrillAddrType gladdr;
 	DataAccessInfoType *access_infop;
 #ifndef SUPRESS_DETECT_WARNING_MESSAGE
 	bool found = FALSE;
@@ -570,7 +570,7 @@ static void cpuctrl_set_access(uint32 access_type, uint32 access_addr, uint32 si
 		MpuAddressRegionEnumType type = mpu_address_region_type_get(access_addr, &is_malloc);
 
 		if ((type != DEVICE) && (is_malloc == FALSE)) {
-			uint32 gladdr;
+			AthrillAddrType gladdr;
 			int stack_glid = symbol_addr2glid(current_sp, &gladdr);
 
 			printf("WARNING: Found invalid data write on not variable region(addr=0x%x size=%u) : %s(0x%x)@%s\n",
@@ -587,7 +587,7 @@ bool cpu_may_store_on_stack_overflow(uint32 start_addr, uint32 size)
 {
 	uint32 i;
 	sint32 glid;
-	uint32 gladdr;
+	AthrillAddrType gladdr;
 
 	int stack_glid = symbol_addr2glid(current_sp, &gladdr);
 
@@ -606,7 +606,7 @@ bool cpu_may_store_on_stack_overflow(uint32 start_addr, uint32 size)
 	return FALSE;
 }
 
-int cpuctrl_is_break_read_access(uint32 access_addr, uint32 size)
+int cpuctrl_is_break_read_access(AthrillAddrType access_addr, uint32 size)
 {
 	uint32 i;
 	uint32 watch_start;
@@ -635,7 +635,7 @@ int cpuctrl_is_break_read_access(uint32 access_addr, uint32 size)
 	return -1;
 }
 
-int cpuctrl_is_break_write_access(uint32 access_addr, uint32 size)
+int cpuctrl_is_break_write_access(AthrillAddrType access_addr, uint32 size)
 {
 	uint32 i;
 	uint32 watch_start;
@@ -825,7 +825,7 @@ void cpuctrl_profile_collect(uint32 coreId, uint32 pc)
 {
 	int funcid;
 	uint32 funcpc;
-	uint32 funcaddr;
+	AthrillAddrType funcaddr;
 	CpuEmuElapsType elaps;
 
 	funcid = symbol_pc2funcid(pc, &funcaddr);
@@ -899,7 +899,7 @@ void cpuctrl_set_stack_pointer(uint32 sp)
 	uint32 inx;
 	uint32 next;
 	uint32 prev;
-	uint32 gladdr;
+	AthrillAddrType gladdr;
 	int glid;
 
 	glid = symbol_addr2glid(sp, &gladdr);

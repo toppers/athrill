@@ -32,7 +32,7 @@ extern "C" {
 static DeviceClockType cpuemu_dev_clock;
 std_bool private_cpuemu_is_cui_mode = FALSE;
 static uint64 cpuemu_cpu_end_clock = -1LLU;
-static uint32 cpuemu_cpu_entry_addr = 0U;
+static AthrillAddrType cpuemu_cpu_entry_addr = 0U;
 static void cpuemu_env_parse_devcfg_string(TokenStringType* strp);
 
 Std_ReturnType cpuemu_symbol_set(void)
@@ -143,7 +143,7 @@ void cpuemu_set_cpu_end_clock(uint64 clock)
 	return;
 }
 
-void cpuemu_set_entry_addr(uint32 entry_addr)
+void cpuemu_set_entry_addr(AthrillAddrType entry_addr)
 {
 	cpuemu_cpu_entry_addr = entry_addr;
 	return;
@@ -189,7 +189,7 @@ uint32 cpuemu_get_retaddr(CoreIdType core_id)
 	return cpu_get_return_addr((const TargetCoreType *)&virtual_cpu.cores[core_id]);
 }
 
-Std_ReturnType cpuemu_get_addr_pointer(uint32 addr, uint8 **data)
+Std_ReturnType cpuemu_get_addr_pointer(AthrillAddrType addr, uint8 **data)
 {
 	return bus_get_pointer(CPU_CONFIG_CORE_ID_0, addr, data);
 }
@@ -234,7 +234,7 @@ static void cpuemu_set_debug_romdata(void)
 			int ret;
 			char *gl_name = (char*)cpuemu_rom_parameter.array[0].body.str.str;
 			uint32 gl_len = strlen(gl_name);
-			uint32 addr;
+			AthrillAddrType addr;
 			uint32 size;
 			uint8* datap;
 			ret = symbol_get_gl(gl_name, gl_len, &addr, &size);
@@ -871,7 +871,7 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			std::cout << "WARNING: unknown memory type=" << (char*)memcfg_token_container.array[0].body.str.str << '\n';
 			continue;
 		}
-		memp->start = memcfg_token_container.array[1].body.hex.value;
+		memp->start = (AthrillAddrType)memcfg_token_container.array[1].body.hex.value;
 		std::cout << " : START=0x" << std::hex << memp->start << std::dec << " SIZE=" << memp->size << '\n';
 	}
 
@@ -921,7 +921,7 @@ Std_ReturnType cpuemu_get_devcfg_value_hex(const char* key, uint32 *value)
 		if (token_strcmp(&cpuemu_devcfg.param[i].key.body.str, &token) == FALSE) {
 			continue;
 		}
-		*value = cpuemu_devcfg.param[i].value.body.hex.value;
+		*value = (uint32)cpuemu_devcfg.param[i].value.body.hex.value;
 		return STD_E_OK;
 	}
 	return STD_E_NOENT;

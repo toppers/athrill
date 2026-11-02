@@ -16,7 +16,7 @@ typedef struct {
 	uint32 pc;
 	char *funcname;
 	uint32 funcid;
-	uint32 funcaddr;
+	AthrillAddrType funcaddr;
 	uint32 funcoff;
 	std_bool is_view_mode;
 	std_bool can_print;

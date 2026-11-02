@@ -149,7 +149,7 @@ int main(int argc, const char *argv[])
 	Std_ReturnType err;
 	CmdOptionType *opt;
 	MemoryAddressMapType memmap;
-	uint32 entry_addr = 0U;
+	AthrillAddrType entry_addr = 0U;
 	memset(&memmap, 0, sizeof(MemoryAddressMapType));
 	for (int i = 1; i < argc; i++) {
 		if ((strcmp(argv[i], "--hakoniwa") == 0
@@ -162,7 +162,8 @@ int main(int argc, const char *argv[])
 
 	if (argc == 1) {
 		std::cout << "Athrill is licensed under the TOPPERS License Agreement (http://www.toppers.jp/en/license.html).\n";
-		std::cout << "ARCH:" << ATHRILL_TARGET_ARCH << " (VERSION CORE:" << ATHRILL_CORE_VERSION << " TARGET:" << ATHRILL_TARGET_VERSION << ")\n";
+		std::cout << "ARCH:" << ATHRILL_TARGET_ARCH << " ADDRESS-BUS:" << ATHRILL_ADDRESS_WIDTH
+			<< "-bit (VERSION CORE:" << ATHRILL_CORE_VERSION << " TARGET:" << ATHRILL_TARGET_VERSION << ")\n";
 		std::cout << "DEVICE:magicno=0x" << std::hex << ATHRILL_EXTERNAL_DEVICE_MAGICNO << " version=0x" << ATHRILL_EXTERNAL_DEVICE_VERSION << std::dec << "\n\n";
 
 		std::cout << "Usage:athrill -c<core num> -m <memory config file> [OPTION]... <load_file>\n";
@@ -195,6 +196,7 @@ int main(int argc, const char *argv[])
 		return 1;
 	}
 	std::cout << "core id num=" << opt->core_id_num << '\n';
+	std::cout << "address bus: " << ATHRILL_ADDRESS_WIDTH << "-bit\n";
 	if (opt->hakoniwa_asset_name != NULL && opt->is_interaction == TRUE) {
 		std::cerr << "-i is not supported together with --hakoniwa\n";
 		return 1;

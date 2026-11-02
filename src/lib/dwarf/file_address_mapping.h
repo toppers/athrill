@@ -5,7 +5,7 @@
 #include "std_errno.h"
 
 typedef struct {
-	uint32	addr;
+	AthrillAddrType	addr;
 } KeyAddressType;
 
 typedef struct {
@@ -15,7 +15,7 @@ typedef struct {
 } ValueFileType;
 
 extern void file_address_mapping_init(void);
-extern Std_ReturnType file_address_mapping_get(uint32 addr, ValueFileType *value);
+extern Std_ReturnType file_address_mapping_get(AthrillAddrType addr, ValueFileType *value);
 extern Std_ReturnType file_address_mapping_get_addr(const char*file, uint32 line, KeyAddressType *value);
 extern Std_ReturnType file_address_mapping_get_candidate(const char*file, uint32 line, ValueFileType *value);
 extern Std_ReturnType file_address_mapping_get_last(KeyAddressType *key, ValueFileType *value);

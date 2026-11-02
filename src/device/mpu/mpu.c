@@ -12,13 +12,13 @@
 #include "shared_library.h"
 #endif
 
-static Std_ReturnType memory_get_data8(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint8 *data);
-static Std_ReturnType memory_get_data16(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint16 *data);
-static Std_ReturnType memory_get_data32(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint32 *data);
-static Std_ReturnType memory_put_data8(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint8 data);
-static Std_ReturnType memory_put_data16(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint16 data);
-static Std_ReturnType memory_put_data32(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint32 data);
-static Std_ReturnType memory_get_pointer(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint8 **data);
+static Std_ReturnType memory_get_data8(MpuAddressRegionType *region, CoreIdType core_id, AthrillAddrType addr, uint8 *data);
+static Std_ReturnType memory_get_data16(MpuAddressRegionType *region, CoreIdType core_id, AthrillAddrType addr, uint16 *data);
+static Std_ReturnType memory_get_data32(MpuAddressRegionType *region, CoreIdType core_id, AthrillAddrType addr, uint32 *data);
+static Std_ReturnType memory_put_data8(MpuAddressRegionType *region, CoreIdType core_id, AthrillAddrType addr, uint8 data);
+static Std_ReturnType memory_put_data16(MpuAddressRegionType *region, CoreIdType core_id, AthrillAddrType addr, uint16 data);
+static Std_ReturnType memory_put_data32(MpuAddressRegionType *region, CoreIdType core_id, AthrillAddrType addr, uint32 data);
+static Std_ReturnType memory_get_pointer(MpuAddressRegionType *region, CoreIdType core_id, AthrillAddrType addr, uint8 **data);
 
 MpuAddressRegionOperationType	default_memory_operation = {
 		.get_data8 		= 	memory_get_data8,
@@ -46,7 +46,7 @@ static inline bool has_permission(MpuAddressRegionType *region, CoreIdType core_
 // オリジナルのsearch_region
 // 最適化の際はこちらをwrite用、search_region_rをreadように使用することで同じページ内へのアクセスを
 // 発生しやすくする。ここを治す場合はsearch_region_rも同じように直すこと
-static inline MpuAddressRegionType *search_region(CoreIdType core_id, uint32 addr, uint32 search_size)
+static inline MpuAddressRegionType *search_region(CoreIdType core_id, AthrillAddrType addr, AthrillAddrType search_size)
 {
 	uint32 i;
 
@@ -55,9 +55,9 @@ static inline MpuAddressRegionType *search_region(CoreIdType core_id, uint32 add
 #ifdef SEARCH_REGION_OPTIMIZE
 	// 4Kを1ページとすることでキャッシュを効かせる
 	// cache for rom/ram
-	static uint32 previous_page = 0;
+	static AthrillAddrType previous_page = 0;
 	static int previous_index = -1;
-	#define GET_PAGE(address) ((address) & (uint32)(~(uint32)0x3ff))
+	#define GET_PAGE(address) ((address) & ~(AthrillAddrType)0x3ff)
 
 	// check previous page first
 	if ( addr && ( GET_PAGE(addr) == previous_page) ) {
@@ -68,10 +68,10 @@ static inline MpuAddressRegionType *search_region(CoreIdType core_id, uint32 add
 
 
 	for (i = 0U; i < mpu_address_map.dynamic_map_num; i++) {
-		uint32 start = mpu_address_map.dynamic_map[i].start;
-		uint32 end = mpu_address_map.dynamic_map[i].start  + mpu_address_map.dynamic_map[i].size;
-		uint32 paddr_str = (addr & mpu_address_map.dynamic_map[i].mask);
-		uint32 paddr_end = paddr_str + search_size;
+		AthrillAddrType start = mpu_address_map.dynamic_map[i].start;
+		AthrillAddrType end = start + mpu_address_map.dynamic_map[i].size;
+		AthrillAddrType paddr_str = (addr & mpu_address_map.dynamic_map[i].mask);
+		AthrillAddrType paddr_end = paddr_str + search_size;
 
 		if (	((start <= paddr_str) && (paddr_str < end)) &&
 				((start <  paddr_end) && (paddr_end <= end))
@@ -99,10 +99,10 @@ static inline MpuAddressRegionType *search_region(CoreIdType core_id, uint32 add
 
 
 	for (i = 0U; i < MPU_CONFIG_REGION_NUM; i++) {
-		uint32 start = mpu_address_map.map[i].start;
-		uint32 end = mpu_address_map.map[i].start  + mpu_address_map.map[i].size;
-		uint32 paddr_str = (addr & mpu_address_map.map[i].mask);
-		uint32 paddr_end = paddr_str + search_size;
+		AthrillAddrType start = mpu_address_map.map[i].start;
+		AthrillAddrType end = start + mpu_address_map.map[i].size;
+		AthrillAddrType paddr_str = (addr & mpu_address_map.map[i].mask);
+		AthrillAddrType paddr_end = paddr_str + search_size;
 
 #if 0
 		printf("%u:start=0x%x end=0x%x mask=0x%x\n", i, start, end, mpu_address_map.map[i].mask);
@@ -122,14 +122,14 @@ static inline MpuAddressRegionType *search_region(CoreIdType core_id, uint32 add
 			return &mpu_address_map.map[i];
 		}
 	}
-	printf("%s():search_region:not found error:addr=0x%x\n", __FUNCTION__, addr);
+	printf("%s():search_region:not found error:addr=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", __FUNCTION__, addr);
 	return NULL;
 }
 
 // Read region
 // 
 #ifdef SEARCH_REGION_OPTIMIZE
-static inline MpuAddressRegionType *search_region_r(CoreIdType core_id, uint32 addr, uint32 search_size)
+static inline MpuAddressRegionType *search_region_r(CoreIdType core_id, AthrillAddrType addr, AthrillAddrType search_size)
 {
 	uint32 i;
 
@@ -138,7 +138,7 @@ static inline MpuAddressRegionType *search_region_r(CoreIdType core_id, uint32 a
 #ifdef SEARCH_REGION_OPTIMIZE
 	// cache for rom/ram
 	// 4Kを1ページとすることでキャッシュを効かせる
-	static uint32 previous_page = 0;
+	static AthrillAddrType previous_page = 0;
 	static int previous_index = -1;
 //	#define GET_PAGE(address) ((address) & (uint32)(~(uint32)0x3ff))
 
@@ -151,10 +151,10 @@ static inline MpuAddressRegionType *search_region_r(CoreIdType core_id, uint32 a
 
 
 	for (i = 0U; i < mpu_address_map.dynamic_map_num; i++) {
-		uint32 start = mpu_address_map.dynamic_map[i].start;
-		uint32 end = mpu_address_map.dynamic_map[i].start  + mpu_address_map.dynamic_map[i].size;
-		uint32 paddr_str = (addr & mpu_address_map.dynamic_map[i].mask);
-		uint32 paddr_end = paddr_str + search_size;
+		AthrillAddrType start = mpu_address_map.dynamic_map[i].start;
+		AthrillAddrType end = start + mpu_address_map.dynamic_map[i].size;
+		AthrillAddrType paddr_str = (addr & mpu_address_map.dynamic_map[i].mask);
+		AthrillAddrType paddr_end = paddr_str + search_size;
 
 		if (	((start <= paddr_str) && (paddr_str < end)) &&
 				((start <  paddr_end) && (paddr_end <= end))
@@ -182,10 +182,10 @@ static inline MpuAddressRegionType *search_region_r(CoreIdType core_id, uint32 a
 
 
 	for (i = 0U; i < MPU_CONFIG_REGION_NUM; i++) {
-		uint32 start = mpu_address_map.map[i].start;
-		uint32 end = mpu_address_map.map[i].start  + mpu_address_map.map[i].size;
-		uint32 paddr_str = (addr & mpu_address_map.map[i].mask);
-		uint32 paddr_end = paddr_str + search_size;
+		AthrillAddrType start = mpu_address_map.map[i].start;
+		AthrillAddrType end = start + mpu_address_map.map[i].size;
+		AthrillAddrType paddr_str = (addr & mpu_address_map.map[i].mask);
+		AthrillAddrType paddr_end = paddr_str + search_size;
 
 #if 0
 		printf("%u:start=0x%x end=0x%x mask=0x%x\n", i, start, end, mpu_address_map.map[i].mask);
@@ -205,7 +205,7 @@ static inline MpuAddressRegionType *search_region_r(CoreIdType core_id, uint32 a
 			return &mpu_address_map.map[i];
 		}
 	}
-	printf("%s():search_region:not found error:addr=0x%x\n", __FUNCTION__, addr);
+	printf("%s():search_region:not found error:addr=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", __FUNCTION__, addr);
 	return NULL;
 }
 #else
@@ -213,16 +213,16 @@ static inline MpuAddressRegionType *search_region_r(CoreIdType core_id, uint32 a
 #define search_region_r search_region
 #endif
 
-static MpuAddressRegionType *mpu_address_search_region(uint32 addr, uint32 size)
+static MpuAddressRegionType *mpu_address_search_region(AthrillAddrType addr, AthrillAddrType size)
 {
 	uint32 i;
 	MpuAddressRegionType *region = NULL;
 
 	for (i = 0U; i < mpu_address_map.dynamic_map_num; i++) {
-		uint32 start = mpu_address_map.dynamic_map[i].start;
-		uint32 end = mpu_address_map.dynamic_map[i].start  + mpu_address_map.dynamic_map[i].size;
-		uint32 paddr_str = (addr & mpu_address_map.dynamic_map[i].mask);
-		uint32 paddr_end = paddr_str + size;
+		AthrillAddrType start = mpu_address_map.dynamic_map[i].start;
+		AthrillAddrType end = start + mpu_address_map.dynamic_map[i].size;
+		AthrillAddrType paddr_str = (addr & mpu_address_map.dynamic_map[i].mask);
+		AthrillAddrType paddr_end = paddr_str + size;
 
 		if (	((start <= paddr_str) && (paddr_str < end)) &&
 				((start <  paddr_end) && (paddr_end <= end))
@@ -235,7 +235,7 @@ static MpuAddressRegionType *mpu_address_search_region(uint32 addr, uint32 size)
 	return region;
 }
 
-uint8 *mpu_address_get_rom(uint32 addr, uint32 size)
+uint8 *mpu_address_get_rom(AthrillAddrType addr, AthrillAddrType size)
 {
 	MpuAddressRegionType *region = NULL;
 
@@ -245,7 +245,7 @@ uint8 *mpu_address_get_rom(uint32 addr, uint32 size)
 	}
 	return NULL;
 }
-uint8 *mpu_address_get_ram(uint32 addr, uint32 size)
+uint8 *mpu_address_get_ram(AthrillAddrType addr, AthrillAddrType size)
 {
 	MpuAddressRegionType *region = NULL;
 
@@ -256,7 +256,7 @@ uint8 *mpu_address_get_ram(uint32 addr, uint32 size)
 	return NULL;
 }
 
-uint8 *mpu_address_set_rom_ram(MpuAddressGetType getType, uint32 addr, uint32 size, void *mmap_addr)
+uint8 *mpu_address_set_rom_ram(MpuAddressGetType getType, AthrillAddrType addr, AthrillAddrType size, void *mmap_addr)
 {
 	MpuAddressRegionType *region = NULL;
 
@@ -312,7 +312,7 @@ uint8 *mpu_address_set_rom_ram(MpuAddressGetType getType, uint32 addr, uint32 si
 	}
 }
 #ifdef EXDEV_ENABLE
-uint8 *mpu_address_set_dev(uint32 addr, uint32 size, void *handler)
+uint8 *mpu_address_set_dev(AthrillAddrType addr, AthrillAddrType size, void *handler)
 {
 	MpuAddressRegionType *region = NULL;
 	char error_message[512];
@@ -320,32 +320,32 @@ uint8 *mpu_address_set_dev(uint32 addr, uint32 size, void *handler)
 
 	region = mpu_address_search_region(addr, size);
 	if (region != NULL) {
-		printf("ERROR: addr=0x%x size=%u already found existing region(soff=0x%x size=%u)\n",
+		printf("ERROR: addr=0x%" ATHRILL_ADDR_HEX_FORMAT " size=%" ATHRILL_ADDR_DEC_FORMAT " already found existing region(soff=0x%" ATHRILL_ADDR_HEX_FORMAT " size=%" ATHRILL_ADDR_DEC_FORMAT ")\n",
 				addr, size, region->start, region->size);
 		return NULL;
 	}
 	exdev = athrill_shared_library_symbol(
 		handler, "athrill_ex_device", error_message, sizeof(error_message));
 	if (exdev == NULL) {
-		printf("ERROR: addr=0x%x size=%u can not load exdev symbol: %s\n",
+		printf("ERROR: addr=0x%" ATHRILL_ADDR_HEX_FORMAT " size=%" ATHRILL_ADDR_DEC_FORMAT " can not load exdev symbol: %s\n",
 				addr, size, error_message);
 		return NULL;
 	}
 	if (exdev->devinit == NULL) {
-		printf("ERROR: addr=0x%x size=%u not found ex_device_init\n", addr, size);
+		printf("ERROR: addr=0x%" ATHRILL_ADDR_HEX_FORMAT " size=%" ATHRILL_ADDR_DEC_FORMAT " not found ex_device_init\n", addr, size);
 		return NULL;
 	}
 	if (exdev->supply_clock == NULL) {
-		printf("ERROR: addr=0x%x size=%u not found ex_device_supply_clock\n", addr, size);
+		printf("ERROR: addr=0x%" ATHRILL_ADDR_HEX_FORMAT " size=%" ATHRILL_ADDR_DEC_FORMAT " not found ex_device_supply_clock\n", addr, size);
 		return NULL;
 	}
 
 	if (exdev->ops == NULL) {
-		printf("INFO: addr=0x%x size=%u: default memory operation\n", addr, size);
+		printf("INFO: addr=0x%" ATHRILL_ADDR_HEX_FORMAT " size=%" ATHRILL_ADDR_DEC_FORMAT ": default memory operation\n", addr, size);
 		exdev->ops = &default_memory_operation;
 	}
 	if (exdev->datap == NULL) {
-		printf("INFO: addr=0x%x size=%u: default memory\n", addr, size);
+		printf("INFO: addr=0x%" ATHRILL_ADDR_HEX_FORMAT " size=%" ATHRILL_ADDR_DEC_FORMAT ": default memory\n", addr, size);
 		exdev->datap = malloc(size);
 		ASSERT(exdev->datap != NULL);
 		memset(exdev->datap, 0, size);
@@ -372,7 +372,7 @@ uint8 *mpu_address_set_dev(uint32 addr, uint32 size, void *handler)
 }
 #endif
 
-void mpu_address_set_malloc_region(uint32 addr, uint32 size)
+void mpu_address_set_malloc_region(AthrillAddrType addr, AthrillAddrType size)
 {
 	MpuAddressRegionType *region = NULL;
 
@@ -382,14 +382,14 @@ void mpu_address_set_malloc_region(uint32 addr, uint32 size)
 	return;
 }
 
-MpuAddressRegionEnumType mpu_address_region_type_get(uint32 addr, std_bool *is_malloc)
+MpuAddressRegionEnumType mpu_address_region_type_get(AthrillAddrType addr, std_bool *is_malloc)
 {
 	uint32 i;
 
 	for (i = 0U; i < mpu_address_map.dynamic_map_num; i++) {
-		uint32 start = mpu_address_map.dynamic_map[i].start;
-		uint32 end = mpu_address_map.dynamic_map[i].start  + mpu_address_map.dynamic_map[i].size;
-		uint32 paddr_str = (addr & mpu_address_map.dynamic_map[i].mask);
+		AthrillAddrType start = mpu_address_map.dynamic_map[i].start;
+		AthrillAddrType end = start + mpu_address_map.dynamic_map[i].size;
+		AthrillAddrType paddr_str = (addr & mpu_address_map.dynamic_map[i].mask);
 
 		if ((start <= paddr_str) && (paddr_str < end)) {
 			if (is_malloc != NULL) {
@@ -400,9 +400,9 @@ MpuAddressRegionEnumType mpu_address_region_type_get(uint32 addr, std_bool *is_m
 	}
 
 	for (i = 0U; i < MPU_CONFIG_REGION_NUM; i++) {
-		uint32 start = mpu_address_map.map[i].start;
-		uint32 end = mpu_address_map.map[i].start  + mpu_address_map.map[i].size;
-		uint32 paddr_str = (addr & mpu_address_map.map[i].mask);
+		AthrillAddrType start = mpu_address_map.map[i].start;
+		AthrillAddrType end = start + mpu_address_map.map[i].size;
+		AthrillAddrType paddr_str = (addr & mpu_address_map.map[i].mask);
 
 		if ((start <= paddr_str) && (paddr_str < end)) {
 			if (is_malloc != NULL) {
@@ -416,11 +416,11 @@ MpuAddressRegionEnumType mpu_address_region_type_get(uint32 addr, std_bool *is_m
 }
 
 
-Std_ReturnType mpu_get_data8(CoreIdType core_id, uint32 addr, uint8 *data)
+Std_ReturnType mpu_get_data8(CoreIdType core_id, AthrillAddrType addr, uint8 *data)
 {
 	MpuAddressRegionType *region = search_region_r(core_id, addr, 1U);
 	if (region == NULL) {
-		printf("%s():addr=0x%x\n", __FUNCTION__, addr);
+		printf("%s():addr=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", __FUNCTION__, addr);
 		return STD_E_SEGV;
 	}
 	if (region->ops->get_data8 == NULL) {
@@ -429,14 +429,14 @@ Std_ReturnType mpu_get_data8(CoreIdType core_id, uint32 addr, uint8 *data)
 	if (!CPU_HAS_PERMISSION(core_id, region->type, CpuMemoryAccess_READ, addr, 1U)) {
 		return STD_E_SEGV;
 	}
-	uint32 paddr = (addr & region->mask);
+	AthrillAddrType paddr = (addr & region->mask);
 	return region->ops->get_data8(region, core_id, paddr, data);
 }
-Std_ReturnType mpu_get_data16(CoreIdType core_id, uint32 addr, uint16 *data)
+Std_ReturnType mpu_get_data16(CoreIdType core_id, AthrillAddrType addr, uint16 *data)
 {
 	MpuAddressRegionType *region = search_region_r(core_id, addr, 2U);
 	if (region == NULL) {
-		printf("%s():addr=0x%x\n", __FUNCTION__, addr);
+		printf("%s():addr=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", __FUNCTION__, addr);
 		return STD_E_SEGV;
 	}
 	if (region->ops->get_data16 == NULL) {
@@ -445,15 +445,15 @@ Std_ReturnType mpu_get_data16(CoreIdType core_id, uint32 addr, uint16 *data)
 	if (!CPU_HAS_PERMISSION(core_id, region->type, CpuMemoryAccess_READ, addr, 2U)) {
 		return STD_E_SEGV;
 	}
-	uint32 paddr = (addr & region->mask);
+	AthrillAddrType paddr = (addr & region->mask);
 	return region->ops->get_data16(region, core_id, paddr, data);
 }
 
-Std_ReturnType mpu_get_data32(CoreIdType core_id, uint32 addr, uint32 *data)
+Std_ReturnType mpu_get_data32(CoreIdType core_id, AthrillAddrType addr, uint32 *data)
 {
 	MpuAddressRegionType *region = search_region_r(core_id, addr, 4U);
 	if (region == NULL) {
-		printf("%s():addr=0x%x\n", __FUNCTION__, addr);
+		printf("%s():addr=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", __FUNCTION__, addr);
 		return STD_E_SEGV;
 	}
 	if (region->ops->get_data32 == NULL) {
@@ -462,92 +462,92 @@ Std_ReturnType mpu_get_data32(CoreIdType core_id, uint32 addr, uint32 *data)
 	if (!CPU_HAS_PERMISSION(core_id, region->type, CpuMemoryAccess_READ, addr, 4U)) {
 		return STD_E_SEGV;
 	}
-	uint32 paddr = (addr & region->mask);
+	AthrillAddrType paddr = (addr & region->mask);
 	return region->ops->get_data32(region, core_id, paddr, data);
 }
 
 
-Std_ReturnType mpu_put_data8(CoreIdType core_id, uint32 addr, uint8 data)
+Std_ReturnType mpu_put_data8(CoreIdType core_id, AthrillAddrType addr, uint8 data)
 {
 	Std_ReturnType err;
 	MpuAddressRegionType *region = search_region(core_id, addr, 1U);
 	if (region == NULL) {
-		printf("mpu_put_data8:error1:addr=0x%x data=%u\n", addr, data);
+		printf("mpu_put_data8:error1:addr=0x%" ATHRILL_ADDR_HEX_FORMAT " data=%u\n", addr, data);
 		return STD_E_SEGV;
 	}
 	if (region->ops->put_data8 == NULL) {
-		printf("mpu_put_data8:error2:addr=0x%x data=%u\n", addr, data);
+		printf("mpu_put_data8:error2:addr=0x%" ATHRILL_ADDR_HEX_FORMAT " data=%u\n", addr, data);
 		return STD_E_SEGV;
 	}
 	if (region->type == READONLY_MEMORY) {
-		printf("mpu_put_data8:error: can not write data on ROM :addr=0x%x data=%u\n", addr, data);
+		printf("mpu_put_data8:error: can not write data on ROM :addr=0x%" ATHRILL_ADDR_HEX_FORMAT " data=%u\n", addr, data);
 		return STD_E_SEGV;
 	}
 	if (!CPU_HAS_PERMISSION(core_id, region->type, CpuMemoryAccess_WRITE, addr, 1U)) {
 		return STD_E_SEGV;
 	}
-	uint32 paddr = (addr & region->mask);
+	AthrillAddrType paddr = (addr & region->mask);
 	err = region->ops->put_data8(region, core_id, paddr, data);
 	if (err != STD_E_OK) {
-		printf("mpu_put_data8:error3:addr=0x%x data=%u\n", addr, data);
+		printf("mpu_put_data8:error3:addr=0x%" ATHRILL_ADDR_HEX_FORMAT " data=%u\n", addr, data);
 	}
 	return err;
 }
 
-Std_ReturnType mpu_put_data16(CoreIdType core_id, uint32 addr, uint16 data)
+Std_ReturnType mpu_put_data16(CoreIdType core_id, AthrillAddrType addr, uint16 data)
 {
 	MpuAddressRegionType *region = search_region(core_id, addr, 2U);
 	if (region == NULL) {
-		printf("%s():addr=0x%x\n", __FUNCTION__, addr);
+		printf("%s():addr=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", __FUNCTION__, addr);
 		return STD_E_SEGV;
 	}
 	if (region->ops->put_data16 == NULL) {
 		return STD_E_SEGV;
 	}
 	if (region->type == READONLY_MEMORY) {
-		printf("mpu_put_data16:error: can not write data on ROM :addr=0x%x data=%u\n", addr, data);
+		printf("mpu_put_data16:error: can not write data on ROM :addr=0x%" ATHRILL_ADDR_HEX_FORMAT " data=%u\n", addr, data);
 		return STD_E_SEGV;
 	}
 	if (!CPU_HAS_PERMISSION(core_id, region->type, CpuMemoryAccess_WRITE, addr, 2U)) {
 		return STD_E_SEGV;
 	}
-	uint32 paddr = (addr & region->mask);
+	AthrillAddrType paddr = (addr & region->mask);
 	return region->ops->put_data16(region, core_id, paddr, data);
 }
 
-Std_ReturnType mpu_put_data32(CoreIdType core_id, uint32 addr, uint32 data)
+Std_ReturnType mpu_put_data32(CoreIdType core_id, AthrillAddrType addr, uint32 data)
 {
 	MpuAddressRegionType *region = search_region(core_id, addr, 4U);
 	if (region == NULL) {
-		printf("%s():addr=0x%x\n", __FUNCTION__, addr);
+		printf("%s():addr=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", __FUNCTION__, addr);
 		return STD_E_SEGV;
 	}
 	if (region->ops->put_data32 == NULL) {
 		return STD_E_SEGV;
 	}
 	if (region->type == READONLY_MEMORY) {
-		printf("mpu_put_data32:error: can not write data on ROM :addr=0x%x data=%u\n", addr, data);
+		printf("mpu_put_data32:error: can not write data on ROM :addr=0x%" ATHRILL_ADDR_HEX_FORMAT " data=%u\n", addr, data);
 		return STD_E_SEGV;
 	}
 	if (!CPU_HAS_PERMISSION(core_id, region->type, CpuMemoryAccess_WRITE, addr, 4U)) {
 		return STD_E_SEGV;
 	}
-	uint32 paddr = (addr & region->mask);
+	AthrillAddrType paddr = (addr & region->mask);
 	return region->ops->put_data32(region, core_id, paddr, data);
 }
 
 
-Std_ReturnType mpu_get_pointer(CoreIdType core_id, uint32 addr, uint8 **data)
+Std_ReturnType mpu_get_pointer(CoreIdType core_id, AthrillAddrType addr, uint8 **data)
 {
 	MpuAddressRegionType *region = search_region(core_id, addr, 1U);
 	if (region == NULL) {
-		printf("%s():addr=0x%x\n", __FUNCTION__, addr);
+		printf("%s():addr=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", __FUNCTION__, addr);
 		return STD_E_SEGV;
 	}
 	if (region->ops->get_pointer == NULL) {
 		return STD_E_INVALID;
 	}
-	uint32 paddr = (addr & region->mask);
+	AthrillAddrType paddr = (addr & region->mask);
 	return region->ops->get_pointer(region, core_id, paddr, data);
 }
 
@@ -555,45 +555,45 @@ Std_ReturnType mpu_get_pointer(CoreIdType core_id, uint32 addr, uint8 **data)
 
 
 
-static Std_ReturnType memory_get_data8(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint8 *data)
+static Std_ReturnType memory_get_data8(MpuAddressRegionType *region, CoreIdType core_id, AthrillAddrType addr, uint8 *data)
 {
-	uint32 off = (addr - region->start);
+	AthrillAddrType off = (addr - region->start);
 	*data = *((uint8*)(&region->data[off]));
 	return STD_E_OK;
 }
-static Std_ReturnType memory_get_data16(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint16 *data)
+static Std_ReturnType memory_get_data16(MpuAddressRegionType *region, CoreIdType core_id, AthrillAddrType addr, uint16 *data)
 {
-	uint32 off = (addr - region->start);
+	AthrillAddrType off = (addr - region->start);
 	*data = *((uint16*)(&region->data[off]));
 	return STD_E_OK;
 }
-static Std_ReturnType memory_get_data32(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint32 *data)
+static Std_ReturnType memory_get_data32(MpuAddressRegionType *region, CoreIdType core_id, AthrillAddrType addr, uint32 *data)
 {
-	uint32 off = (addr - region->start);
+	AthrillAddrType off = (addr - region->start);
 	*data = *((uint32*)(&region->data[off]));
 	return STD_E_OK;
 }
-static Std_ReturnType memory_put_data8(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint8 data)
+static Std_ReturnType memory_put_data8(MpuAddressRegionType *region, CoreIdType core_id, AthrillAddrType addr, uint8 data)
 {
-	uint32 off = (addr - region->start);
+	AthrillAddrType off = (addr - region->start);
 	*((uint8*)(&region->data[off])) = data;
 	return STD_E_OK;
 }
-static Std_ReturnType memory_put_data16(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint16 data)
+static Std_ReturnType memory_put_data16(MpuAddressRegionType *region, CoreIdType core_id, AthrillAddrType addr, uint16 data)
 {
-	uint32 off = (addr - region->start);
+	AthrillAddrType off = (addr - region->start);
 	*((uint16*)(&region->data[off])) = data;
 	return STD_E_OK;
 }
-static Std_ReturnType memory_put_data32(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint32 data)
+static Std_ReturnType memory_put_data32(MpuAddressRegionType *region, CoreIdType core_id, AthrillAddrType addr, uint32 data)
 {
-	uint32 off = (addr - region->start);
+	AthrillAddrType off = (addr - region->start);
 	*((uint32*)(&region->data[off])) = data;
 	return STD_E_OK;
 }
-static Std_ReturnType memory_get_pointer(MpuAddressRegionType *region, CoreIdType core_id, uint32 addr, uint8 **data)
+static Std_ReturnType memory_get_pointer(MpuAddressRegionType *region, CoreIdType core_id, AthrillAddrType addr, uint8 **data)
 {
-	uint32 off = (addr - region->start);
+	AthrillAddrType off = (addr - region->start);
 	*data = ((uint8*)(&region->data[off]));
 	return STD_E_OK;
 }

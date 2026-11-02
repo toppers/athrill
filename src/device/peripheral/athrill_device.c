@@ -31,7 +31,7 @@ static AthrillDeviceMmapInfoTableType athrill_mmap_table;
 
 void device_init_athrill_device(void)
 {
-    uint32 addr;
+    AthrillAddrType addr;
     uint32 size;
     int err;
 

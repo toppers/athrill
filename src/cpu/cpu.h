@@ -31,7 +31,7 @@ typedef struct {
 } CpuOperationCodeType;
 
 typedef struct {
-	uint32				code_start_addr;
+	AthrillAddrType		code_start_addr;
 	uint32				code_size;
 	CpuOperationCodeType	*codes;
 } CachedOperationCodeType;
@@ -49,7 +49,7 @@ typedef struct {
 extern CpuType	virtual_cpu;
 #define CPU_CONFIG_GET_CORE_ID_NUM()	((int)virtual_cpu.core_id_num)
 
-static inline CachedOperationCodeType *virtual_cpu_get_cached_code(uint32 pc)
+static inline CachedOperationCodeType *virtual_cpu_get_cached_code(AthrillAddrType pc)
 {
 	uint32 i;
 	static CachedOperationCodeType *last = NULL;
@@ -88,7 +88,7 @@ static inline void virtual_cpu_add_cached_code(CachedOperationCodeType *cached_c
  * start_addr: 	unit=byte
  * memsz: 		unit=byte
  */
-static inline void virtual_cpu_cache_code_add_with_check(uint32 memsz, uint32 start_addr)
+static inline void virtual_cpu_cache_code_add_with_check(uint32 memsz, AthrillAddrType start_addr)
 {
 	CachedOperationCodeType *cached_code = virtual_cpu_get_cached_code(start_addr);
 	if (cached_code != NULL) {
@@ -111,11 +111,11 @@ extern uint32 cpu_get_current_core_id(void);
 extern uint32 cpu_get_ep(const TargetCoreType *core);
 
 extern uint32 cpu_get_current_core_register(uint32 inx);
-extern uint32 cpu_get_current_core_pc(void);
-extern void cpu_set_core_pc(CoreIdType core_id, uint32 pc);
+extern AthrillAddrType cpu_get_current_core_pc(void);
+extern void cpu_set_core_pc(CoreIdType core_id, AthrillAddrType pc);
 extern uint32 cpu_get_current_core_sp(void);
 extern uint32 cpu_get_current_core_ep(void);
-extern uint32 cpu_get_return_addr(const TargetCoreType *core);
+extern AthrillAddrType cpu_get_return_addr(const TargetCoreType *core);
 
 extern CoreIdType cpu_get_core_id(const TargetCoreType *core);
 extern void intc_cpu_trigger_interrupt(CoreIdType core_id, int intno);

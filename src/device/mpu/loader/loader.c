@@ -42,8 +42,8 @@ Std_ReturnType elf_reload(uint8 *elf_data, MemoryAddressMapType *memap)
 		}
 		for (i = 0; i < image64->e_phnum; i++) {
 			const Elf64_Phdr *p = (const Elf64_Phdr *)(elf_data + image64->e_phoff + image64->e_phentsize * i);
-			if (p->p_type != PT_LOAD || mpu_address_get_rom((uint32)p->p_paddr, (uint32)p->p_filesz) == NULL) continue;
-			if (mpu_get_pointer(CPU_CONFIG_CORE_ID_0, (uint32)p->p_paddr, &ptr) != STD_E_OK) return STD_E_INVALID;
+			if (p->p_type != PT_LOAD || mpu_address_get_rom(p->p_paddr, p->p_filesz) == NULL) continue;
+			if (mpu_get_pointer(CPU_CONFIG_CORE_ID_0, p->p_paddr, &ptr) != STD_E_OK) return STD_E_INVALID;
 			memcpy(ptr, elf_data + p->p_offset, (size_t)p->p_filesz);
 		}
 		return STD_E_OK;
@@ -71,7 +71,7 @@ Std_ReturnType elf_reload(uint8 *elf_data, MemoryAddressMapType *memap)
 	return STD_E_OK;
 }
 
-Std_ReturnType binary_load(uint8 *binary_data, uint32 load_addr, uint32 binary_data_len)
+Std_ReturnType binary_load(uint8 *binary_data, AthrillAddrType load_addr, uint32 binary_data_len)
 {
 	Std_ReturnType err;
 	uint8 *data = NULL;
@@ -86,7 +86,7 @@ Std_ReturnType binary_load(uint8 *binary_data, uint32 load_addr, uint32 binary_d
 	return STD_E_OK;
 }
 
-Std_ReturnType elf_load(uint8 *elf_data, MemoryAddressMapType *memap, uint32* entry_addr)
+Std_ReturnType elf_load(uint8 *elf_data, MemoryAddressMapType *memap, AthrillAddrType *entry_addr)
 {
 	Std_ReturnType err;
 	uint32 disable_debug_data_type = 0;
@@ -94,11 +94,13 @@ Std_ReturnType elf_load(uint8 *elf_data, MemoryAddressMapType *memap, uint32* en
 	if (((const Elf32_Ehdr*)elf_data)->e_ident[EI_CLASS] == ELFCLASS64) {
 		const Elf64_Ehdr *image64 = (const Elf64_Ehdr *)elf_data;
 		if (Elf64_Check(image64) != STD_E_OK) return STD_E_INVALID;
+#if ATHRILL_ADDRESS_WIDTH == 32
 		if (image64->e_entry > UINT32_MAX) {
 			printf("Invalid ELF64: entry point 0x%llx is above the 32-bit Athrill bus\n", (unsigned long long)image64->e_entry);
 			return STD_E_INVALID;
 		}
-		*entry_addr = (uint32)image64->e_entry;
+#endif
+		*entry_addr = image64->e_entry;
 		err = Elf64_LoadProgram(image64, memap);
 		if (err != STD_E_OK) return err;
 		/* The section/symbol reader is class-aware.  DWARF consumers continue to
@@ -197,7 +199,7 @@ static Std_ReturnType Elf64_Check(const Elf64_Ehdr *elf_image)
 static void set_malloc_region(MemoryAddressMapType *memap, uint32 i)
 {
 	int j;
-	uint32 start = memap->ram[i].start;
+	AthrillAddrType start = memap->ram[i].start;
 	uint32 unit_num = memap->ram[i].size / MPU_MALLOC_REGION_UNIT_SIZE;
 
 	for (j = 0; j < unit_num; j++) {
@@ -263,7 +265,7 @@ static Std_ReturnType Elf_LoadProgram(const Elf32_Ehdr *elf_image, MemoryAddress
 		}
 		else {
 			int j;
-			uint32 start = memap->ram[i].start;
+			AthrillAddrType start = memap->ram[i].start;
 			uint32 unit_num = memap->ram[i].size / MPU_MALLOC_REGION_UNIT_SIZE;
 
 			for (j = 0; j < unit_num; j++) {
@@ -342,7 +344,8 @@ static Std_ReturnType Elf64_LoadProgram(const Elf64_Ehdr *elf_image, MemoryAddre
 			ptr = mpu_address_set_rom_ram((MpuAddressGetType)memap->ram[i].type, memap->ram[i].start, memap->ram[i].size * 1024, memap->ram[i].mmap_addr);
 			if (ptr == NULL) return STD_E_INVALID;
 		} else {
-			uint32 start = memap->ram[i].start, j, n = memap->ram[i].size / MPU_MALLOC_REGION_UNIT_SIZE;
+			AthrillAddrType start = memap->ram[i].start;
+			uint32 j, n = (uint32)(memap->ram[i].size / MPU_MALLOC_REGION_UNIT_SIZE);
 			for (j = 0; j < n; j++, start += MPU_MALLOC_REGION_UNIT_SIZE * 1024)
 				(void)mpu_address_set_rom_ram((MpuAddressGetType)memap->ram[i].type, start, MPU_MALLOC_REGION_UNIT_SIZE * 1024, NULL);
 		}
@@ -352,19 +355,24 @@ static Std_ReturnType Elf64_LoadProgram(const Elf64_Ehdr *elf_image, MemoryAddre
 	for (i = 0; i < elf_image->e_phnum; i++) {
 		const Elf64_Phdr *p = (const Elf64_Phdr *)((const uint8 *)elf_image + elf_image->e_phoff + elf_image->e_phentsize * i);
 		if (p->p_type != PT_LOAD) continue;
+#if ATHRILL_ADDRESS_WIDTH == 32
 		if (p->p_paddr > UINT32_MAX || p->p_vaddr > UINT32_MAX || p->p_filesz > UINT32_MAX || p->p_memsz > UINT32_MAX ||
-			p->p_paddr + p->p_memsz > UINT64_C(0x100000000)) {
+			p->p_memsz > UINT64_MAX - p->p_paddr || p->p_paddr + p->p_memsz > UINT64_C(0x100000000)) {
 			printf("Invalid ELF64: PT_LOAD address range 0x%llx..0x%llx is above the 32-bit Athrill bus\n",
 				(unsigned long long)p->p_paddr, (unsigned long long)(p->p_paddr + p->p_memsz));
 			return STD_E_INVALID;
 		}
-		if ((p->p_flags & PF_X) != 0) virtual_cpu_cache_code_add_with_check((uint32)p->p_memsz, (uint32)p->p_vaddr);
-		ptr = mpu_address_get_rom((uint32)p->p_paddr, (uint32)p->p_filesz);
+#endif
+		if ((p->p_flags & PF_X) != 0) virtual_cpu_cache_code_add_with_check((uint32)p->p_memsz, p->p_vaddr);
+		ptr = mpu_address_get_rom(p->p_paddr, p->p_filesz);
 		if (ptr == NULL) continue;
-		err = mpu_get_pointer(CPU_CONFIG_CORE_ID_0, (uint32)p->p_paddr, &ptr);
+		err = mpu_get_pointer(CPU_CONFIG_CORE_ID_0, p->p_paddr, &ptr);
 		if (err != STD_E_OK) return STD_E_INVALID;
 		memcpy(ptr, (const uint8 *)elf_image + p->p_offset, (size_t)p->p_filesz);
-		printf("ELF64 loading succeeded: 0x%08x - 0x%08x\n", (uint32)p->p_paddr, (uint32)(p->p_paddr + p->p_memsz));
+		if ((p->p_paddr + p->p_memsz) <= UINT32_MAX)
+			printf("ELF64 loading succeeded: 0x%08x - 0x%08x\n", (uint32)p->p_paddr, (uint32)(p->p_paddr + p->p_memsz));
+		else
+			printf("ELF64 loading succeeded: 0x%llx - 0x%llx\n", (unsigned long long)p->p_paddr, (unsigned long long)(p->p_paddr + p->p_memsz));
 	}
 	return STD_E_OK;
 }

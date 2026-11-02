@@ -3,15 +3,15 @@
 
 #include "std_types.h"
 
-extern Std_ReturnType mpu_get_data8(CoreIdType core_id, uint32 addr, uint8 *data);
-extern Std_ReturnType mpu_get_data16(CoreIdType core_id, uint32 addr, uint16 *data);
-extern Std_ReturnType mpu_get_data32(CoreIdType core_id, uint32 addr, uint32 *data);
+extern Std_ReturnType mpu_get_data8(CoreIdType core_id, AthrillAddrType addr, uint8 *data);
+extern Std_ReturnType mpu_get_data16(CoreIdType core_id, AthrillAddrType addr, uint16 *data);
+extern Std_ReturnType mpu_get_data32(CoreIdType core_id, AthrillAddrType addr, uint32 *data);
 
-extern Std_ReturnType mpu_put_data8(CoreIdType core_id, uint32 addr, uint8 data);
-extern Std_ReturnType mpu_put_data16(CoreIdType core_id, uint32 addr, uint16 data);
-extern Std_ReturnType mpu_put_data32(CoreIdType core_id, uint32 addr, uint32 data);
+extern Std_ReturnType mpu_put_data8(CoreIdType core_id, AthrillAddrType addr, uint8 data);
+extern Std_ReturnType mpu_put_data16(CoreIdType core_id, AthrillAddrType addr, uint16 data);
+extern Std_ReturnType mpu_put_data32(CoreIdType core_id, AthrillAddrType addr, uint32 data);
 
-extern Std_ReturnType mpu_get_pointer(CoreIdType core_id, uint32 addr, uint8 **data);
+extern Std_ReturnType mpu_get_pointer(CoreIdType core_id, AthrillAddrType addr, uint8 **data);
 
 
 /*
@@ -26,10 +26,10 @@ typedef enum {
 #define MPU_MALLOC_REGION_UNIT_SIZE         1024    /* KB */
 #define MPU_MALLOC_REGION_UNIT_GROUP_NUM    10      /* 10MB */
 
-extern uint8 *mpu_address_set_rom_ram(MpuAddressGetType getType, uint32 addr, uint32 size, void *mmap_addr);
-extern uint8 *mpu_address_set_dev(uint32 addr, uint32 size, void *handler);
-extern uint8 *mpu_address_get_rom(uint32 addr, uint32 size);
-extern uint8 *mpu_address_get_ram(uint32 addr, uint32 size);
-extern void mpu_address_set_malloc_region(uint32 addr, uint32 size);
+extern uint8 *mpu_address_set_rom_ram(MpuAddressGetType getType, AthrillAddrType addr, AthrillAddrType size, void *mmap_addr);
+extern uint8 *mpu_address_set_dev(AthrillAddrType addr, AthrillAddrType size, void *handler);
+extern uint8 *mpu_address_get_rom(AthrillAddrType addr, AthrillAddrType size);
+extern uint8 *mpu_address_get_ram(AthrillAddrType addr, AthrillAddrType size);
+extern void mpu_address_set_malloc_region(AthrillAddrType addr, AthrillAddrType size);
 
 #endif /* _MPU_OPS_H_ */

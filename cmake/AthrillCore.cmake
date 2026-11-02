@@ -4,6 +4,14 @@ enable_language(CXX)
 
 option(ATHRILL_ENABLE_HAKONIWA "Enable Hakoniwa lockstep asset support" OFF)
 
+set(ATHRILL_ADDRESS_WIDTH "32" CACHE STRING "Athrill bus address width (32 or 64)")
+set_property(CACHE ATHRILL_ADDRESS_WIDTH PROPERTY STRINGS 32 64)
+if(NOT ATHRILL_ADDRESS_WIDTH STREQUAL "32" AND
+   NOT ATHRILL_ADDRESS_WIDTH STREQUAL "64")
+    message(FATAL_ERROR
+        "ATHRILL_ADDRESS_WIDTH must be 32 or 64 (got: ${ATHRILL_ADDRESS_WIDTH})")
+endif()
+
 # Link-time optimisation lets the compiler inline across Athrill's static
 # libraries (CPU, bus, MPU, devices); about 13% faster on the V850E2M
 # target. Enabled when the toolchain supports it (MSVC uses /GL and /LTCG).
@@ -233,6 +241,8 @@ function(athrill_apply_common_settings target_name)
 
     target_include_directories("${target_name}" PRIVATE
         ${ATHRILL_BASE_INCLUDE_DIRS})
+    target_compile_definitions("${target_name}" PRIVATE
+        ATHRILL_ADDRESS_WIDTH=${ATHRILL_ADDRESS_WIDTH})
     if(MSVC)
         target_compile_features("${target_name}" PRIVATE c_std_11 cxx_std_17)
         target_compile_options("${target_name}" PRIVATE

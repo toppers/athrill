@@ -23,7 +23,7 @@ extern void cpuemu_get_elaps(CpuEmuElapsType *elaps);
 extern void cpuemu_start_elaps(void);
 extern void cpuemu_end_elaps(void);
 extern uint32 cpuemu_get_retaddr(CoreIdType core_id);
-extern Std_ReturnType cpuemu_get_addr_pointer(uint32 addr, uint8 **data);
+extern Std_ReturnType cpuemu_get_addr_pointer(AthrillAddrType addr, uint8 **data);
 extern void cpuemu_get_register(CoreIdType core_id, TargetCoreType *cpu);
 
 extern void *cpuemu_thread_run(void* arg);
@@ -31,7 +31,7 @@ extern uint64 cpuemu_get_clock(void);
 extern uint32 cpuemu_get_cpu_frequency(void);
 extern uint64 cpuemu_get_cpu_end_clock(void);
 extern void cpuemu_set_cpu_end_clock(uint64 clock);
-extern void cpuemu_set_entry_addr(uint32 entry_addr);
+extern void cpuemu_set_entry_addr(AthrillAddrType entry_addr);
 extern void cpuemu_reset(void);
 
 
@@ -57,8 +57,8 @@ typedef enum {
 
 typedef struct {
 	MemoryAddressImplType type;
-	uint32	start;						/* unit:byte */
-	uint32	size;						/* unit:KB */
+	AthrillAddrType	start;				/* unit:byte */
+	AthrillAddrType	size;				/* unit:KB */
 	void *mmap_addr;
 	void *extdev_handle;
 	std_bool region_executable;				/* X */
