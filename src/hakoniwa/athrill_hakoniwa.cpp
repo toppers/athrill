@@ -171,6 +171,49 @@ static void cap_skip_interval(uint64 interval, uint64 *min_intr_interval)
 	}
 }
 
+/*
+ * Time synchronisation design (kept here because it is easy to forget)
+ *
+ * 1. The rule an asset must keep.
+ *    core-pro's hako_asset_impl_execute() advances an asset from
+ *    current_usec to current_usec + delta_usec only when that does not
+ *    exceed the Hakoniwa (world) time:
+ *        if (current_usec + delta_usec > world_time) return false;
+ *    Until then the asset may run freely. Athrill applies the same rule
+ *    with a step of one clock: the CPU may execute while
+ *        clock < world_time_usec * cpu_mhz
+ *    and must never run ahead of the world time. (The old athrill-device
+ *    hakotime only stopped clock skip; a program that never halted kept
+ *    executing past the world time. That is what this gate fixes.)
+ *
+ * 2. No asset step (delta) of its own.
+ *    The world time only moves in conductor steps (--delta-usec), so a
+ *    separate asset step would only make Athrill synchronise more coarsely
+ *    without adding anything. Athrill's devices count clocks, so clocks
+ *    are the natural unit here.
+ *
+ * 3. Report in usec, and only when caught up.
+ *    The asset time is reported as clock / cpu_mhz (usec, truncated).
+ *    It is reported only when the CPU reaches the world time read last,
+ *    together with running the owned conductor, polling events and
+ *    reading the world time again. That is enough because the conductor
+ *    only needs the asset time to decide whether the world time may
+ *    advance, and Athrill needs the world time to advance only when it
+ *    has caught up. Reporting more often would cost shared-memory access
+ *    (with locks) without letting anything progress sooner.
+ *
+ * 4. Cost.
+ *    Touching shared memory on every clock (the first version) made a
+ *    run about 7x slower than a plain run. Between catch-ups the fast
+ *    path below only compares two integers.
+ *
+ * 5. Consequences.
+ *    - STOP/RESET are noticed at the next catch-up, i.e. at most one
+ *      world-time lead of simulated time later.
+ *    - Clock skip (halted CPU) is capped at the world-time limit.
+ *    - --real-sleep-msec N sleeps N ms of wall-clock time after every
+ *      N ms of simulated time (N * 1000 * cpu_mhz clocks); default none.
+ */
 extern "C" std_bool athrill_hakoniwa_stage(uint64 clock, uint32 cpu_mhz,
 	uint64 *min_intr_interval)
 {
