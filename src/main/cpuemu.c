@@ -378,6 +378,34 @@ static inline std_bool cpuemu_thread_run_dbg(int core_id_num)
 }
 
 
+/*
+ * Optionally keep pace with wall-clock time and report the skipped clocks
+ * before the main loop jumps to the next device interrupt.
+ */
+static void cpuemu_sync_skipped_clock(void)
+{
+#ifdef OS_LINUX
+	uint64 skipc_usec = 0;
+	if (enable_dbg.enable_sync_time > 0) {
+		skipc_usec = ( (cpuemu_dev_clock.min_intr_interval - 1) / virtual_cpu.cpu_freq );
+		if (skipc_usec > ((uint64)enable_dbg.enable_sync_time)) {
+			(void)usleep((useconds_t)(skipc_usec - ((uint64)enable_dbg.enable_sync_time)));
+		}
+	}
+	if (enable_dbg.show_skip_time != 0) {
+		static struct timeval prev_elaps;
+		struct timeval result;
+		struct timeval elaps;
+		gettimeofday(&elaps, NULL);
+		cpuemu_timeval_sub(&elaps, &prev_elaps, &result);
+		printf("skip-clock = "PRINT_FMT_UINT64" : %ld sec %ld usec sync_time=%u \n",
+				skipc_usec, (long)result.tv_sec, (long)result.tv_usec, (unsigned int)enable_dbg.enable_sync_time);
+		prev_elaps = elaps;
+	}
+#endif /* OS_LINUX */
+	return;
+}
+
 void *cpuemu_thread_run(void* arg)
 {
 	std_bool is_halt;
@@ -429,56 +457,18 @@ void *cpuemu_thread_run(void* arg)
 		}
 		is_halt = do_cpu_run(core_id_num);
 
-		if (enable_skip == TRUE) {
-			if ((is_halt == TRUE) && (cpuemu_dev_clock.can_skip_clock == TRUE) && (cpuemu_dev_clock.min_intr_interval != DEVICE_CLOCK_MAX_INTERVAL)) {
-#ifdef OS_LINUX
-				uint64 skipc_usec = 0;
-				if (enable_dbg.enable_sync_time > 0) {
-					skipc_usec = ( (cpuemu_dev_clock.min_intr_interval - 1) / virtual_cpu.cpu_freq );
-					if (skipc_usec > ((uint64)enable_dbg.enable_sync_time)) {
-						(void)usleep((useconds_t)(skipc_usec - ((uint64)enable_dbg.enable_sync_time)));
-					}
-				}
-				if (enable_dbg.show_skip_time != 0) {
-					static struct timeval prev_elaps;
-					struct timeval result;
-					struct timeval elaps;
-					gettimeofday(&elaps, NULL);
-					cpuemu_timeval_sub(&elaps, &prev_elaps, &result);
-#ifdef OS_MAC
-					printf("skip-clock = %llu : %ld sec %d usec sync_time=%d \n", skipc_usec, result.tv_sec, result.tv_usec, enable_dbg.enable_sync_time);
-#else
-                    printf("skip-clock = %llu : %ld sec %ld usec sync_time=%u \n", skipc_usec, result.tv_sec, result.tv_usec, enable_dbg.enable_sync_time);
-#endif
-					prev_elaps = elaps;
-				}
-#endif /* OS_LINUX */
-#ifndef CPUEMU_CLOCK_BUG_FIX
-				if (cpuemu_dev_clock.min_intr_interval > 2U) {
-					cpuemu_dev_clock.clock += (cpuemu_dev_clock.min_intr_interval - 1);
-				}
-#else
-				if (cpuemu_dev_clock.min_intr_interval != DEVICE_CLOCK_MAX_INTERVAL) {
-					cpuemu_dev_clock.clock += (cpuemu_dev_clock.min_intr_interval);
-				}
-#endif /* CPUEMU_CLOCK_BUG_FIX */
-				else {
-					cpuemu_dev_clock.clock += 1U;
-				}
-			}
-#ifndef CPUEMU_CLOCK_BUG_FIX
-#else
-			else {
-				cpuemu_dev_clock.clock += 1U;
-			}
-#endif /* CPUEMU_CLOCK_BUG_FIX */
+		if ((enable_skip == TRUE) && (is_halt == TRUE)
+				&& (cpuemu_dev_clock.can_skip_clock == TRUE)
+				&& (cpuemu_dev_clock.min_intr_interval != DEVICE_CLOCK_MAX_INTERVAL)) {
+			/*
+			 * CPU is halted: jump to the next device interrupt.
+			 */
+			cpuemu_sync_skipped_clock();
+			cpuemu_dev_clock.clock += cpuemu_dev_clock.min_intr_interval;
 		}
-#ifndef CPUEMU_CLOCK_BUG_FIX
-#else
 		else {
 			cpuemu_dev_clock.clock += 1U;
 		}
-#endif /* CPUEMU_CLOCK_BUG_FIX */
 	}
 	return NULL;
 }

@@ -87,11 +87,7 @@ static inline void profstat_end(ProfStatType *prof)
 /*
  * スキップ可能な最大クロック数
  */
-#ifndef CPUEMU_CLOCK_BUG_FIX
-#define DEVICE_CLOCK_MAX_INTERVAL	-1
-#else
 #define DEVICE_CLOCK_MAX_INTERVAL	-1ULL
-#endif /* CPUEMU_CLOCK_BUG_FIX */
 
 typedef struct {
 	uint64 clock;
