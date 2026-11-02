@@ -34,7 +34,7 @@ Athrill は， ソースデバッグ用に以下のエディタを使用しま�
 
 # Install
 -----
-このリポジトリは CPU に依存しないコア部分です．`athrill2` の実行ファイルは，ターゲットのリポジトリから CMake でビルドします．ターゲット側が `cmake/AthrillCore.cmake` を通してこのコアを取り込みます．V850E2M の場合：
+このリポジトリは CPU に依存しないコア部分です．`athrill3` の実行ファイルは，ターゲットのリポジトリから CMake でビルドします．ターゲット側が `cmake/AthrillCore.cmake` を通してこのコアを取り込みます．V850E2M の場合：
 
 ```
 git clone https://github.com/toppers/athrill.git
@@ -45,7 +45,7 @@ cmake --build athrill-target-v850e2m/build
 
 ターゲットは，隣に置いた `../athrill` をこのリポジトリとして使います．別の場所にあるチェックアウトを使う場合は，最初の `cmake` コマンドに `-DATHRILL_SOURCE_DIR=<athrill のパス>` を追加します．
 
-引数なしで `athrill2` を実行すると，usage が表示されます：
+引数なしで `athrill3` を実行すると，usage が表示されます：
 
 	Usage:athrill -m<memory config file> [OPTION]... <load_file>
 	-i                             : execute on the interaction mode. if -i is not set, execute on the background mode.

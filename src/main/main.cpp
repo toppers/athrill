@@ -155,7 +155,7 @@ int main(int argc, const char *argv[])
 		if ((strcmp(argv[i], "--hakoniwa") == 0
 				|| strncmp(argv[i], "--hakoniwa=", 12) == 0)
 				&& athrill_hakoniwa_is_enabled() == FALSE) {
-			std::cerr << "athrill2 was built without Hakoniwa support (ATHRILL_ENABLE_HAKONIWA=OFF)\n";
+			std::cerr << "athrill3 was built without Hakoniwa support (ATHRILL_ENABLE_HAKONIWA=OFF)\n";
 			return 1;
 		}
 	}

@@ -3,7 +3,7 @@
 
 extern "C" int athrill_hakoniwa_initialize(const char *, const char *, uint64, uint64, uint64, std_bool, int (*)(void))
 {
-	std::cerr << "athrill2 was built without Hakoniwa support (ATHRILL_ENABLE_HAKONIWA=OFF)\n";
+	std::cerr << "athrill3 was built without Hakoniwa support (ATHRILL_ENABLE_HAKONIWA=OFF)\n";
 	return 1;
 }
 
