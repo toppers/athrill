@@ -20,7 +20,13 @@ typedef struct {
 } OsdepMappedFile;
 
 extern void osdep_install_terminate_handler(void (*cleanup)(void));
-/* Runs the installed cleanup and exits if SIGTERM arrived; call it from the main loop. */
+/*
+ * On SIGTERM the installed cleanup runs and the process exits. By default
+ * this happens on a dedicated thread; after osdep_terminate_from_main_loop()
+ * it happens in osdep_handle_terminate_request(), which the main loop must
+ * then call regularly.
+ */
+extern void osdep_terminate_from_main_loop(void);
 extern void osdep_handle_terminate_request(void);
 extern void osdep_elaps_reset(struct DeviceClockType *clock);
 extern void osdep_elaps_start(struct DeviceClockType *clock);

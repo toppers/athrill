@@ -8,6 +8,10 @@ void osdep_install_terminate_handler(void (*cleanup)(void))
 	(void)cleanup;
 }
 
+void osdep_terminate_from_main_loop(void)
+{
+}
+
 void osdep_handle_terminate_request(void)
 {
 }

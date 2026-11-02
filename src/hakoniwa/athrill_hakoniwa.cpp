@@ -103,6 +103,8 @@ extern "C" int athrill_hakoniwa_initialize(const char *name, const char *pdudef_
 		return 1;
 	}
 	osdep_install_terminate_handler(athrill_hakoniwa_finalize);
+	/* The stage polls the request: finalize uses the Hakoniwa API it owns. */
+	osdep_terminate_from_main_loop();
 	return 0;
 }
 

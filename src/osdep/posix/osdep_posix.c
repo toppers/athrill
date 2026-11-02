@@ -5,6 +5,7 @@
 #include "target/target_os_api.h"
 #include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,25 +15,87 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+/*
+ * SIGTERM is blocked in every thread and received by a dedicated thread
+ * with sigwait(), so the cleanup never runs inside a signal handler (it is
+ * not async-signal-safe). By default that thread runs the cleanup and
+ * exits. After osdep_terminate_from_main_loop() it only records the
+ * request, and the main loop runs the cleanup from
+ * osdep_handle_terminate_request() (Hakoniwa: the main loop owns the
+ * Hakoniwa API, which the cleanup uses too).
+ */
+static pthread_mutex_t osdep_terminate_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_once_t osdep_terminate_once = PTHREAD_ONCE_INIT;
 static void (*osdep_cleanup)(void);
+static std_bool osdep_terminate_polled = FALSE;
 static volatile sig_atomic_t osdep_terminate_requested = 0;
 
-/*
- * Only record the request: the cleanup (Hakoniwa unregister, output) is
- * not async-signal-safe and runs from the main loop instead, see
- * osdep_handle_terminate_request().
- */
-static void osdep_sigterm_handler(int arg)
+static void osdep_run_cleanup_and_exit(void)
 {
+	void (*cleanup)(void);
+
+	pthread_mutex_lock(&osdep_terminate_mutex);
+	cleanup = osdep_cleanup;
+	pthread_mutex_unlock(&osdep_terminate_mutex);
+	if (cleanup != NULL) {
+		cleanup();
+	}
+	sync();
+	exit(0);
+}
+
+static void *osdep_terminate_thread(void *arg)
+{
+	sigset_t signals;
+	int received;
+	std_bool polled;
+
 	(void)arg;
+	sigemptyset(&signals);
+	sigaddset(&signals, SIGTERM);
+	for (;;) {
+		if ((sigwait(&signals, &received) == 0) && (received == SIGTERM)) {
+			break;
+		}
+	}
+	pthread_mutex_lock(&osdep_terminate_mutex);
+	polled = osdep_terminate_polled;
 	osdep_terminate_requested = 1;
+	pthread_mutex_unlock(&osdep_terminate_mutex);
+	if (!polled) {
+		osdep_run_cleanup_and_exit();
+	}
+	return NULL;
+}
+
+/* Called before any other thread exists, so they all inherit the mask. */
+static void osdep_start_terminate_thread(void)
+{
+	sigset_t signals;
+	pthread_t thread;
+
+	sigemptyset(&signals);
+	sigaddset(&signals, SIGTERM);
+	(void)pthread_sigmask(SIG_BLOCK, &signals, NULL);
+	if (pthread_create(&thread, NULL, osdep_terminate_thread, NULL) == 0) {
+		(void)pthread_detach(thread);
+	}
 }
 
 void osdep_install_terminate_handler(void (*cleanup)(void))
 {
+	pthread_mutex_lock(&osdep_terminate_mutex);
 	osdep_cleanup = cleanup;
+	pthread_mutex_unlock(&osdep_terminate_mutex);
 	signal(SIGPIPE, SIG_IGN);
-	signal(SIGTERM, osdep_sigterm_handler);
+	(void)pthread_once(&osdep_terminate_once, osdep_start_terminate_thread);
+}
+
+void osdep_terminate_from_main_loop(void)
+{
+	pthread_mutex_lock(&osdep_terminate_mutex);
+	osdep_terminate_polled = TRUE;
+	pthread_mutex_unlock(&osdep_terminate_mutex);
 }
 
 void osdep_handle_terminate_request(void)
@@ -40,11 +103,7 @@ void osdep_handle_terminate_request(void)
 	if (osdep_terminate_requested == 0) {
 		return;
 	}
-	if (osdep_cleanup != NULL) {
-		osdep_cleanup();
-	}
-	sync();
-	exit(0);
+	osdep_run_cleanup_and_exit();
 }
 
 void osdep_elaps_reset(struct DeviceClockType *clock)
