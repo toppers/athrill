@@ -51,7 +51,6 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 		  { "max-delay-usec", 1, 259 },
 		  { "disable-conductor", 0, 260 },
 		  { "real-sleep-msec", 1, 261 },
-		  { "conductor-delta-usec", 1, 262 },
 		  { NULL, 0, 0 }
 	  };
 
@@ -64,7 +63,6 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 	  cmd_option.hakoniwa_asset_name = NULL;
 	  cmd_option.hakoniwa_pdudef_path = NULL;
 	  cmd_option.hakoniwa_delta_usec = 1000;
-	  cmd_option.hakoniwa_conductor_delta_usec = 1000;
 	  cmd_option.hakoniwa_max_delay_usec = 20000;
 	  cmd_option.hakoniwa_disable_conductor = FALSE;
 	  cmd_option.hakoniwa_real_sleep_msec = 0;
@@ -117,12 +115,6 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 		  case 258:
 			if (cmd_atoi((char *)parser.argument, &cmd_option.hakoniwa_delta_usec) < 0 || cmd_option.hakoniwa_delta_usec == 0) {
 				printf("error! --delta-usec %s\n", parser.argument);
-				return NULL;
-			}
-			break;
-		  case 262:
-			if (cmd_atoi((char *)parser.argument, &cmd_option.hakoniwa_conductor_delta_usec) < 0 || cmd_option.hakoniwa_conductor_delta_usec == 0) {
-				printf("error! --conductor-delta-usec %s\n", parser.argument);
 				return NULL;
 			}
 			break;

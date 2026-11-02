@@ -175,8 +175,7 @@ int main(int argc, const char *argv[])
 		std::cout << ' ' << std::left << std::setw(30) << "-d<device config file>" << std::right << " : set device parameter.\n";
 		std::cout << ' ' << std::left << std::setw(30) << "--hakoniwa <asset_name>" << std::right << " : run as a Hakoniwa lockstep asset.\n";
 		std::cout << ' ' << std::left << std::setw(30) << "--pdudef <pdudef.json>" << std::right << " : set the Hakoniwa PDU definition.\n";
-		std::cout << ' ' << std::left << std::setw(30) << "--delta-usec <usec>" << std::right << " : set this asset's step: it advances only when its time + step <= Hakoniwa time (default: 1000).\n";
-		std::cout << ' ' << std::left << std::setw(30) << "--conductor-delta-usec <usec>" << std::right << " : set the conductor step (default: 1000).\n";
+		std::cout << ' ' << std::left << std::setw(30) << "--delta-usec <usec>" << std::right << " : set the conductor step (default: 1000).\n";
 		std::cout << ' ' << std::left << std::setw(30) << "--max-delay-usec <usec>" << std::right << " : set conductor max delay (default: 20000).\n";
 		std::cout << ' ' << std::left << std::setw(30) << "--disable-conductor" << std::right << " : use an external Hakoniwa conductor.\n";
 		std::cout << ' ' << std::left << std::setw(30) << "--real-sleep-msec <msec>" << std::right << " : sleep <msec> of wall-clock time after every <msec> of simulated time (default: no sleep).\n";
@@ -255,7 +254,6 @@ int main(int argc, const char *argv[])
 			hakoniwa_memmap = &memmap;
 			if (athrill_hakoniwa_initialize(opt->hakoniwa_asset_name,
 				opt->hakoniwa_pdudef_path, opt->hakoniwa_delta_usec,
-				opt->hakoniwa_conductor_delta_usec,
 				opt->hakoniwa_max_delay_usec, opt->hakoniwa_real_sleep_msec,
 				opt->hakoniwa_disable_conductor, hakoniwa_reset_athrill) != 0) {
 				return 1;

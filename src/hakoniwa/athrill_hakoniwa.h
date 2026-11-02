@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 int athrill_hakoniwa_initialize(const char *asset_name, const char *pdudef_path,
-	uint64 delta_usec, uint64 conductor_delta_usec, uint64 max_delay_usec, uint64 real_sleep_msec,
+	uint64 delta_usec, uint64 max_delay_usec, uint64 real_sleep_msec,
 	std_bool disable_conductor, int (*reset_callback)(void));
 std_bool athrill_hakoniwa_is_enabled(void);
 std_bool athrill_hakoniwa_stage(uint64 clock, uint32 cpu_mhz,
