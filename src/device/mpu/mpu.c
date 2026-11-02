@@ -43,6 +43,34 @@ static inline bool has_permission(MpuAddressRegionType *region, CoreIdType core_
 }
 #endif
 
+/*
+ * The containment test used by the region searches: the whole access
+ * [addr, addr + search_size) must lie inside the region.
+ */
+static inline std_bool region_covers(const MpuAddressRegionType *region, AthrillAddrType addr, AthrillAddrType search_size)
+{
+	AthrillAddrType start = region->start;
+	AthrillAddrType end = start + region->size;
+	AthrillAddrType paddr_str = (addr & region->mask);
+	AthrillAddrType paddr_end = paddr_str + search_size;
+
+	return ((start <= paddr_str) && (paddr_str < end)) &&
+		((start < paddr_end) && (paddr_end <= end));
+}
+
+#ifdef SEARCH_REGION_OPTIMIZE
+/*
+ * Each search remembers the ROM/RAM region it found last and tries it
+ * first, with the same containment test as the full search. (It replaces
+ * a 1 KiB page cache that started at page 0 with index -1 and did not
+ * check the access size against the region end.)
+ */
+static inline std_bool previous_region_covers(const MpuAddressRegionType *previous, AthrillAddrType addr, AthrillAddrType search_size)
+{
+	return (previous != NULL) && (previous->data != NULL) && region_covers(previous, addr, search_size);
+}
+#endif
+
 // オリジナルのsearch_region
 // 最適化の際はこちらをwrite用、search_region_rをreadように使用することで同じページ内へのアクセスを
 // 発生しやすくする。ここを治す場合はsearch_region_rも同じように直すこと
@@ -53,17 +81,11 @@ static inline MpuAddressRegionType *search_region(CoreIdType core_id, AthrillAdd
 	//printf("addr=0x%x\n", addr);
 
 #ifdef SEARCH_REGION_OPTIMIZE
-	// 4Kを1ページとすることでキャッシュを効かせる
-	// cache for rom/ram
-	static AthrillAddrType previous_page = 0;
-	static int previous_index = -1;
-	#define GET_PAGE(address) ((address) & ~(AthrillAddrType)0x3ff)
+	static MpuAddressRegionType *previous_region = NULL;
 
-	// check previous page first
-	if ( addr && ( GET_PAGE(addr) == previous_page) ) {
-			return &mpu_address_map.dynamic_map[previous_index];
+	if (previous_region_covers(previous_region, addr, search_size)) {
+		return previous_region;
 	}
-
 #endif
 
 
@@ -90,8 +112,7 @@ static inline MpuAddressRegionType *search_region(CoreIdType core_id, AthrillAdd
 			}
 			//printf("2:passed1:%u:0x%p\n", i,  &mpu_address_map.map[i]);
 #ifdef SEARCH_REGION_OPTIMIZE
-			previous_page = GET_PAGE(addr);
-			previous_index = i;
+			previous_region = &mpu_address_map.dynamic_map[i];
 #endif
 			return &mpu_address_map.dynamic_map[i];
 		}
@@ -136,17 +157,11 @@ static inline MpuAddressRegionType *search_region_r(CoreIdType core_id, AthrillA
 	//printf("addr=0x%x\n", addr);
 
 #ifdef SEARCH_REGION_OPTIMIZE
-	// cache for rom/ram
-	// 4Kを1ページとすることでキャッシュを効かせる
-	static AthrillAddrType previous_page = 0;
-	static int previous_index = -1;
-//	#define GET_PAGE(address) ((address) & (uint32)(~(uint32)0x3ff))
+	static MpuAddressRegionType *previous_region = NULL;
 
-	// check previous page first
-	if ( addr && ( GET_PAGE(addr) == previous_page) ) {
-			return &mpu_address_map.dynamic_map[previous_index];
+	if (previous_region_covers(previous_region, addr, search_size)) {
+		return previous_region;
 	}
-
 #endif
 
 
@@ -173,8 +188,7 @@ static inline MpuAddressRegionType *search_region_r(CoreIdType core_id, AthrillA
 			}
 			//printf("2:passed1:%u:0x%p\n", i,  &mpu_address_map.map[i]);
 #ifdef SEARCH_REGION_OPTIMIZE
-			previous_page = GET_PAGE(addr);
-			previous_index = i;
+			previous_region = &mpu_address_map.dynamic_map[i];
 #endif
 			return &mpu_address_map.dynamic_map[i];
 		}
