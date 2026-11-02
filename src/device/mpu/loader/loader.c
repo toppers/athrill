@@ -130,6 +130,44 @@ Std_ReturnType binary_load(uint8 *binary_data, AthrillAddrType load_addr, uint32
 	return STD_E_OK;
 }
 
+/*
+ * Athrill's DWARF readers understand versions 2 to 4. Newer compilers
+ * (e.g. GCC 13 for RISC-V) emit DWARF 5, whose headers the readers would
+ * misparse and run past the section. In that case the program still loads
+ * and runs; only source-level debug information is skipped.
+ */
+static std_bool dwarf_version_is_supported(uint8 *elf_data, char *section_name)
+{
+	uint8 *section_data;
+	uint32 section_size;
+	uint16 version;
+
+	if (elf_section_get(elf_data, section_name, &section_data, &section_size) != STD_E_OK) {
+		return TRUE;
+	}
+	if (section_size < 6U) {
+		return TRUE;
+	}
+	version = (uint16)(section_data[4] | (section_data[5] << 8));
+	if (version > 4U) {
+		printf("INFO: %s uses DWARF version %u, which Athrill does not support; "
+			"source-level debug information is skipped.\n", section_name, version);
+		return FALSE;
+	}
+	return TRUE;
+}
+
+static std_bool dwarf_is_supported(uint8 *elf_data)
+{
+	if (dwarf_version_is_supported(elf_data, ".debug_line") == FALSE) {
+		return FALSE;
+	}
+	if (dwarf_version_is_supported(elf_data, ".debug_info") == FALSE) {
+		return FALSE;
+	}
+	return TRUE;
+}
+
 Std_ReturnType elf_load(uint8 *elf_data, MemoryAddressMapType *memap, AthrillAddrType *entry_addr)
 {
 	Std_ReturnType err;
@@ -151,6 +189,9 @@ Std_ReturnType elf_load(uint8 *elf_data, MemoryAddressMapType *memap, AthrillAdd
 		 * work when the producer uses the existing 32-bit DWARF forms. */
 		err = elf_symbol_load(elf_data);
 		if (err != STD_E_OK) return err;
+		if (dwarf_is_supported(elf_data) == FALSE) {
+			return STD_E_OK;
+		}
 		(void)elf_dwarf_line_load(elf_data);
 		(void)elf_dwarf_abbrev_load(elf_data);
 		(void)elf_dwarf_info_load(elf_data);
