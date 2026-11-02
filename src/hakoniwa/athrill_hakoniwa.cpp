@@ -21,6 +21,7 @@ enum { HAKO_EVENT_NONE, HAKO_EVENT_START, HAKO_EVENT_STOP, HAKO_EVENT_RESET, HAK
 static const char *asset_name;
 static uint64 world_time_usec;
 static uint64 world_limit_clock; /* world_time_usec * MHz read last */
+static uint64 last_notified_usec = (uint64)-1;
 static bool running;
 static bool registered;
 static bool owns_conductor;
@@ -76,6 +77,7 @@ extern "C" int athrill_hakoniwa_initialize(const char *name, const char *pdudef_
 	running = registered = owns_conductor = finalized = false;
 	real_sleep_msec = sleep_msec;
 	world_limit_clock = 0;
+	last_notified_usec = (uint64)-1;
 	reset_callback = on_reset;
 	pdudef_path = pdudef_path != NULL ? pdudef_path : ATHRILL_HAKONIWA_DEFAULT_PDUDEF;
 	if (disable_conductor == FALSE) {
@@ -196,10 +198,12 @@ static void cap_skip_interval(uint64 interval, uint64 *min_intr_interval)
  *    The asset time is reported as clock / cpu_mhz (usec, truncated).
  *    It is reported only when the CPU reaches the world time read last,
  *    together with running the owned conductor, polling events and
- *    reading the world time again. That is enough because the conductor
- *    only needs the asset time to decide whether the world time may
- *    advance, and Athrill needs the world time to advance only when it
- *    has caught up. Reporting more often would cost shared-memory access
+ *    reading the world time again; while it then waits for the world
+ *    time to advance, the same value is not reported again (only
+ *    get_worldtime() and the event poll repeat). That is enough because
+ *    the conductor only needs the asset time to decide whether the world
+ *    time may advance, and Athrill needs the world time to advance only
+ *    when it has caught up. Reporting more often would cost shared-memory access
  *    (with locks) without letting anything progress sooner.
  *
  * 4. Cost.
@@ -236,29 +240,40 @@ extern "C" std_bool athrill_hakoniwa_stage(uint64 clock, uint32 cpu_mhz,
 	 * not exceed the Hakoniwa (world) time.
 	 */
 	for (;;) {
+		/*
+		 * Report first, then run the owned conductor, so the world time can
+		 * advance in the same pass. Report only when the value changed:
+		 * while waiting, repeating the same time would only take
+		 * shared-memory locks away from the conductor and other assets.
+		 */
+		if (running && cpu_mhz != 0 && clock / cpu_mhz != last_notified_usec) {
+			last_notified_usec = clock / cpu_mhz;
+			hakoniwa_asset_notify_simtime(asset_name, last_notified_usec);
+		}
 		if (owns_conductor) {
 			(void)hakoniwa_master_execute();
 		}
+		/* Events must be polled while waiting: STOP/RESET can arrive here. */
 		if (handle_event()) {
 			clock = 0;
 			world_limit_clock = 0;
 			next_sleep_clock = 0;
+			last_notified_usec = (uint64)-1;
 		}
-		if (running && cpu_mhz != 0) {
-			hakoniwa_asset_notify_simtime(asset_name, clock / cpu_mhz);
-			if (hakoniwa_asset_is_simulation_mode() != 0
-				&& hakoniwa_asset_is_pdu_created() != 0) {
-				if (hakoniwa_asset_is_pdu_sync_mode(asset_name) != 0) {
-					hakoniwa_asset_notify_write_pdu_done(asset_name);
-				}
-				else {
-					world_time_usec = hakoniwa_asset_get_worldtime();
-					const uint64 limit = world_time_usec * (uint64)cpu_mhz;
-					if (clock < limit) {
-						world_limit_clock = limit;
-						cap_skip_interval(limit - clock, min_intr_interval);
-						return TRUE;
-					}
+		if (running && cpu_mhz != 0
+			&& hakoniwa_asset_is_simulation_mode() != 0
+			&& hakoniwa_asset_is_pdu_created() != 0) {
+			if (hakoniwa_asset_is_pdu_sync_mode(asset_name) != 0) {
+				hakoniwa_asset_notify_write_pdu_done(asset_name);
+			}
+			else {
+				/* The only way to learn that the world time advanced. */
+				world_time_usec = hakoniwa_asset_get_worldtime();
+				const uint64 limit = world_time_usec * (uint64)cpu_mhz;
+				if (clock < limit) {
+					world_limit_clock = limit;
+					cap_skip_interval(limit - clock, min_intr_interval);
+					return TRUE;
 				}
 			}
 		}
