@@ -17,10 +17,12 @@ Athrill を使用すると，仮想マイコン上で組込みプログラムを
 Athrill は， 以下の環境で動作します：
 
   * OS
-    * [Linux]
-      * Ubuntu(32bit)
-    * [Windows]
-      * MinGW32_NT-6.2(Windows10, Windows7)
+    * macOS（arm64）
+    * Linux（x64，arm64）
+    * Windows 11（x64，Visual Studio 2022）
+  * ビルドツール
+    * CMake 3.16 以降
+    * C11 と C++17 に対応したコンパイラ（AppleClang，GCC，Clang，MSVC）
 
 Athrill は， ソースデバッグ用に以下のエディタを使用します:
 
@@ -32,12 +34,17 @@ Athrill は， ソースデバッグ用に以下のエディタを使用しま�
 
 # Install
 -----
-Athrill プロジェクトをダウンロード後,  環境変数(PATH)にathrillの実行バイナリフォルダのパスを追加しててください．
+このリポジトリは CPU に依存しないコア部分です．`athrill2` の実行ファイルは，ターゲットのリポジトリから CMake でビルドします．ターゲット側が `cmake/AthrillCore.cmake` を通してこのコアを取り込みます．V850E2M の場合：
 
 ```
-export PATH=[athrill root folder]/src/bin:$PATH 
+git clone --recursive https://github.com/toppers/athrill-target-v850e2m
+cmake -S athrill-target-v850e2m -B athrill-target-v850e2m/build -DCMAKE_BUILD_TYPE=Release
+cmake --build athrill-target-v850e2m/build
 ```
-任意のフォルダ上でathrillを空打ちし， usageが表示されればインストール完了です：
+
+別の場所にあるこのリポジトリを使ってビルドする場合は，最初の `cmake` コマンドに `-DATHRILL_SOURCE_DIR=<athrill のパス>` を追加します．
+
+引数なしで `athrill2` を実行すると，usage が表示されます：
 
 	Usage:athrill -m<memory config file> [OPTION]... <load_file>
 	-i                             : execute on the interaction mode. if -i is not set, execute on the background mode.

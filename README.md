@@ -17,10 +17,12 @@ Athrill at the moment supports V850 CPU instructions.
 Athrill requires the following to run:
 
   * OS
-    * [Linux]
-      * Ubuntu(32bit)
-    * [Windows]
-      * MinGW32_NT-6.2(Windows10, Windows7)
+    * macOS (arm64)
+    * Linux (x64, arm64)
+    * Windows 11 (x64, Visual Studio 2022)
+  * Build tools
+    * CMake 3.16 or later
+    * A C11 and C++17 compiler (AppleClang, GCC, Clang, or MSVC)
 
 Athrill uses the following editors for source debugging:
 
@@ -32,12 +34,17 @@ Athrill uses the following editors for source debugging:
 
 # Install
 -----
-After downloading Athrill project, add the following athrill executable binary folder path on the environment-variable (PATH).
+This repository holds the CPU-independent core. The `athrill2` executable is built with CMake from a target repository, which pulls in this core through `cmake/AthrillCore.cmake`. For the V850E2M target:
 
 ```
-export PATH=[athrill root folder]/src/bin:$PATH 
+git clone --recursive https://github.com/toppers/athrill-target-v850e2m
+cmake -S athrill-target-v850e2m -B athrill-target-v850e2m/build -DCMAKE_BUILD_TYPE=Release
+cmake --build athrill-target-v850e2m/build
 ```
-Then make sure you can display usage of athrill on an arbitrary folder:
+
+To build against a separate checkout of this repository, add `-DATHRILL_SOURCE_DIR=<path to athrill>` to the first `cmake` command.
+
+Running `athrill2` without arguments displays its usage:
 
 	Usage:athrill -m<memory config file> [OPTION]... <load_file>
 	-i                             : execute on the interaction mode. if -i is not set, execute on the background mode.
