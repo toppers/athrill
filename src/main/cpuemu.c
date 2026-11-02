@@ -329,9 +329,8 @@ static inline std_bool cpuemu_thread_run_nodbg(int core_id_num)
 	 * CPU 実行
 	 */
 	is_halt = TRUE;
-#ifndef DOPTIMIZE_USE_ONLY_1CPU	
+	/* TODO: The single-CPU optimisation was never active because its guard was misspelled. */
 	for (i = 0; i < core_id_num; i++) {
-#endif
 		virtual_cpu.current_core = &virtual_cpu.cores[i];
 		/**
 		 * CPU 実行開始通知
@@ -350,9 +349,7 @@ static inline std_bool cpuemu_thread_run_nodbg(int core_id_num)
 		if (virtual_cpu.cores[i].core.is_halt != TRUE) {
 			is_halt = FALSE;
 		}
-#ifndef DOPTIMIZE_USE_ONLY_1CPU	
 	}
-#endif
 	cpuemu_dev_clock.is_halt = is_halt;
 	return is_halt;
 }

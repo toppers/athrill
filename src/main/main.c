@@ -179,16 +179,6 @@ int main(int argc, const char *argv[])
 #ifdef EXDEV_ENABLE
 	(void)atexit(athrill_device_cleanup);
 #endif
-#if 0
-	struct sched_param sp;
-
-	sp.sched_priority = sched_get_priority_max(SCHED_FIFO);
-	int ret = sched_setscheduler(0, SCHED_FIFO, &sp);
-	if (ret) {
-		perror("sched_setscheduler");
-		return 1;
-	}
-#endif
 #ifdef OS_LINUX
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGTERM, athrill_sigterm_handler);
