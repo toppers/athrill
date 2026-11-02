@@ -22,6 +22,7 @@ static const char *asset_name;
 static uint64 world_time_usec;
 static uint64 world_limit_clock; /* world_time_usec * MHz read last */
 static uint64 last_notified_usec = (uint64)-1;
+static bool ready;  /* checks passed since the last START */
 static bool running;
 static bool registered;
 static bool owns_conductor;
@@ -115,15 +116,18 @@ static bool handle_event(void)
 		(void)hakoniwa_asset_is_pdu_created();
 		world_time_usec = hakoniwa_asset_get_worldtime();
 		running = true;
+		ready = false;
 		hakoniwa_asset_notify_write_pdu_done(asset_name);
 		(void)hakoniwa_asset_start_feedback_ok(asset_name);
 		break;
 	case HAKO_EVENT_STOP:
 		running = false;
+		ready = false;
 		(void)hakoniwa_asset_stop_feedback_ok(asset_name);
 		break;
 	case HAKO_EVENT_RESET:
 		running = false;
+		ready = false;
 		(void)hakoniwa_asset_reset_feedback_ok(asset_name);
 		if (reset_callback == NULL || reset_callback() != 0) {
 			std::cerr << "hakoniwa: athrill reset failed\n";
@@ -260,13 +264,24 @@ extern "C" std_bool athrill_hakoniwa_stage(uint64 clock, uint32 cpu_mhz,
 			next_sleep_clock = 0;
 			last_notified_usec = (uint64)-1;
 		}
-		if (running && cpu_mhz != 0
-			&& hakoniwa_asset_is_simulation_mode() != 0
-			&& hakoniwa_asset_is_pdu_created() != 0) {
-			if (hakoniwa_asset_is_pdu_sync_mode(asset_name) != 0) {
-				hakoniwa_asset_notify_write_pdu_done(asset_name);
+		/*
+		 * Simulation mode, PDU creation and PDU sync mode only change
+		 * around START/STOP/RESET, so they are checked until they pass once
+		 * after START (ready) and again only after the next event.
+		 */
+		if (running && cpu_mhz != 0 && !ready) {
+			if (hakoniwa_asset_is_simulation_mode() != 0
+				&& hakoniwa_asset_is_pdu_created() != 0) {
+				if (hakoniwa_asset_is_pdu_sync_mode(asset_name) != 0) {
+					hakoniwa_asset_notify_write_pdu_done(asset_name);
+				}
+				else {
+					ready = true;
+				}
 			}
-			else {
+		}
+		if (running && cpu_mhz != 0 && ready) {
+			{
 				/* The only way to learn that the world time advanced. */
 				world_time_usec = hakoniwa_asset_get_worldtime();
 				const uint64 limit = world_time_usec * (uint64)cpu_mhz;
