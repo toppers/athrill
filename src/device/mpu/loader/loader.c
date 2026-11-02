@@ -21,6 +21,47 @@ static Std_ReturnType Elf_LoadProgram(const Elf32_Ehdr *elf_image, MemoryAddress
 static Std_ReturnType Elf64_Check(const Elf64_Ehdr *elf_image);
 static Std_ReturnType Elf64_LoadProgram(const Elf64_Ehdr *elf_image, MemoryAddressMapType *memap);
 
+static std_bool memory_region_covers(const MemoryAddressType *region, AthrillAddrType addr, AthrillAddrType size, std_bool size_is_kb)
+{
+	AthrillAddrType region_size = size_is_kb ? region->size * 1024 : region->size;
+	AthrillAddrType offset;
+
+	if (addr < region->start) return FALSE;
+	offset = addr - region->start;
+	return offset <= region_size && size <= region_size - offset;
+}
+
+/* MALLOC regions reserve address space but have no contiguous backing store.
+ * ROM, RAM and MMAP regions do, as do configured external-device regions. */
+static std_bool memory_map_covers(const MemoryAddressMapType *memap, AthrillAddrType addr, AthrillAddrType size)
+{
+	uint32 i;
+
+	for (i = 0; i < memap->rom_num; i++)
+		if (memory_region_covers(&memap->rom[i], addr, size, TRUE)) return TRUE;
+	for (i = 0; i < memap->ram_num; i++)
+		if (memap->ram[i].type != MemoryAddressImplType_MALLOC &&
+			memory_region_covers(&memap->ram[i], addr, size, TRUE)) return TRUE;
+	for (i = 0; i < memap->dev_num; i++)
+		if (memory_region_covers(&memap->dev[i], addr, size, FALSE)) return TRUE;
+	return FALSE;
+}
+
+static Std_ReturnType load_segment(const uint8 *elf_data, uint64 offset, uint64 load_addr,
+	uint64 file_size, uint64 memory_size, MemoryAddressMapType *memap)
+{
+	uint8 *ptr;
+
+	if (memory_size < file_size || !memory_map_covers(memap, (AthrillAddrType)load_addr,
+		(AthrillAddrType)memory_size)) return STD_E_NOENT;
+	if (memory_size == 0) return STD_E_OK;
+	if (mpu_get_pointer(CPU_CONFIG_CORE_ID_0, (AthrillAddrType)load_addr, &ptr) != STD_E_OK)
+		return STD_E_INVALID;
+	memcpy(ptr, elf_data + offset, (size_t)file_size);
+	memset(ptr + file_size, 0, (size_t)(memory_size - file_size));
+	return STD_E_OK;
+}
+
 Std_ReturnType elf_reload(uint8 *elf_data, MemoryAddressMapType *memap)
 {
     const Elf32_Ehdr *elf_image = (const Elf32_Ehdr *)elf_data;
@@ -42,9 +83,10 @@ Std_ReturnType elf_reload(uint8 *elf_data, MemoryAddressMapType *memap)
 		}
 		for (i = 0; i < image64->e_phnum; i++) {
 			const Elf64_Phdr *p = (const Elf64_Phdr *)(elf_data + image64->e_phoff + image64->e_phentsize * i);
-			if (p->p_type != PT_LOAD || mpu_address_get_rom(p->p_paddr, p->p_filesz) == NULL) continue;
-			if (mpu_get_pointer(CPU_CONFIG_CORE_ID_0, p->p_paddr, &ptr) != STD_E_OK) return STD_E_INVALID;
-			memcpy(ptr, elf_data + p->p_offset, (size_t)p->p_filesz);
+			Std_ReturnType err;
+			if (p->p_type != PT_LOAD) continue;
+			err = load_segment(elf_data, p->p_offset, p->p_paddr, p->p_filesz, p->p_memsz, memap);
+			if (err == STD_E_INVALID) return err;
 		}
 		return STD_E_OK;
 	}
@@ -64,9 +106,11 @@ Std_ReturnType elf_reload(uint8 *elf_data, MemoryAddressMapType *memap)
 	}
 	for (i = 0; i < elf_image->e_phnum; i++) {
 		phdr = (Elf32_Phdr *)(((uint8 *)elf_image) + elf_image->e_phoff + elf_image->e_phentsize * i);
-		if (phdr->p_type != PT_LOAD || mpu_address_get_rom(phdr->p_paddr, phdr->p_filesz) == NULL) continue;
-		if (mpu_get_pointer(CPU_CONFIG_CORE_ID_0, phdr->p_paddr, &ptr) != STD_E_OK) return STD_E_INVALID;
-		memcpy(ptr, ((uint8 *)elf_image) + phdr->p_offset, phdr->p_filesz);
+		Std_ReturnType err;
+		if (phdr->p_type != PT_LOAD) continue;
+		err = load_segment((const uint8 *)elf_image, phdr->p_offset, phdr->p_paddr,
+			phdr->p_filesz, phdr->p_memsz, memap);
+		if (err == STD_E_INVALID) return err;
 	}
 	return STD_E_OK;
 }
@@ -307,24 +351,21 @@ static Std_ReturnType Elf_LoadProgram(const Elf32_Ehdr *elf_image, MemoryAddress
 		if (phdr->p_type != PT_LOAD) {
 			continue;
 		}
-		/*
-		 * ROM領域のみロードする．
-		 */
-		ptr = mpu_address_get_rom(phdr->p_paddr, phdr->p_filesz);
-		if (ptr == NULL) {
-			continue;
+		/* p_paddr is the ELF load address.  In ROM-to-RAM layouts p_vaddr is
+		 * the run address and startup code performs the copy from p_paddr. */
+		{
+			std_bool was_rom = mpu_address_get_rom(phdr->p_paddr, phdr->p_filesz) != NULL;
+			err = load_segment((const uint8 *)elf_image, phdr->p_offset, phdr->p_paddr,
+				phdr->p_filesz, phdr->p_memsz, memap);
+			if (err == STD_E_NOENT) continue;
+			if (err != STD_E_OK) {
+				printf("Invalid elf file: can not load addr=0x%x\n", phdr->p_paddr);
+				return STD_E_INVALID;
+			}
+			/* Keep the established V850 loader output unchanged. */
+			if (was_rom)
+				printf("Elf loading was succeeded:0x%x - 0x%x : %u.%u KB\n", phdr->p_paddr, phdr->p_paddr + phdr->p_memsz, phdr->p_filesz/1024, phdr->p_filesz % 1024);
 		}
-		err = mpu_get_pointer(CPU_CONFIG_CORE_ID_0, phdr->p_paddr, &ptr);
-		if (err != STD_E_OK) {
-			printf("Invalid elf file: can not load addr=0x%x\n", phdr->p_paddr);
-			return STD_E_INVALID;
-		}
-
-		memcpy(ptr,
-				( ((uint8_t*)elf_image) + phdr->p_offset ),
-				phdr->p_filesz);
-
-		printf("Elf loading was succeeded:0x%x - 0x%x : %u.%u KB\n", phdr->p_paddr, phdr->p_paddr + phdr->p_memsz, phdr->p_filesz/1024, phdr->p_filesz % 1024);
 	}
 	return 0;
 }
@@ -364,11 +405,10 @@ static Std_ReturnType Elf64_LoadProgram(const Elf64_Ehdr *elf_image, MemoryAddre
 		}
 #endif
 		if ((p->p_flags & PF_X) != 0) virtual_cpu_cache_code_add_with_check((uint32)p->p_memsz, p->p_vaddr);
-		ptr = mpu_address_get_rom(p->p_paddr, p->p_filesz);
-		if (ptr == NULL) continue;
-		err = mpu_get_pointer(CPU_CONFIG_CORE_ID_0, p->p_paddr, &ptr);
+		err = load_segment((const uint8 *)elf_image, p->p_offset, p->p_paddr,
+			p->p_filesz, p->p_memsz, memap);
+		if (err == STD_E_NOENT) continue;
 		if (err != STD_E_OK) return STD_E_INVALID;
-		memcpy(ptr, (const uint8 *)elf_image + p->p_offset, (size_t)p->p_filesz);
 		if ((p->p_paddr + p->p_memsz) <= UINT32_MAX)
 			printf("ELF64 loading succeeded: 0x%08x - 0x%08x\n", (uint32)p->p_paddr, (uint32)(p->p_paddr + p->p_memsz));
 		else
