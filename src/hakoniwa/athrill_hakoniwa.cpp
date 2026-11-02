@@ -20,6 +20,9 @@ extern "C" {
 enum { HAKO_EVENT_NONE, HAKO_EVENT_START, HAKO_EVENT_STOP, HAKO_EVENT_RESET, HAKO_EVENT_ERROR };
 static const char *asset_name;
 static uint64 world_time_usec;
+static uint64 asset_delta_usec;
+static uint64 asset_time_usec;   /* multiple of asset_delta_usec */
+static uint64 step_limit_clock;  /* (asset_time_usec + delta) * MHz once granted */
 static bool running;
 static bool registered;
 static bool owns_conductor;
@@ -35,6 +38,7 @@ static void print_time(void)
 	const uint64 clock = cpuemu_get_clock();
 	std::cout << "hakoniwa: athrill_clock=" << clock
 		<< " asset_time_usec=" << (cpu_mhz == 0 ? 0 : clock / cpu_mhz)
+		<< " reported_time_usec=" << asset_time_usec
 		<< " world_time_usec=" << world_time_usec << '\n';
 }
 
@@ -67,13 +71,16 @@ static int create_pdu_channels(const char *pdudef_path)
 }
 
 extern "C" int athrill_hakoniwa_initialize(const char *name, const char *pdudef_path,
-	uint64 delta_usec, uint64 max_delay_usec, uint64 sleep_msec,
+	uint64 delta_usec, uint64 conductor_delta_usec, uint64 max_delay_usec, uint64 sleep_msec,
 	std_bool disable_conductor, int (*on_reset)(void))
 {
 	asset_name = name;
 	world_time_usec = 0;
 	running = registered = owns_conductor = finalized = false;
 	real_sleep_msec = sleep_msec;
+	asset_delta_usec = delta_usec;
+	asset_time_usec = 0;
+	step_limit_clock = 0;
 	reset_callback = on_reset;
 	pdudef_path = pdudef_path != NULL ? pdudef_path : ATHRILL_HAKONIWA_DEFAULT_PDUDEF;
 	if (disable_conductor == FALSE) {
@@ -81,7 +88,7 @@ extern "C" int athrill_hakoniwa_initialize(const char *name, const char *pdudef_
 			std::cerr << "hakoniwa: hakoniwa_master_init failed\n";
 			return 1;
 		}
-		hakoniwa_master_set_config_simtime(max_delay_usec, delta_usec);
+		hakoniwa_master_set_config_simtime(max_delay_usec, conductor_delta_usec);
 		owns_conductor = true;
 	}
 	if (hakoniwa_asset_init() != 0) {
@@ -159,7 +166,6 @@ static void pace_real_time(uint64 clock, uint32 cpu_mhz)
 	}
 }
 
-static uint64 world_clock_cache;
 
 /* Clock skip must not jump past the world time. */
 static void cap_skip_interval(uint64 interval, uint64 *min_intr_interval)
@@ -178,32 +184,48 @@ extern "C" std_bool athrill_hakoniwa_stage(uint64 clock, uint32 cpu_mhz,
 		pace_real_time(clock, cpu_mhz);
 	}
 	/*
-	 * Fast path: the CPU is still behind the world time seen last, so it may
-	 * run without touching shared memory. Hakoniwa is consulted only when
-	 * the CPU reaches that boundary (at least once per delta time).
+	 * Inside a granted step [asset_time, asset_time + delta] the CPU runs
+	 * freely and shared memory is not touched.
 	 */
-	if (running && clock < world_clock_cache) {
-		cap_skip_interval(world_clock_cache - clock, min_intr_interval);
+	if (running && clock < step_limit_clock) {
+		cap_skip_interval(step_limit_clock - clock, min_intr_interval);
 		return TRUE;
 	}
-	if (running && cpu_mhz != 0) {
-		hakoniwa_asset_notify_simtime(asset_name, clock / cpu_mhz);
+	if (step_limit_clock != 0 && clock >= step_limit_clock) {
+		asset_time_usec += asset_delta_usec;
+		step_limit_clock = 0;
 	}
+	/*
+	 * Same rule as core-pro's hako_asset_impl_execute(): report the asset
+	 * time, and take the next step only while asset_time + delta does not
+	 * exceed the Hakoniwa (world) time.
+	 */
 	for (;;) {
 		if (owns_conductor) {
 			(void)hakoniwa_master_execute();
 		}
 		if (handle_event()) {
-			clock = 0;
-			world_clock_cache = 0;
+			asset_time_usec = 0;
+			step_limit_clock = 0;
 			next_sleep_clock = 0;
 		}
-		world_time_usec = hakoniwa_asset_get_worldtime();
-		const uint64 world_clock = world_time_usec * (uint64)cpu_mhz;
-		if (running && clock < world_clock) {
-			world_clock_cache = world_clock;
-			cap_skip_interval(world_clock - clock, min_intr_interval);
-			return TRUE;
+		if (running && cpu_mhz != 0) {
+			hakoniwa_asset_notify_simtime(asset_name, asset_time_usec);
+			if (hakoniwa_asset_is_simulation_mode() != 0
+				&& hakoniwa_asset_is_pdu_created() != 0) {
+				if (hakoniwa_asset_is_pdu_sync_mode(asset_name) != 0) {
+					hakoniwa_asset_notify_write_pdu_done(asset_name);
+				}
+				else {
+					world_time_usec = hakoniwa_asset_get_worldtime();
+					const uint64 next_usec = asset_time_usec + asset_delta_usec;
+					if (next_usec <= world_time_usec) {
+						step_limit_clock = next_usec * (uint64)cpu_mhz;
+						cap_skip_interval(step_limit_clock - clock, min_intr_interval);
+						return TRUE;
+					}
+				}
+			}
 		}
 		std::this_thread::yield();
 	}

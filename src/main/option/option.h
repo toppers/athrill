@@ -26,6 +26,7 @@ typedef struct {
 	char	*hakoniwa_asset_name;
 	char	*hakoniwa_pdudef_path;
 	uint64	hakoniwa_delta_usec;
+	uint64	hakoniwa_conductor_delta_usec;
 	uint64	hakoniwa_max_delay_usec;
 	uint64	hakoniwa_real_sleep_msec;
 	std_bool hakoniwa_disable_conductor;
