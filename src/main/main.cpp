@@ -26,10 +26,11 @@ extern "C" {
 }
 
 static uint8 *hakoniwa_elf_data;
+static uint64 hakoniwa_elf_size;
 static MemoryAddressMapType *hakoniwa_memmap;
 static int hakoniwa_reset_athrill(void)
 {
-	if (elf_reload(hakoniwa_elf_data, hakoniwa_memmap) != STD_E_OK) return 1;
+	if (elf_reload(hakoniwa_elf_data, hakoniwa_elf_size, hakoniwa_memmap) != STD_E_OK) return 1;
 	cpuemu_reset();
 	return 0;
 }
@@ -224,7 +225,10 @@ int main(int argc, const char *argv[])
 		binary_load((uint8*)opt->load_file.buffer, 0U, opt->load_file.size);
 	}
 	else {
-		elf_load((uint8*)opt->load_file.buffer, &memmap, &entry_addr);
+		if (elf_load((uint8*)opt->load_file.buffer, opt->load_file.size, &memmap, &entry_addr) != STD_E_OK) {
+			std::cerr << "can not load ELF file " << opt->load_filepath << "\n";
+			return 1;
+		}
 		if (cpuemu_symbol_set() != STD_E_OK) {
 			return -1;
 		}
@@ -253,6 +257,7 @@ int main(int argc, const char *argv[])
 			? (uint64)-1 : opt->timeout);
 		if (opt->hakoniwa_asset_name != NULL) {
 			hakoniwa_elf_data = (uint8 *)opt->load_file.buffer;
+			hakoniwa_elf_size = opt->load_file.size;
 			hakoniwa_memmap = &memmap;
 			if (athrill_hakoniwa_initialize(opt->hakoniwa_asset_name,
 				opt->hakoniwa_pdudef_path, opt->hakoniwa_delta_usec,

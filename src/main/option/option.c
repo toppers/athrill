@@ -148,6 +148,10 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 			printf("ERROR: not found <load file>\n");
 			return NULL;
 		}
+		if (strlen(argv[parser.index]) >= TOKEN_STRING_MAX_SIZE) {
+			printf("ERROR: load file path is too long\n");
+			return NULL;
+		}
 	  memcpy(cmd_option.load_file.filepath.str, argv[parser.index], strlen(argv[parser.index]));
 	  cmd_option.load_file.filepath.str[strlen(argv[parser.index])] = '\0';
 	  cmd_option.load_file.filepath.len = strlen(argv[parser.index]);

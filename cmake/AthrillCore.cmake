@@ -153,6 +153,7 @@ set(ATHRILL_MPU_SOURCES
     "${ATHRILL_SRC_DIR}/device/mpu/mpu.c"
     "${ATHRILL_SRC_DIR}/device/mpu/mpu_malloc.c"
     "${ATHRILL_SRC_DIR}/device/mpu/loader/loader.c"
+    "${ATHRILL_SRC_DIR}/lib/loader/elf_image_check.c"
 )
 
 set(ATHRILL_STD_COMMON_SOURCES

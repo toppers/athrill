@@ -52,12 +52,13 @@ bool file_load(FileType *file)
 	    fclose(fp);
 		return FALSE;
     }
-    file->size = st.st_size;
-    if (file->size > MAX_FILE_SIZE) {
-			printf("ERROR file size too large %s size=%u(MAX=%u)\n", file->filepath.str, file->size, MAX_FILE_SIZE);
+    /* Compare before narrowing: a larger file must not wrap into range. */
+    if ((st.st_size < 0) || ((uint64)st.st_size > MAX_FILE_SIZE)) {
+		printf("ERROR file size too large %s size=%lld(MAX=%u)\n", file->filepath.str, (long long)st.st_size, MAX_FILE_SIZE);
 	    fclose(fp);
 		return FALSE;
     }
+    file->size = (uint32)st.st_size;
 
     ret = fread(file->buffer, st.st_size, 1, fp);
     if (ret == 0) {

@@ -3,6 +3,7 @@
 #include "mpu.h"
 #include "mpu_ops.h"
 #include "loader/elf.h"
+#include "loader/elf_image_check.h"
 #include "elf_section.h"
 #include "elf_dwarf_line.h"
 #include "elf_dwarf_abbrev.h"
@@ -62,12 +63,16 @@ static Std_ReturnType load_segment(const uint8 *elf_data, uint64 offset, uint64 
 	return STD_E_OK;
 }
 
-Std_ReturnType elf_reload(uint8 *elf_data, MemoryAddressMapType *memap)
+Std_ReturnType elf_reload(uint8 *elf_data, uint64 elf_size, MemoryAddressMapType *memap)
 {
     const Elf32_Ehdr *elf_image = (const Elf32_Ehdr *)elf_data;
 	Elf32_Phdr *phdr;
 	uint8 *ptr;
 	uint32 i;
+
+	if (elf_image_check(elf_data, elf_size) != STD_E_OK) {
+		return STD_E_INVALID;
+	}
 
 	if (elf_image->e_ident[EI_CLASS] == ELFCLASS64) {
 		const Elf64_Ehdr *image64 = (const Elf64_Ehdr *)elf_data;
@@ -168,11 +173,48 @@ static std_bool dwarf_is_supported(uint8 *elf_data)
 	return TRUE;
 }
 
-Std_ReturnType elf_load(uint8 *elf_data, MemoryAddressMapType *memap, AthrillAddrType *entry_addr)
+/*
+ * Debug information is optional: a program without it, or with a part the
+ * readers cannot use, still loads and runs. Loading stops at the first
+ * missing or unusable part, as before.
+ */
+static void load_debug_information(uint8 *elf_data, std_bool is_64)
 {
-	Std_ReturnType err;
 	uint32 disable_debug_data_type = 0;
 
+	if (dwarf_is_supported(elf_data) == FALSE) {
+		return;
+	}
+	if (elf_dwarf_line_load(elf_data) != STD_E_OK) {
+		return;
+	}
+	if (elf_dwarf_abbrev_load(elf_data) != STD_E_OK) {
+		return;
+	}
+	if (elf_dwarf_info_load(elf_data) != STD_E_OK) {
+		return;
+	}
+	if (elf_dwarf_loc_load(elf_data) != STD_E_OK) {
+		return;
+	}
+	/* Variable types are built for ELF32 only; the ELF64 path has never used them. */
+	if (is_64) {
+		return;
+	}
+	cpuemu_get_devcfg_value("DEBUG_FUNC_DISABLE_DEBUG_DATA_TYPE", &disable_debug_data_type);
+	if (disable_debug_data_type == 0) {
+		dwarf_build_data_type_set();
+	}
+}
+
+Std_ReturnType elf_load(uint8 *elf_data, uint64 elf_size, MemoryAddressMapType *memap, AthrillAddrType *entry_addr)
+{
+	Std_ReturnType err;
+
+	err = elf_image_check(elf_data, elf_size);
+	if (err != STD_E_OK) {
+		return err;
+	}
 	if (((const Elf32_Ehdr*)elf_data)->e_ident[EI_CLASS] == ELFCLASS64) {
 		const Elf64_Ehdr *image64 = (const Elf64_Ehdr *)elf_data;
 		if (Elf64_Check(image64) != STD_E_OK) return STD_E_INVALID;
@@ -185,56 +227,25 @@ Std_ReturnType elf_load(uint8 *elf_data, MemoryAddressMapType *memap, AthrillAdd
 		*entry_addr = image64->e_entry;
 		err = Elf64_LoadProgram(image64, memap);
 		if (err != STD_E_OK) return err;
-		/* The section/symbol reader is class-aware.  DWARF consumers continue to
-		 * work when the producer uses the existing 32-bit DWARF forms. */
-		err = elf_symbol_load(elf_data);
-		if (err != STD_E_OK) return err;
-		if (dwarf_is_supported(elf_data) == FALSE) {
-			return STD_E_OK;
+	}
+	else {
+		err = Elf_Check((const Elf32_Ehdr*)elf_data);
+		if (err != STD_E_OK) {
+			return err;
 		}
-		(void)elf_dwarf_line_load(elf_data);
-		(void)elf_dwarf_abbrev_load(elf_data);
-		(void)elf_dwarf_info_load(elf_data);
-		(void)elf_dwarf_loc_load(elf_data);
-		return STD_E_OK;
-	}
-
-	*entry_addr = ((const Elf32_Ehdr*)elf_data)->e_entry;
-
-	err = Elf_Check((const Elf32_Ehdr*)elf_data);
-	if (err != STD_E_OK) {
-		return err;
-	}
-	err = Elf_LoadProgram((const Elf32_Ehdr*)elf_data, memap);
-	if (err != STD_E_OK) {
-		return err;
+		*entry_addr = ((const Elf32_Ehdr*)elf_data)->e_entry;
+		err = Elf_LoadProgram((const Elf32_Ehdr*)elf_data, memap);
+		if (err != STD_E_OK) {
+			return err;
+		}
 	}
 	err = elf_symbol_load(elf_data);
 	if (err != STD_E_OK) {
 		return err;
 	}
-	err = elf_dwarf_line_load(elf_data);
-	if (err != STD_E_OK) {
-		return err;
-	}
-	err = elf_dwarf_abbrev_load(elf_data);
-	if (err != STD_E_OK) {
-		return err;
-	}
-	err = elf_dwarf_info_load(elf_data);
-	if (err != STD_E_OK) {
-		return err;
-	}
-	err = elf_dwarf_loc_load(elf_data);
-	if (err != STD_E_OK) {
-		return err;
-	}
-	cpuemu_get_devcfg_value("DEBUG_FUNC_DISABLE_DEBUG_DATA_TYPE", &disable_debug_data_type);
-	if (disable_debug_data_type == 0) {
-		dwarf_build_data_type_set();
-	}
-
-	return err;
+	load_debug_information(elf_data,
+		((const Elf32_Ehdr*)elf_data)->e_ident[EI_CLASS] == ELFCLASS64);
+	return STD_E_OK;
 }
 
 

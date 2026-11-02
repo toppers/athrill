@@ -110,6 +110,13 @@ Std_ReturnType elf_symbol_load(uint8 *elf_data)
 		printf("ERROR: can not found symbol section...\n");
 		return STD_E_INVALID;
 	}
+	/*
+	 * Symbol names are in the string table the symbol table links to
+	 * (checked by elf_image_check()), not necessarily the last one listed.
+	 */
+	shdr = (Elf32_Shdr *)&elf_data[(shdr_off + (elf_symbol_section.shdr->sh_link * shdr_size))];
+	elf_string_table_section.shdata = &elf_data[shdr->sh_offset];
+	elf_string_table_section.shdr = shdr;
 	elf_symbol_section.string_table = &elf_string_table_section;
 	return STD_E_OK;
 }
