@@ -18,13 +18,23 @@ endforeach()
 set(ATHRILL_BASE_INCLUDE_DIRS
     "${ATHRILL_SRC_DIR}/inc"
     "${ATHRILL_SRC_DIR}/lib"
+    "${ATHRILL_SRC_DIR}/osdep"
 )
 
 set(ATHRILL_WINDOWS_COMPAT_INCLUDE_DIR
-    "${ATHRILL_SRC_DIR}/platform/windows/include")
+    "${ATHRILL_SRC_DIR}/osdep/windows/include")
+
+if(WIN32)
+    set(ATHRILL_OSDEP_SOURCE
+        "${ATHRILL_SRC_DIR}/osdep/windows/osdep_windows.c")
+else()
+    set(ATHRILL_OSDEP_SOURCE
+        "${ATHRILL_SRC_DIR}/osdep/posix/osdep_posix.c")
+endif()
 
 set(ATHRILL_MAIN_SOURCES
     "${ATHRILL_SRC_DIR}/main/cpuemu.c"
+    "${ATHRILL_OSDEP_SOURCE}"
     "${ATHRILL_SRC_DIR}/main/option/argument_parser.c"
     "${ATHRILL_SRC_DIR}/main/option/option.c"
     "${ATHRILL_SRC_DIR}/debugger/executor/cpu_control/dbg_cpu_callback.c"

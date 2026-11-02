@@ -9,7 +9,7 @@
 #include <sys/time.h>
 #endif /* OS_LINUX */
 
-typedef struct {
+typedef struct CpuEmuElapsType {
 	uint64	total_clocks;
 	uint64	intr_clocks;
 	int     core_id_num;
@@ -20,10 +20,8 @@ typedef struct {
 } CpuEmuElapsType;
 extern void cpuemu_init(void *(*cpu_run)(void *), void *opt);
 extern void cpuemu_get_elaps(CpuEmuElapsType *elaps);
-#ifdef OS_LINUX
 extern void cpuemu_start_elaps(void);
 extern void cpuemu_end_elaps(void);
-#endif /* OS_LINUX */
 extern uint32 cpuemu_get_retaddr(CoreIdType core_id);
 extern Std_ReturnType cpuemu_get_addr_pointer(uint32 addr, uint8 **data);
 extern void cpuemu_get_register(CoreIdType core_id, TargetCoreType *cpu);

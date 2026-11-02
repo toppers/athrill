@@ -9,18 +9,13 @@
 #include "cui/stdio/cui_ops_stdio.h"
 #include "cui/udp/cui_ops_udp.h"
 #include "file_address_mapping.h"
+#include "osdep.h"
 #include <stdio.h>
-#include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <sys/stat.h>
 #include "target/target_os_api.h"
-#include <sched.h>
 #include <limits.h>
 #include "athrill_exdev_header.h"
-#ifdef OS_LINUX
-#include <signal.h>
-#endif
 #include "athrill_memory.h"
 #include "athrill_device.h"
 
@@ -43,13 +38,10 @@ static FILE *save_operation_fp = NULL;
 
 static void load_cui_operation(void)
 {
-#ifdef 	OS_LINUX	/* Windows not support */
 	DbgCmdExecutorType *res;
 	char *filename;
-	size_t buffer_size = 1024;
 	char buffer[1025];
-	char *lineptr = buffer;
-	ssize_t len;
+	size_t len;
 
 	Std_ReturnType err = cpuemu_get_devcfg_string("DEBUG_FUNC_OPLOG", &filename);
 	if (err != STD_E_OK) {
@@ -61,18 +53,19 @@ static void load_cui_operation(void)
 		return;
 	}
 	while (TRUE) {
-		len = getline(&lineptr, &buffer_size, save_operation_fp);
-		if (len < 0) {
+		if (fgets(buffer, sizeof(buffer), save_operation_fp) == NULL) {
 			break;
 		}
-		buffer[len] = '\0';
+		len = strlen(buffer);
+		if ((len > 0) && (buffer[len - 1] == '\n')) {
+			buffer[--len] = '\0';
+		}
 		res = dbg_parse((uint8*)buffer, (uint32)len);
 
 		if (res != NULL) {
 			res->run(res);
 		}
 	}
-#endif	/* OS_LINUX	 */
 	return;
 }
 static void save_cui_operation(const char* op)
@@ -117,21 +110,6 @@ retry:
 		}
 	}
 }
-
-#ifdef OS_LINUX
-static void athrill_sigterm_handler(int arg)
-{
-	athrill_device_cleanup();
-	sync();
-	sync();
-	sync();
-	sync();
-	sync();
-	exit(0);
-	return;
-}
-#endif
-
 
 /*
  * コマンドオプション仕様
@@ -178,10 +156,9 @@ int main(int argc, const char *argv[])
 	winsock_init();
 #ifdef EXDEV_ENABLE
 	(void)atexit(athrill_device_cleanup);
-#endif
-#ifdef OS_LINUX
-	signal(SIGPIPE, SIG_IGN);
-	signal(SIGTERM, athrill_sigterm_handler);
+	osdep_install_terminate_handler(athrill_device_cleanup);
+#else
+	osdep_install_terminate_handler(NULL);
 #endif
 
 	opt = parse_args(argc, argv);

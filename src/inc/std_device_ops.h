@@ -89,7 +89,7 @@ static inline void profstat_end(ProfStatType *prof)
  */
 #define DEVICE_CLOCK_MAX_INTERVAL	-1ULL
 
-typedef struct {
+typedef struct DeviceClockType {
 	uint64 clock;
 	uint64 intclock;//割込み処理で消費している時間
 #ifdef OS_LINUX

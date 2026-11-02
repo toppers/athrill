@@ -12,21 +12,13 @@
 #include "symbol_ops.h"
 #include "token.h"
 #include "file.h"
+#include "osdep.h"
 #include <stdio.h>
-#include <time.h>
-#include <sys/time.h>
+#include <stdlib.h>
 #include "target/target_os_api.h"
 #include "option/option.h"
-#include <fcntl.h>
 #include <string.h>
 #include "shared_library.h"
-#ifdef OS_LINUX
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include "errno.h"
-#endif /* OS_LINUX */
 #include "athrill_device.h"
 #include "assert.h"
 #include "athrill_exdev_header.h"
@@ -113,10 +105,7 @@ void cpuemu_init(void *(*cpu_run)(void *), void *opt)
 	else {
 		virtual_cpu.core_id_num = CPU_CONFIG_CORE_NUM;
 	}
-#ifdef OS_LINUX
-	memset(&cpuemu_dev_clock.start_tv, 0, sizeof(struct timeval));
-	memset(&cpuemu_dev_clock.elaps_tv, 0, sizeof(struct timeval));
-#endif /* OS_LINUX */
+	osdep_elaps_reset(&cpuemu_dev_clock);
 
 	cpu_init();
 	device_init(&virtual_cpu, &cpuemu_dev_clock);
@@ -160,42 +149,24 @@ void cpuemu_get_elaps(CpuEmuElapsType *elaps)
 	elaps->core_id_num = cpu_config_get_core_id_num();
 	elaps->total_clocks = cpuemu_dev_clock.clock;
 	elaps->intr_clocks = cpuemu_dev_clock.intclock;
-#ifdef OS_LINUX
-	elaps->elaps_tv = cpuemu_dev_clock.elaps_tv;
-#endif /* OS_LINUX */
+	osdep_elaps_copy(&cpuemu_dev_clock, elaps);
 	for (core_id = 0; core_id < elaps->core_id_num; core_id++) {
 		elaps->cpu_clocks[core_id] = virtual_cpu.cores[core_id].elaps;
 	}
 	return;
 }
 
-#ifdef OS_LINUX
 void cpuemu_start_elaps(void)
 {
-	(void) gettimeofday(&cpuemu_dev_clock.start_tv, NULL);
-	//printf("start sec=%ld usec=%ld\n", cpuemu_dev_clock.start_tv.tv_sec, cpuemu_dev_clock.start_tv.tv_usec);
+	osdep_elaps_start(&cpuemu_dev_clock);
 	return;
 }
 
 void cpuemu_end_elaps(void)
 {
-	struct timeval current;
-	struct timeval elaps_tv;
-
-	if (cpuemu_dev_clock.start_tv.tv_sec == 0) {
-		return;
-	}
-
-	(void) gettimeofday(&current, NULL);
-	cpuemu_timeval_sub(&current, &cpuemu_dev_clock.start_tv, &elaps_tv);
-	cpuemu_timeval_add(&elaps_tv, &cpuemu_dev_clock.elaps_tv, &cpuemu_dev_clock.elaps_tv);
-	//printf("current sec=%ld usec=%ld\n", current.tv_sec, current.tv_usec);
-	//printf("elaps sec=%ld usec=%ld\n", elaps_tv.tv_sec, elaps_tv.tv_usec);
-	//printf("total sec=%ld usec=%ld\n", cpuemu_dev_clock.elaps_tv.tv_sec, cpuemu_dev_clock.elaps_tv.tv_usec);
-
+	osdep_elaps_end(&cpuemu_dev_clock);
 	return;
 }
-#endif /* OS_LINUX */
 
 uint32 cpuemu_get_retaddr(CoreIdType core_id)
 {
@@ -384,25 +355,8 @@ static inline std_bool cpuemu_thread_run_dbg(int core_id_num)
  */
 static void cpuemu_sync_skipped_clock(void)
 {
-#ifdef OS_LINUX
-	uint64 skipc_usec = 0;
-	if (enable_dbg.enable_sync_time > 0) {
-		skipc_usec = ( (cpuemu_dev_clock.min_intr_interval - 1) / virtual_cpu.cpu_freq );
-		if (skipc_usec > ((uint64)enable_dbg.enable_sync_time)) {
-			(void)usleep((useconds_t)(skipc_usec - ((uint64)enable_dbg.enable_sync_time)));
-		}
-	}
-	if (enable_dbg.show_skip_time != 0) {
-		static struct timeval prev_elaps;
-		struct timeval result;
-		struct timeval elaps;
-		gettimeofday(&elaps, NULL);
-		cpuemu_timeval_sub(&elaps, &prev_elaps, &result);
-		printf("skip-clock = "PRINT_FMT_UINT64" : %ld sec %ld usec sync_time=%u \n",
-				skipc_usec, (long)result.tv_sec, (long)result.tv_usec, (unsigned int)enable_dbg.enable_sync_time);
-		prev_elaps = elaps;
-	}
-#endif /* OS_LINUX */
+	osdep_sync_skipped_clock(cpuemu_dev_clock.min_intr_interval,
+		virtual_cpu.cpu_freq, enable_dbg.enable_sync_time, enable_dbg.show_skip_time);
 	return;
 }
 
@@ -788,8 +742,11 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			memp->mmap_addr = NULL;
 			analize_memmap_arguments(&memcfg_token_container, map, memp);
 		}
-#ifdef OS_LINUX
 		else if (!strcmp("MMAP", (char*)memcfg_token_container.array[0].body.str.str)) {
+			if (osdep_supports_mapped_memory() == FALSE) {
+				printf("WARNING: unknown memory type=%s\n", (char*)memcfg_token_container.array[0].body.str.str);
+				continue;
+			}
 			map->ram_num++;
 			map->ram = realloc(map->ram, map->ram_num * sizeof(MemoryAddressType));
 			ASSERT(map->ram != NULL);
@@ -797,39 +754,36 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			memp->type = MemoryAddressImplType_MMAP;
 			{
 				char* filepath;
-				int fd;
-				int err;
-				struct stat statbuf;
+				OsdepMappedFile mapped_file;
 				AthrillDeviceMmapInfoType info;
 
 				cpuemu_env_parse_devcfg_string(&memcfg_token_container.array[2].body.str);
 				filepath = (char*)memcfg_token_container.array[2].body.str.str;
 				//printf("mmap path=%s\n", filepath);
-				fd = open(filepath, O_RDWR);
-				if (fd < 0) {
-					printf("can not open mmapfile:%s err=%d\n", filepath, errno);
-					ASSERT(fd >= 0);
+				err = osdep_open_mapped_file(filepath, &mapped_file);
+				if (err != STD_E_OK) {
+					printf("can not open mmapfile:%s err=%d\n", filepath, mapped_file.error_number);
+					ASSERT(err == STD_E_OK);
 				}
-				err = fstat(fd, &statbuf);
-				ASSERT(err >= 0);
-				memp->size = ((statbuf.st_size + 8191) / 8192) * 8;
+				memp->size = (uint32)(((mapped_file.file_size + 8191) / 8192) * 8);
 				if (memp->size == 0) {
 					memp->size = 8;
 				}
-				memp->mmap_addr = mmap(NULL, memp->size * 1024, (PROT_READ|PROT_WRITE), MAP_SHARED, fd, 0);
-				ASSERT(memp->mmap_addr != NULL);
-#ifdef OS_MAC
-                printf("MMAP(%s filesize=%lld)", filepath, statbuf.st_size);
-#else
-				printf("MMAP(%s filesize=%lu)", filepath, statbuf.st_size);
-#endif
+				err = osdep_map_open_file(&mapped_file, memp->size * 1024U);
+				ASSERT(err == STD_E_OK);
+				memp->mmap_addr = mapped_file.address;
+				printf("MMAP(%s filesize="PRINT_FMT_UINT64")", filepath, mapped_file.file_size);
 				analize_memmap_arguments(&memcfg_token_container, map, memp);
-                info.fd = fd;
+				info.fd = mapped_file.fd;
 				info.addr = CAST_UINT32_TO_ADDR(memcfg_token_container.array[1].body.hex.value);
 				athrill_device_set_mmap_info(&info);
 			}
 		}
 		else if (!strcmp("MALLOC", (char*)memcfg_token_container.array[0].body.str.str)) {
+			if (osdep_supports_mapped_memory() == FALSE) {
+				printf("WARNING: unknown memory type=%s\n", (char*)memcfg_token_container.array[0].body.str.str);
+				continue;
+			}
 			map->ram_num++;
 			map->ram = realloc(map->ram, map->ram_num * sizeof(MemoryAddressType));
 			ASSERT(map->ram != NULL);
@@ -845,7 +799,6 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			analize_memmap_arguments(&memcfg_token_container, map, memp);
 			printf("MALLOC");
 		}
-#endif /* OS_LINUX */
 #ifdef EXDEV_ENABLE
 		else if (!strcmp("DEV", (char*)memcfg_token_container.array[0].body.str.str)) {
 			char error_message[512];
