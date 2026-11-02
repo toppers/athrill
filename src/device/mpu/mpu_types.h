@@ -20,7 +20,7 @@ extern MpuAddressRegionEnumType mpu_address_region_type_get(uint32 addr, std_boo
 struct mpu_address_region_operation_type;
 typedef struct {
 	MpuAddressRegionEnumType					type;
-	bool										is_malloc;
+	std_bool										is_malloc;
 	/*
 	 * 本メモリ領域にアクセスできるcore_idのビットマップ
 	 * ビット位置がCPUのコアIDに対応する
@@ -52,7 +52,7 @@ extern MpuAddressRegionOperationType	default_memory_operation;
 
 #ifdef CPU_CONFIG_MEMORY_PROTECTION_ENABLE
 #include "target_cpu.h"
-extern bool cpu_has_permission(CoreIdType core_id, MpuAddressRegionEnumType region_type, CpuMemoryAccessType access_type, uint32 addr, uint32 size);
+extern std_bool cpu_has_permission(CoreIdType core_id, MpuAddressRegionEnumType region_type, CpuMemoryAccessType access_type, uint32 addr, uint32 size);
 #define CPU_HAS_PERMISSION(core_id, region_type, access_type, addr, size) cpu_has_permission(core_id, region_type, access_type, addr, size)
 #else
 #define CPU_HAS_PERMISSION(core_id, region_type, access_type, addr, size) TRUE

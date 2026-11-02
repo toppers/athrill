@@ -60,7 +60,7 @@ static inline void object_container_expand(ObjectContainerType *container)
 	container->num_total_objects += container->append_size;
 	new_ptr = realloc(container->head, (container->num_total_objects) * obj_size);
 	ASSERT(new_ptr != NULL);
-	container->head = new_ptr;
+	container->head = (ObjectType*)new_ptr;
 
 	return;
 }
@@ -105,10 +105,10 @@ static inline void *object_container_create_element(ObjectContainerType *contain
 	return object_container_get_element(container, container->num_using_objects - 1);
 }
 
-static inline ObjectContainerType *object_container_sort(ObjectContainerType *container, bool (*object_compare) (const ObjectSortElementType *obj1, const ObjectSortElementType *obj2))
+static inline ObjectContainerType *object_container_sort(ObjectContainerType *container, std_bool (*object_compare) (const ObjectSortElementType *obj1, const ObjectSortElementType *obj2))
 {
 	uint32 index;
-	bool isSwap = FALSE;
+	std_bool isSwap = FALSE;
 	ObjectContainerType *sort_array;
 
 	sort_array = object_container_create(sizeof(ObjectSortElementType), 4U);
@@ -149,7 +149,7 @@ static inline void object_container_foreach(ObjectContainerType *container, void
 	return;
 }
 
-static inline void *object_container_find_first(ObjectContainerType *container, bool (*object_filter) (const void *p))
+static inline void *object_container_find_first(ObjectContainerType *container, std_bool (*object_filter) (const void *p))
 {
 	uint32 index;
 	for (index = 0; index < container->num_using_objects; index++) {
@@ -160,7 +160,7 @@ static inline void *object_container_find_first(ObjectContainerType *container, 
 	}
 	return NULL;
 }
-static inline void *object_container_find_first2(ObjectContainerType *container, bool (*object_filter) (const void *p, const void *arg), const void *arg)
+static inline void *object_container_find_first2(ObjectContainerType *container, std_bool (*object_filter) (const void *p, const void *arg), const void *arg)
 {
 	uint32 index;
 	for (index = 0; index < container->num_using_objects; index++) {

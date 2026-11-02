@@ -23,7 +23,7 @@ typedef struct {
 		uint32	ref32;
 		uint64	ref64;
 		uint32	sec_offset;
-		bool	flag;
+		std_bool	flag;
 		char 	*string;
 		struct {
 			uint32 len;

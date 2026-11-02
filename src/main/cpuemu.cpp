@@ -1,3 +1,10 @@
+#include <iomanip>
+#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+extern "C" {
 #include "cpu.h"
 #include "bus.h"
 #include "cpuemu_ops.h"
@@ -13,15 +20,13 @@
 #include "token.h"
 #include "file.h"
 #include "osdep.h"
-#include <stdio.h>
-#include <stdlib.h>
 #include "target/target_os_api.h"
 #include "option/option.h"
-#include <string.h>
 #include "shared_library.h"
 #include "athrill_device.h"
 #include "assert.h"
 #include "athrill_exdev_header.h"
+}
 
 static DeviceClockType cpuemu_dev_clock;
 std_bool private_cpuemu_is_cui_mode = FALSE;
@@ -36,7 +41,7 @@ Std_ReturnType cpuemu_symbol_set(void)
 	Std_ReturnType err;
 	DbgSymbolType sym;
 	ElfSymbolType elfsym;
-	bool disable_underscore = FALSE;
+	std_bool disable_underscore = FALSE;
 	uint32 name_index = 1U;
 
 	(void)cpuemu_get_devcfg_value("DISABLE_SYMBOL_UNDERSCORE", (uint32*)&disable_underscore);
@@ -98,7 +103,7 @@ void cpuemu_init(void *(*cpu_run)(void *), void *opt)
 {
 	CmdOptionType *copt = (CmdOptionType*)opt;
 	CoreIdType i;
-	dbg_log_init("./log.txt");
+	dbg_log_init((char*)"./log.txt");
 	if (copt->core_id_num > 0) {
 		virtual_cpu.core_id_num = copt->core_id_num;
 	}
@@ -199,22 +204,21 @@ static void cpuemu_set_debug_romdata(void)
 	if (err != STD_E_OK) {
 		return;
 	}
-	printf("rom_param_num=%d\n", param_num);
+	std::cout << "rom_param_num=" << param_num << '\n';
 	for (i = 0; i < param_num; i++) {
 		snprintf(parameter, sizeof(parameter), "DEBUG_ROM_DEFINE_%d", i);
 		err = cpuemu_get_devcfg_string(parameter, &rom_variable_name);
 		if (err != STD_E_OK) {
-			printf("not found param=%s\n", parameter);
+			std::cout << "not found param=" << parameter << '\n';
 			return;
 		}
 		err = token_split_with_delimiter(&cpuemu_rom_parameter, (uint8*)rom_variable_name, strlen(rom_variable_name), '=');
 		if (err != STD_E_OK) {
-			printf("can not get param value=%s\n", rom_variable_name);
+			std::cout << "can not get param value=" << rom_variable_name << '\n';
 			return;
 		}
-		printf("ROM:redefine %s = %d\n",
-				cpuemu_rom_parameter.array[0].body.str.str,
-				cpuemu_rom_parameter.array[1].body.dec.value);
+		std::cout << "ROM:redefine " << cpuemu_rom_parameter.array[0].body.str.str
+			<< " = " << cpuemu_rom_parameter.array[1].body.dec.value << '\n';
 		{
 			int ret;
 			char *gl_name = (char*)cpuemu_rom_parameter.array[0].body.str.str;
@@ -224,12 +228,12 @@ static void cpuemu_set_debug_romdata(void)
 			uint8* datap;
 			ret = symbol_get_gl(gl_name, gl_len, &addr, &size);
 			if (ret < 0) {
-				printf("can not found global variable=%s\n", gl_name);
+				std::cout << "can not found global variable=" << gl_name << '\n';
 				return;
 			}
 			err = bus_get_pointer(0U, addr, &datap);
 			if (err != 0) {
-				printf("can not found memory pointer=%s\n", gl_name);
+				std::cout << "can not found memory pointer=" << gl_name << '\n';
 				return;
 			}
 			switch (size) {
@@ -243,7 +247,7 @@ static void cpuemu_set_debug_romdata(void)
 				*((uint32*)datap) = (uint32)cpuemu_rom_parameter.array[1].body.dec.value;
 				break;
 			default:
-				printf("can not set pointer because gl_size(%s:%u) > 4\n", gl_name, size);
+				std::cout << "can not set pointer because gl_size(" << gl_name << ':' << size << ") > 4\n";
 				break;
 			}
 		}
@@ -281,7 +285,7 @@ static inline std_bool cpuemu_thread_run_nodbg(int core_id_num)
 
 		err = cpu_supply_clock(i);
 		if ((err != STD_E_OK) && (cpu_illegal_access(i) == FALSE)) {
-			printf("CPU(pc=0x%x) Exception!!\n", cpu_get_pc(&virtual_cpu.cores[i].core));
+			std::cout << "CPU(pc=0x" << std::hex << cpu_get_pc(&virtual_cpu.cores[i].core) << std::dec << ") Exception!!\n";
 			fflush(stdout);
 			exit(1);
 		}
@@ -331,7 +335,7 @@ static inline std_bool cpuemu_thread_run_dbg(int core_id_num)
 
 		err = cpu_supply_clock(i);
 		if ((err != STD_E_OK) && (cpu_illegal_access(i) == FALSE)) {
-			printf("CPU(pc=0x%x) Exception!!\n", cpu_get_pc(&virtual_cpu.cores[i].core));
+			std::cout << "CPU(pc=0x" << std::hex << cpu_get_pc(&virtual_cpu.cores[i].core) << std::dec << ") Exception!!\n";
 			fflush(stdout);
 			cpuctrl_set_force_break();
 		}
@@ -400,13 +404,13 @@ void *cpuemu_thread_run(void* arg)
 	}
 	uint64 end_clock = cpuemu_get_cpu_end_clock();
 	uint64 *clockp = &cpuemu_dev_clock.clock;
-	bool enable_skip = cpuemu_dev_clock.enable_skip;
+	std_bool enable_skip = cpuemu_dev_clock.enable_skip;
 
 	while (TRUE) {
 		if ((*clockp)>= end_clock) {
 			dbg_log_sync();
 			//printf("EXIT for timeout(%I64u).\n", cpuemu_dev_clock.clock);
-			printf("EXIT for timeout("PRINT_FMT_UINT64").\n", cpuemu_dev_clock.clock);
+			std::cout << "EXIT for timeout(" << cpuemu_dev_clock.clock << ").\n";
 			exit(1);
 		}
 		is_halt = do_cpu_run(core_id_num);
@@ -436,12 +440,12 @@ typedef struct {
 } CpuEmuFifoFileType;
 
 static const TokenStringType fifo_tx_string = {
-		.len = 2,
-		.str = { 'T', 'X', '\0' },
+		2,
+		{ 'T', 'X', '\0' },
 };
 static const TokenStringType fifo_rx_string = {
-		.len = 2,
-		.str = { 'R', 'X', '\0' },
+		2,
+		{ 'R', 'X', '\0' },
 };
 
 
@@ -470,30 +474,30 @@ static Std_ReturnType parse_fifopath(char *buffer, uint32 len)
 
 	if (token_strcmp(&fifo_tx_string, &token_container.array[0].body.str) == TRUE) {
 		if (cpuemu_fifo_file.tx_path.len > 0) {
-			printf("ERROR: INVALID parameter number of TX >= 2\n");
+			std::cout << "ERROR: INVALID parameter number of TX >= 2\n";
 			return STD_E_INVALID;
 		}
 		cpuemu_fifo_file.tx_path = cpuemu_fifo_file.folder_path;
 		if (token_merge(&cpuemu_fifo_file.tx_path, &token_container.array[1].body.str) == FALSE) {
-			printf("ERROR: INVALID filename is too long: %s\n", token_container.array[1].body.str.str);
+			std::cout << "ERROR: INVALID filename is too long: " << token_container.array[1].body.str.str << '\n';
 			return STD_E_INVALID;
 		}
 	}
 	else if (token_strcmp(&fifo_rx_string, &token_container.array[0].body.str) == TRUE) {
 		if (cpuemu_fifo_file.rx_path.len > 0) {
-			printf("ERROR: INVALID parameter number of RX >= 2\n");
+			std::cout << "ERROR: INVALID parameter number of RX >= 2\n";
 			return STD_E_INVALID;
 		}
 		cpuemu_fifo_file.rx_path = cpuemu_fifo_file.folder_path;
 		if (token_merge(&cpuemu_fifo_file.rx_path, &token_container.array[1].body.str) == FALSE) {
-			printf("ERROR: INVALID filename is too long: %s\n", token_container.array[1].body.str.str);
+			std::cout << "ERROR: INVALID filename is too long: " << token_container.array[1].body.str.str << '\n';
 			return STD_E_INVALID;
 		}
 	}
 
 	return STD_E_OK;
 errdone:
-	printf("ERROR: Invalid parameter. Format should b {TX|RX} <fifo name>\n");
+	std::cout << "ERROR: Invalid parameter. Format should b {TX|RX} <fifo name>\n";
 	return err;
 }
 
@@ -508,7 +512,7 @@ Std_ReturnType cpuemu_set_comm_fifocfg(const char* fifocfg)
 	uint32 len;
 	Std_ReturnType err;
 	char buffer[4096];
-	bool ret;
+	std_bool ret;
 
 	ret = token_string_set(&cpuemu_fifocfg.filepath, fifocfg);
 	if (ret == FALSE) {
@@ -536,7 +540,7 @@ Std_ReturnType cpuemu_set_comm_fifocfg(const char* fifocfg)
 		}
 	}
 	else {
-		printf("ERROR: can not found data on %s...\n", fifocfg);
+		std::cout << "ERROR: can not found data on " << fifocfg << "...\n";
 		goto errdone;
 	}
 
@@ -549,22 +553,22 @@ Std_ReturnType cpuemu_set_comm_fifocfg(const char* fifocfg)
 		}
 	}
 	else {
-		printf("ERROR: can not found data on %s...\n", fifocfg);
+		std::cout << "ERROR: can not found data on " << fifocfg << "...\n";
 		goto errdone;
 	}
 
 	err = STD_E_INVALID;
 	if (file_exist(cpuemu_get_comm_rx_fifo()) == FALSE) {
-		printf("ERROR: can not found fifo file %s...\n", cpuemu_get_comm_rx_fifo());
+		std::cout << "ERROR: can not found fifo file " << cpuemu_get_comm_rx_fifo() << "...\n";
 		goto errdone;
 	}
 	if (file_exist(cpuemu_get_comm_tx_fifo()) == FALSE) {
-		printf("ERROR: can not found fifo file %s...\n", cpuemu_get_comm_rx_fifo());
+		std::cout << "ERROR: can not found fifo file " << cpuemu_get_comm_rx_fifo() << "...\n";
 		goto errdone;
 	}
 
-	printf("RX fifo:%s\n", cpuemu_get_comm_rx_fifo());
-	printf("TX fifo:%s\n", cpuemu_get_comm_tx_fifo());
+	std::cout << "RX fifo:" << cpuemu_get_comm_rx_fifo() << '\n';
+	std::cout << "TX fifo:" << cpuemu_get_comm_tx_fifo() << '\n';
 
 	file_close(&cpuemu_fifocfg);
 	return STD_E_OK;
@@ -613,7 +617,7 @@ Std_ReturnType cpuemu_load_devcfg(const char *path)
 {
 	Std_ReturnType err = STD_E_OK;
 	uint32 len;
-	bool ret;
+	std_bool ret;
 
 	cpuemu_devcfg.param_num = 0;
 
@@ -635,11 +639,11 @@ Std_ReturnType cpuemu_load_devcfg(const char *path)
 
 		err = token_split(&devcfg_token_container, (uint8*)dvcfg_buffer, len);
 		if (err != STD_E_OK) {
-			printf("ERROR: can not parse data on %s...\n", path);
+			std::cout << "ERROR: can not parse data on " << path << "...\n";
 			goto errdone;
 		}
 		if (devcfg_token_container.num != 2) {
-			printf("ERROR: the token is invalid %s on %s...\n", dvcfg_buffer, path);
+			std::cout << "ERROR: the token is invalid " << dvcfg_buffer << " on " << path << "...\n";
 			goto errdone;
 		}
 		cpuemu_devcfg.param[cpuemu_devcfg.param_num].key = devcfg_token_container.array[0];
@@ -681,7 +685,7 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 {
 	Std_ReturnType err = STD_E_OK;
 	uint32 len;
-	bool ret;
+	std_bool ret;
 	MemoryAddressType *memp = NULL;
 
 	map->ram_num = 0;
@@ -709,7 +713,7 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 
 		err = token_split(&memcfg_token_container, (uint8*)memcfg_buffer, len);
 		if (err != STD_E_OK) {
-			printf("ERROR: can not parse data on %s...\n", path);
+			std::cout << "ERROR: can not parse data on " << path << "...\n";
 			goto errdone;
 		}
 		/*
@@ -717,13 +721,13 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 		 * opt = {V|X}, V= load from virtual address, X = executable region
 		 */
 		if ((memcfg_token_container.num != 3) && (memcfg_token_container.num != 4)) {
-			printf("ERROR: the token is invalid %s on %s...\n", memcfg_buffer, path);
+			std::cout << "ERROR: the token is invalid " << memcfg_buffer << " on " << path << "...\n";
 			goto errdone;
 		}
 		if (!strcmp("ROM", (char*)memcfg_token_container.array[0].body.str.str)) {
-			printf("ROM");
+			std::cout << "ROM";
 			map->rom_num++;
-			map->rom = realloc(map->rom, map->rom_num * sizeof(MemoryAddressType));
+			map->rom = (MemoryAddressType*)realloc(map->rom, map->rom_num * sizeof(MemoryAddressType));
 			ASSERT(map->rom != NULL);
 			memp = &map->rom[map->rom_num - 1];
 			memp->type = MemoryAddressImplType_ROM;
@@ -732,9 +736,9 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			analize_memmap_arguments(&memcfg_token_container, map, memp);
 		}
 		else if (!strcmp("RAM", (char*)memcfg_token_container.array[0].body.str.str)) {
-			printf("RAM");
+			std::cout << "RAM";
 			map->ram_num++;
-			map->ram = realloc(map->ram, map->ram_num * sizeof(MemoryAddressType));
+			map->ram = (MemoryAddressType*)realloc(map->ram, map->ram_num * sizeof(MemoryAddressType));
 			ASSERT(map->ram != NULL);
 			memp = &map->ram[map->ram_num - 1];
 			memp->type = MemoryAddressImplType_RAM;
@@ -744,11 +748,11 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 		}
 		else if (!strcmp("MMAP", (char*)memcfg_token_container.array[0].body.str.str)) {
 			if (osdep_supports_mapped_memory() == FALSE) {
-				printf("WARNING: unknown memory type=%s\n", (char*)memcfg_token_container.array[0].body.str.str);
+				std::cout << "WARNING: unknown memory type=" << (char*)memcfg_token_container.array[0].body.str.str << '\n';
 				continue;
 			}
 			map->ram_num++;
-			map->ram = realloc(map->ram, map->ram_num * sizeof(MemoryAddressType));
+			map->ram = (MemoryAddressType*)realloc(map->ram, map->ram_num * sizeof(MemoryAddressType));
 			ASSERT(map->ram != NULL);
 			memp = &map->ram[map->ram_num - 1];
 			memp->type = MemoryAddressImplType_MMAP;
@@ -762,7 +766,7 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 				//printf("mmap path=%s\n", filepath);
 				err = osdep_open_mapped_file(filepath, &mapped_file);
 				if (err != STD_E_OK) {
-					printf("can not open mmapfile:%s err=%d\n", filepath, mapped_file.error_number);
+					std::cout << "can not open mmapfile:" << filepath << " err=" << mapped_file.error_number << '\n';
 					ASSERT(err == STD_E_OK);
 				}
 				memp->size = (uint32)(((mapped_file.file_size + 8191) / 8192) * 8);
@@ -772,7 +776,7 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 				err = osdep_map_open_file(&mapped_file, memp->size * 1024U);
 				ASSERT(err == STD_E_OK);
 				memp->mmap_addr = mapped_file.address;
-				printf("MMAP(%s filesize="PRINT_FMT_UINT64")", filepath, mapped_file.file_size);
+				std::cout << "MMAP(" << filepath << " filesize=" << mapped_file.file_size << ')';
 				analize_memmap_arguments(&memcfg_token_container, map, memp);
 				info.fd = mapped_file.fd;
 				info.addr = CAST_UINT32_TO_ADDR(memcfg_token_container.array[1].body.hex.value);
@@ -781,11 +785,11 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 		}
 		else if (!strcmp("MALLOC", (char*)memcfg_token_container.array[0].body.str.str)) {
 			if (osdep_supports_mapped_memory() == FALSE) {
-				printf("WARNING: unknown memory type=%s\n", (char*)memcfg_token_container.array[0].body.str.str);
+				std::cout << "WARNING: unknown memory type=" << (char*)memcfg_token_container.array[0].body.str.str << '\n';
 				continue;
 			}
 			map->ram_num++;
-			map->ram = realloc(map->ram, map->ram_num * sizeof(MemoryAddressType));
+			map->ram = (MemoryAddressType*)realloc(map->ram, map->ram_num * sizeof(MemoryAddressType));
 			ASSERT(map->ram != NULL);
 			memp = &map->ram[map->ram_num - 1];
 			memp->type = MemoryAddressImplType_MALLOC;
@@ -793,11 +797,11 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			memp->mmap_addr = NULL;
 			if ((memp->size % (MPU_MALLOC_REGION_UNIT_SIZE * MPU_MALLOC_REGION_UNIT_GROUP_NUM)) != 0) {
 				err = STD_E_INVALID;
-				printf("ERROR: Invalid MALLOC size(%u). The size must be multiples of 10MB.\n", memp->size);
+				std::cout << "ERROR: Invalid MALLOC size(" << memp->size << "). The size must be multiples of 10MB.\n";
 				goto errdone;
 			}
 			analize_memmap_arguments(&memcfg_token_container, map, memp);
-			printf("MALLOC");
+			std::cout << "MALLOC";
 		}
 #ifdef EXDEV_ENABLE
 		else if (!strcmp("DEV", (char*)memcfg_token_container.array[0].body.str.str)) {
@@ -808,51 +812,49 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			AthrillExDeviceHeaderType *ext_dev_header;
 
 			if (handle == NULL) {
-				printf("ERROR: Can not load shared library %s reason=%s\n", filepath, error_message);
+				std::cout << "ERROR: Can not load shared library " << filepath << " reason=" << error_message << '\n';
 				continue;
 			}
-			ext_dev_header = athrill_shared_library_symbol(
+			ext_dev_header = (AthrillExDeviceHeaderType*)athrill_shared_library_symbol(
 				handle, "athrill_ex_device", error_message, sizeof(error_message));
 			if (ext_dev_header == NULL) {
-				printf(
-					"ERROR: Can not find symbol(athrill_ex_device) on %s reason=%s\n",
-					filepath,
-					error_message);
+				std::cout << "ERROR: Can not find symbol(athrill_ex_device) on " << filepath
+					<< " reason=" << error_message << '\n';
 				athrill_shared_library_close(handle);
 				continue;
 			}
 			if (ext_dev_header->magicno != ATHRILL_EXTERNAL_DEVICE_MAGICNO) {
-				printf("ERROR: magicno is invalid(0x%x) on %s\n", ext_dev_header->magicno, filepath);
+				std::cout << "ERROR: magicno is invalid(0x" << std::hex << ext_dev_header->magicno << std::dec << ") on " << filepath << '\n';
 				athrill_shared_library_close(handle);
 				continue;
 			}
 			if (ext_dev_header->version != ATHRILL_EXTERNAL_DEVICE_VERSION) {
-				printf("ERROR: version is invalid(0x%x) on %s\n", ext_dev_header->version, filepath);
+				std::cout << "ERROR: version is invalid(0x" << std::hex << ext_dev_header->version << std::dec << ") on " << filepath << '\n';
 				athrill_shared_library_close(handle);
 				continue;
 			}
 			if (ext_dev_header->memory_size <= 0) {
-				printf("ERROR: memory size is invalid(%d) on %s\n", ext_dev_header->memory_size, filepath);
+				std::cout << "ERROR: memory size is invalid(" << ext_dev_header->memory_size << ") on " << filepath << '\n';
 				athrill_shared_library_close(handle);
 				continue;
 			}
 			map->dev_num++;
-			map->dev = realloc(map->dev, map->dev_num * sizeof(MemoryAddressType));
+			map->dev = (MemoryAddressType*)realloc(map->dev, map->dev_num * sizeof(MemoryAddressType));
 			ASSERT(map->dev != NULL);
 			memp = &map->dev[map->dev_num - 1];
 			memp->type = MemoryAddressImplType_DEV;
 			memp->extdev_handle = handle;
 			memp->size = (uint32)ext_dev_header->memory_size;
 			memp->mmap_addr = NULL;
-			printf("DEV");
+			std::cout << "DEV";
 		}
 #endif
 		else {
-			printf("WARNING: unknown memory type=%s\n", (char*)memcfg_token_container.array[0].body.str.str);
+			std::cout << "WARNING: unknown memory type=" << (char*)memcfg_token_container.array[0].body.str.str << '\n';
 			continue;
 		}
 		memp->start = memcfg_token_container.array[1].body.hex.value;
-		printf(" : START=0x%x SIZE=%u\n", memp->start, memp->size);
+		std::cout << " : START=0x" << std::hex << memp->start << std::dec << " SIZE=" << memp->size << '\n';
 	}
 
 	file_close(&memcfg_file);
@@ -911,8 +913,8 @@ static void cpuemu_env_parse_devcfg_string(TokenStringType* strp)
 {
 	static char env_name[TOKEN_STRING_MAX_SIZE];
 	static char out_name[TOKEN_STRING_MAX_SIZE];
-	char *start = strchr((const char*)strp->str, '{');
-	char *end = strchr((const char*)strp->str, '}');
+	const char *start = strchr((const char*)strp->str, '{');
+	const char *end = strchr((const char*)strp->str, '}');
 	if ((start == NULL) || (end == NULL)) {
 		return;
 	}
@@ -958,7 +960,7 @@ Std_ReturnType cpuemu_get_devcfg_string(const char* key, char **value)
 		}
 		cpuemu_env_parse_devcfg_string(&cpuemu_devcfg.param[i].value.body.str);
 		*value = (char*)cpuemu_devcfg.param[i].value.body.str.str;
-		printf("%s = %s\n", key, *value);
+		std::cout << key << " = " << *value << '\n';
 		return STD_E_OK;
 	}
 	return STD_E_NOENT;

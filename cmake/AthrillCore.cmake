@@ -1,12 +1,14 @@
 include_guard(GLOBAL)
 
+enable_language(CXX)
+
 get_filename_component(ATHRILL_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 set(ATHRILL_SRC_DIR "${ATHRILL_ROOT}/src")
 set(ATHRILL_APL_DIR "${ATHRILL_ROOT}/apl")
 
 foreach(_athrill_required_path
         "${ATHRILL_SRC_DIR}/inc/std_types.h"
-        "${ATHRILL_SRC_DIR}/main/main.c"
+        "${ATHRILL_SRC_DIR}/main/main.cpp"
         "${ATHRILL_SRC_DIR}/cpu/cpu.h")
     if(NOT EXISTS "${_athrill_required_path}")
         message(FATAL_ERROR
@@ -33,7 +35,7 @@ else()
 endif()
 
 set(ATHRILL_MAIN_SOURCES
-    "${ATHRILL_SRC_DIR}/main/cpuemu.c"
+    "${ATHRILL_SRC_DIR}/main/cpuemu.cpp"
     "${ATHRILL_OSDEP_SOURCE}"
     "${ATHRILL_SRC_DIR}/main/option/argument_parser.c"
     "${ATHRILL_SRC_DIR}/main/option/option.c"
@@ -41,6 +43,8 @@ set(ATHRILL_MAIN_SOURCES
     "${ATHRILL_SRC_DIR}/debugger/executor/cpu_control/dbg_cpu_control.c"
     "${ATHRILL_SRC_DIR}/debugger/executor/cpu_control/dbg_cpu_thread_control.c"
 )
+
+set(ATHRILL_MAIN_ENTRY_SOURCE "${ATHRILL_SRC_DIR}/main/main.cpp")
 
 set(ATHRILL_CUI_SOURCES
     "${ATHRILL_SRC_DIR}/lib/cui/cui_ops.c"
@@ -187,7 +191,7 @@ function(athrill_apply_common_settings target_name)
     target_include_directories("${target_name}" PRIVATE
         ${ATHRILL_BASE_INCLUDE_DIRS})
     if(MSVC)
-        target_compile_features("${target_name}" PRIVATE c_std_11)
+        target_compile_features("${target_name}" PRIVATE c_std_11 cxx_std_17)
         target_compile_options("${target_name}" PRIVATE
             /utf-8
             /W4
@@ -197,13 +201,13 @@ function(athrill_apply_common_settings target_name)
             _CRT_SECURE_NO_WARNINGS
         )
     elseif(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_features("${target_name}" PRIVATE c_std_99)
+        target_compile_features("${target_name}" PRIVATE c_std_99 cxx_std_17)
         set_target_properties("${target_name}" PROPERTIES C_EXTENSIONS ON)
         target_compile_options("${target_name}" PRIVATE
             -g
             -Wall
             -Wunknown-pragmas
-            -Wimplicit-int
+            $<$<COMPILE_LANGUAGE:C>:-Wimplicit-int>
             -Wtrigraphs
             -O3
         )

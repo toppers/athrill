@@ -58,8 +58,8 @@ typedef struct {
 	uint32	size;						/* unit:KB */
 	void *mmap_addr;
 	void *extdev_handle;
-	bool region_executable;				/* X */
-	bool region_elf_load_from_vaddr;	/* V */
+	std_bool region_executable;				/* X */
+	std_bool region_elf_load_from_vaddr;	/* V */
 } MemoryAddressType;
 
 typedef struct {

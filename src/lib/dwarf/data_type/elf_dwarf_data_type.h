@@ -60,7 +60,7 @@ typedef struct {
 typedef struct {
 	DwarfDataType	info;
 	DwarfDataType	*ref;
-	bool			is_valid_ref_debug_info_offset;
+	std_bool			is_valid_ref_debug_info_offset;
 	uint32			ref_debug_info_offset;
 } DwarfDataPointerType;
 
@@ -76,7 +76,7 @@ typedef struct {
 typedef struct {
 	DwarfDataType	info;
 	DwarfDataType	*ref;
-	bool			is_valid_ref_debug_info_offset;
+	std_bool			is_valid_ref_debug_info_offset;
 	uint32			ref_debug_info_offset;
 } DwarfDataTypedefType;
 
@@ -91,7 +91,7 @@ typedef struct {
 	char				*linkage_name;
 	uint32				off;
 	DwarfDataType		*ref;
-	bool				is_valid_ref_debug_info_offset;
+	std_bool				is_valid_ref_debug_info_offset;
 	uint32				ref_debug_info_offset;
 } DwarfDataStructMember;
 extern void dwarf_add_struct_member(DwarfDataStructType *obj, DwarfDataStructMember *member);
@@ -111,7 +111,7 @@ extern void dwarf_add_enum_member(DwarfDataEnumulatorType *obj, char *name, uint
 typedef struct {
 	DwarfDataType			info;
 	DwarfDataType			*ref;
-	bool					is_valid_ref_debug_info_offset;
+	std_bool					is_valid_ref_debug_info_offset;
 	uint32					ref_debug_info_offset;
 	DwarfUint32ArrayType	*dimension;
 } DwarfDataArrayType;
@@ -119,16 +119,16 @@ typedef struct {
 typedef struct {
 	DwarfDataType			info;
 	DwarfDataType			*ref;
-	bool					is_valid_ref_debug_info_offset;
+	std_bool					is_valid_ref_debug_info_offset;
 	uint32					ref_debug_info_offset;
 } DwarfDataVariableType;
 
 typedef struct {
 	char					*name;
-	bool					isSupported;
+	std_bool					isSupported;
 	sint32					stackLocOff;
 	ElfDwarfAttributeType	*DW_AT_location;
-	bool					is_valid_ref_debug_info_offset;
+	std_bool					is_valid_ref_debug_info_offset;
 	uint32					ref_debug_info_offset;
 	DwarfDataType			*ref;
 	uint8					location_op;

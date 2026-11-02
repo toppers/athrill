@@ -1,3 +1,11 @@
+#include <iomanip>
+#include <iostream>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+extern "C" {
 #include "front/parser/dbg_parser.h"
 #include "loader/loader.h"
 #include "option/option.h"
@@ -10,14 +18,11 @@
 #include "cui/udp/cui_ops_udp.h"
 #include "file_address_mapping.h"
 #include "osdep.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "target/target_os_api.h"
-#include <limits.h>
 #include "athrill_exdev_header.h"
 #include "athrill_memory.h"
 #include "athrill_device.h"
+}
 
 /*
  * version: X.Y.Z
@@ -49,7 +54,7 @@ static void load_cui_operation(void)
 	}
 	save_operation_fp = fopen(filename, "a+");
 	if (save_operation_fp == NULL) {
-		printf("ERROR: can not open oplog file %s\n", filename);
+		std::cout << "ERROR: can not open oplog file " << filename << '\n';
 		return;
 	}
 	while (TRUE) {
@@ -81,7 +86,7 @@ static void save_cui_operation(const char* op)
 static void do_cui(void)
 {
 	DbgCmdExecutorType *res;
-	bool is_dbgmode;
+	std_bool is_dbgmode;
 	char buffer[1025];
 	int len;
 
@@ -89,7 +94,7 @@ static void do_cui(void)
 
 	while (TRUE) {
 		is_dbgmode = cpuctrl_is_debug_mode();
-		printf("%s", (is_dbgmode == TRUE) ? "[DBG>" : "[CPU>");
+		std::cout << ((is_dbgmode == TRUE) ? "[DBG>" : "[CPU>");
 		fflush(stdout);
 retry:
 		len = cui_getline(buffer, 1024);
@@ -134,22 +139,22 @@ int main(int argc, const char *argv[])
 	Std_ReturnType err;
 	CmdOptionType *opt;
 	MemoryAddressMapType memmap;
-	uint32 entry_addr;
+	uint32 entry_addr = 0U;
 	memset(&memmap, 0, sizeof(MemoryAddressMapType));
 
 	if (argc == 1) {
-		printf("Athrill is licensed under the TOPPERS License Agreement (http://www.toppers.jp/en/license.html).\n");
-		printf("ARCH:%s (VERSION CORE:%s TARGET:%s)\n", ATHRILL_TARGET_ARCH, ATHRILL_CORE_VERSION, ATHRILL_TARGET_VERSION);
-		printf("DEVICE:magicno=0x%x version=0x%x\n\n", ATHRILL_EXTERNAL_DEVICE_MAGICNO, ATHRILL_EXTERNAL_DEVICE_VERSION);
+		std::cout << "Athrill is licensed under the TOPPERS License Agreement (http://www.toppers.jp/en/license.html).\n";
+		std::cout << "ARCH:" << ATHRILL_TARGET_ARCH << " (VERSION CORE:" << ATHRILL_CORE_VERSION << " TARGET:" << ATHRILL_TARGET_VERSION << ")\n";
+		std::cout << "DEVICE:magicno=0x" << std::hex << ATHRILL_EXTERNAL_DEVICE_MAGICNO << " version=0x" << ATHRILL_EXTERNAL_DEVICE_VERSION << std::dec << "\n\n";
 
-		printf("Usage:%s -c<core num> -m <memory config file> [OPTION]... <load_file>\n", "athrill");
-		printf(" %-30s : set core num. if -c is not set, core num = 2.\n", "-c");
-		printf(" %-30s : execute on the interaction mode. if -i is not set, execute on the background mode.\n", "-i");
-		printf(" %-30s : execute on the remote mode. this option is valid on the interaction mode.\n", "-r");
-		printf(" %-30s : set program end time using <timeout> clocks. this option is valid on the background mode.\n", "-t<timeout>");
-		printf(" %-30s : set athrill memory configuration. rom, ram region is configured on your system.\n", "-m<memory config file>");
+		std::cout << "Usage:athrill -c<core num> -m <memory config file> [OPTION]... <load_file>\n";
+		std::cout << ' ' << std::left << std::setw(30) << "-c" << std::right << " : set core num. if -c is not set, core num = 2.\n";
+		std::cout << ' ' << std::left << std::setw(30) << "-i" << std::right << " : execute on the interaction mode. if -i is not set, execute on the background mode.\n";
+		std::cout << ' ' << std::left << std::setw(30) << "-r" << std::right << " : execute on the remote mode. this option is valid on the interaction mode.\n";
+		std::cout << ' ' << std::left << std::setw(30) << "-t<timeout>" << std::right << " : set program end time using <timeout> clocks. this option is valid on the background mode.\n";
+		std::cout << ' ' << std::left << std::setw(30) << "-m<memory config file>" << std::right << " : set athrill memory configuration. rom, ram region is configured on your system.\n";
 		//printf(" %-30s : set communication path with an another emulator.\n", "-p<fifo config file>");
-		printf(" %-30s : set device parameter.\n", "-d<device config file>");
+		std::cout << ' ' << std::left << std::setw(30) << "-d<device config file>" << std::right << " : set device parameter.\n";
 		return 0;
 	}
 
@@ -165,7 +170,7 @@ int main(int argc, const char *argv[])
 	if (opt == NULL) {
 		return 1;
 	}
-	printf("core id num=%u\n", opt->core_id_num);
+	std::cout << "core id num=" << opt->core_id_num << '\n';
 	if (opt->fifocfgpath != NULL) {
 		err = cpuemu_set_comm_fifocfg(opt->fifocfgpath);
 		if (err != STD_E_OK) {

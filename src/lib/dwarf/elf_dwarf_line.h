@@ -171,28 +171,28 @@ typedef struct {
 	/*
 	 * A boolean indicating that the current instruction is the beginning of a statement.
 	 */
-	bool	is_stmt;
+	std_bool	is_stmt;
 	/*
 	 * A boolean indicating that the current instruction is the beginning of a
 	 * basic block.
 	 */
-	bool	basic_block;
+	std_bool	basic_block;
 	/*
 	 * A boolean indicating that the current address is that of the first byte after
 	 * the end of a sequence of target machine instructions.
 	 */
-	bool	end_sequence;
+	std_bool	end_sequence;
 	/*
 	 * A boolean indicating that the current address is one (of possibly many)
 	 * where execution should be suspended for an entry breakpoint of a
 	 * function.
 	 */
-	bool prologue_end;
+	std_bool prologue_end;
 	/*
 	 * A boolean indicating that the current address is one (of possibly many)
 	 * where execution should be suspended for an exit breakpoint of a function.
 	 */
-	bool epilogue_begin;
+	std_bool epilogue_begin;
 	/*
 	 * An unsigned integer whose value encodes the applicable instruction set
 	 * architecture for the current instruction.

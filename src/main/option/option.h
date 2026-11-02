@@ -5,11 +5,11 @@
 #include "file.h"
 
 typedef struct {
-	bool	is_interaction;
+	std_bool	is_interaction;
 	uint32	core_id_num;
 	uint64	timeout;
-	bool	is_binary_data;
-	bool	is_remote;
+	std_bool	is_binary_data;
+	std_bool	is_remote;
 
 	char	*fifocfgpath;
 	char	buffer_fifopath[4096];

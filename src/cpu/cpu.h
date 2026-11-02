@@ -27,7 +27,7 @@ typedef struct {
 	 * use this flag if cache region is rewrite by user program.
 	 * then cache reconstruction is needed!!
 	 */
-	bool				is_dirty;
+	std_bool				is_dirty;
 } CpuOperationCodeType;
 
 typedef struct {
@@ -79,7 +79,7 @@ static inline CachedOperationCodeType *virtual_cpu_get_cached_code(uint32 pc)
 static inline void virtual_cpu_add_cached_code(CachedOperationCodeType *cached_code)
 {
 	virtual_cpu.cached_code_num++;
-	virtual_cpu.cached_code = realloc(virtual_cpu.cached_code, virtual_cpu.cached_code_num * (sizeof (CachedOperationCodeType*)));
+	virtual_cpu.cached_code = (CachedOperationCodeType**)realloc(virtual_cpu.cached_code, virtual_cpu.cached_code_num * (sizeof (CachedOperationCodeType*)));
 	ASSERT(virtual_cpu.cached_code != NULL);
 	virtual_cpu.cached_code[virtual_cpu.cached_code_num - 1] = cached_code;
 	return;
@@ -95,9 +95,9 @@ static inline void virtual_cpu_cache_code_add_with_check(uint32 memsz, uint32 st
 		return;
 	}
 
-	cached_code = athrill_mem_alloc(sizeof(CachedOperationCodeType));
+	cached_code = (CachedOperationCodeType*)athrill_mem_alloc(sizeof(CachedOperationCodeType));
 	ASSERT(cached_code != NULL);
-	cached_code->codes = calloc(memsz, sizeof(CpuOperationCodeType));
+	cached_code->codes = (CpuOperationCodeType*)calloc(memsz, sizeof(CpuOperationCodeType));
 	ASSERT(cached_code->codes != NULL);
 	cached_code->code_start_addr = start_addr;
 	cached_code->code_size = (memsz);
@@ -120,6 +120,6 @@ extern uint32 cpu_get_return_addr(const TargetCoreType *core);
 extern CoreIdType cpu_get_core_id(const TargetCoreType *core);
 extern void intc_cpu_trigger_interrupt(CoreIdType core_id, int intno);
 
-extern bool cpu_may_store_on_stack_overflow(uint32 start_addr, uint32 size);
+extern std_bool cpu_may_store_on_stack_overflow(uint32 start_addr, uint32 size);
 
 #endif /* _CPU_H_ */

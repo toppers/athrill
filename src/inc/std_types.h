@@ -10,7 +10,9 @@ typedef unsigned char uint8;
 typedef unsigned short uint16;
 typedef unsigned int uint32;
 typedef unsigned long long uint64;
+#ifndef __cplusplus
 typedef int	bool;
+#endif
 typedef int std_bool;
 #define DEFINE_FLOAT_TYPEDEF
 typedef float float32;
