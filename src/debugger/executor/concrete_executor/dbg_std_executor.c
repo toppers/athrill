@@ -142,7 +142,7 @@ void dbg_std_executor_break(void *executor)
 			 if (cpuctrl_get_break(i, &addr) == TRUE) {
 				 funcid = symbol_pc2funcid(addr, &funcaddr);
 				 if (funcid >= 0) {
-					 printf("[%u] 0x%" ATHRILL_ADDR_HEX_FORMAT " %s(+0x%" ATHRILL_ADDR_HEX_FORMAT ")\n", i, addr, symbol_funcid2funcname(funcid), (AthrillAddrType)addr - funcaddr);
+					 printf("[%u] 0x%" ATHRILL_ADDR_HEX_FORMAT " %s(+0x%" ATHRILL_ADDR_HEX_FORMAT ")\n", i, (AthrillAddrType)addr, symbol_funcid2funcname(funcid), (AthrillAddrType)addr - funcaddr);
 				 }
 				 else {
 					 printf("[%u] 0x%" ATHRILL_ADDR_HEX_FORMAT "\n", i, (AthrillAddrType)addr);
