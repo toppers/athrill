@@ -37,12 +37,13 @@ Athrill は， ソースデバッグ用に以下のエディタを使用しま�
 このリポジトリは CPU に依存しないコア部分です．`athrill2` の実行ファイルは，ターゲットのリポジトリから CMake でビルドします．ターゲット側が `cmake/AthrillCore.cmake` を通してこのコアを取り込みます．V850E2M の場合：
 
 ```
-git clone --recursive https://github.com/toppers/athrill-target-v850e2m
+git clone https://github.com/toppers/athrill.git
+git clone https://github.com/toppers/athrill-target-v850e2m.git
 cmake -S athrill-target-v850e2m -B athrill-target-v850e2m/build -DCMAKE_BUILD_TYPE=Release
 cmake --build athrill-target-v850e2m/build
 ```
 
-別の場所にあるこのリポジトリを使ってビルドする場合は，最初の `cmake` コマンドに `-DATHRILL_SOURCE_DIR=<athrill のパス>` を追加します．
+ターゲットは，隣に置いた `../athrill` をこのリポジトリとして使います．別の場所にあるチェックアウトを使う場合は，最初の `cmake` コマンドに `-DATHRILL_SOURCE_DIR=<athrill のパス>` を追加します．
 
 引数なしで `athrill2` を実行すると，usage が表示されます：
 

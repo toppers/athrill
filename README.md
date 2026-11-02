@@ -37,12 +37,13 @@ Athrill uses the following editors for source debugging:
 This repository holds the CPU-independent core. The `athrill2` executable is built with CMake from a target repository, which pulls in this core through `cmake/AthrillCore.cmake`. For the V850E2M target:
 
 ```
-git clone --recursive https://github.com/toppers/athrill-target-v850e2m
+git clone https://github.com/toppers/athrill.git
+git clone https://github.com/toppers/athrill-target-v850e2m.git
 cmake -S athrill-target-v850e2m -B athrill-target-v850e2m/build -DCMAKE_BUILD_TYPE=Release
 cmake --build athrill-target-v850e2m/build
 ```
 
-To build against a separate checkout of this repository, add `-DATHRILL_SOURCE_DIR=<path to athrill>` to the first `cmake` command.
+The target finds this repository as the sibling `../athrill` checkout. To use a checkout somewhere else, add `-DATHRILL_SOURCE_DIR=<path to athrill>` to the first `cmake` command.
 
 Running `athrill2` without arguments displays its usage:
 
