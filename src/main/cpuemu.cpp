@@ -1,8 +1,10 @@
+#include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <thread>
 
 extern "C" {
 #include "cpu.h"
@@ -431,6 +433,32 @@ static void cpuemu_sync_skipped_clock(void)
 	return;
 }
 
+/*
+ * Real-time pacing (DEBUG_FUNC_REAL_TIME 1): simulated time must not run
+ * ahead of wall-clock time. After every millisecond of simulated time, and
+ * after a clock skip, the two are compared and the lead is slept off. A run
+ * that is slower than real time is not affected. Simulated results do not
+ * change; only inputs from outside (e.g. a TCP UART) arrive at other
+ * simulated times.
+ */
+static uint32 cpuemu_real_time;
+static uint64 cpuemu_real_time_next_clock;
+static std::chrono::steady_clock::time_point cpuemu_real_time_start;
+
+static void cpuemu_pace_real_time(uint64 clock)
+{
+	if (clock < cpuemu_real_time_next_clock) {
+		return;
+	}
+	const uint64 simulated_usec = clock / virtual_cpu.cpu_freq;
+	const uint64 wall_usec = (uint64)std::chrono::duration_cast<std::chrono::microseconds>(
+		std::chrono::steady_clock::now() - cpuemu_real_time_start).count();
+	if (simulated_usec > wall_usec) {
+		std::this_thread::sleep_for(std::chrono::microseconds(simulated_usec - wall_usec));
+	}
+	cpuemu_real_time_next_clock = clock + 1000ULL * virtual_cpu.cpu_freq;
+}
+
 void *cpuemu_thread_run(void* arg)
 {
 	std_bool is_halt;
@@ -461,6 +489,7 @@ void *cpuemu_thread_run(void* arg)
 	(void)cpuemu_get_devcfg_value("DEVICE_CPU_FREQ", &virtual_cpu.cpu_freq);
 
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_SKIP_CLOCK", (uint32*)&cpuemu_dev_clock.enable_skip);
+	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_REAL_TIME", &cpuemu_real_time);
 	/* 1 = one device tick per clock (the reference behaviour for comparisons). */
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_MAX_BATCH_CLOCKS", &cpuemu_max_batch_clocks);
 	if ((cpuemu_max_batch_clocks == 0U) || (cpuemu_max_batch_clocks > ATHRILL_TARGET_BATCH_CLOCKS)) {
@@ -478,6 +507,7 @@ void *cpuemu_thread_run(void* arg)
 	uint64 *clockp = &cpuemu_dev_clock.clock;
 	std_bool enable_skip = cpuemu_dev_clock.enable_skip;
 
+	cpuemu_real_time_start = std::chrono::steady_clock::now();
 	while (TRUE) {
 		if ((*clockp)>= end_clock) {
 			dbg_log_sync();
@@ -498,6 +528,9 @@ void *cpuemu_thread_run(void* arg)
 		}
 		else {
 			cpuemu_dev_clock.clock += 1U;
+		}
+		if (cpuemu_real_time != 0U) {
+			cpuemu_pace_real_time(cpuemu_dev_clock.clock);
 		}
 	}
 	return NULL;
