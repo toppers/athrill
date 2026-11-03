@@ -16,9 +16,13 @@ extern void cpu_mpu_construct_containers(CoreIdType core_id);
 extern std_bool cpu_illegal_access(CoreIdType core_id);
 /*
  * Batched execution (targets that define ATHRILL_TARGET_BATCH_CLOCKS > 1):
- * after an instruction inside a batch, may the next one run without a
- * device tick in between? FALSE when the CPU halted or touched a device.
+ * run up to max_clocks further instructions, one clock each, without
+ * device ticks. Before each instruction the target advances *clock (the
+ * core's virtual clock, read by devices on access). It stops early when
+ * the CPU halts or touches a device. *executed is the number run; an
+ * error is reported as by cpu_supply_clock().
  */
-extern std_bool cpu_batch_can_continue(CoreIdType core_id);
+extern Std_ReturnType cpu_supply_clocks(CoreIdType core_id, uint64 max_clocks, uint64 *clock,
+	uint64 *executed);
 
 #endif /* _STD_CPU_OPS_H_ */

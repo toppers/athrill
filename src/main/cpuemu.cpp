@@ -298,12 +298,9 @@ static std_bool cpuemu_run_batch(uint64 end_clock)
 	if ((end_clock - cpuemu_dev_clock.clock) < budget) {
 		budget = end_clock - cpuemu_dev_clock.clock;
 	}
-	for (n = 1U; n < budget; n++) {
-		if (cpu_batch_can_continue(0) == FALSE) {
-			break;
-		}
-		cpuemu_dev_clock.clock += 1U;
-		if ((cpu_supply_clock(0) != STD_E_OK) && (cpu_illegal_access(0) == FALSE)) {
+	if (budget > 1U) {
+		if ((cpu_supply_clocks(0, budget - 1U, &cpuemu_dev_clock.clock, &n) != STD_E_OK)
+			&& (cpu_illegal_access(0) == FALSE)) {
 			std::cout << "CPU(pc=0x" << std::hex << cpu_get_pc(&virtual_cpu.cores[0].core) << std::dec << ") Exception!!\n";
 			fflush(stdout);
 			exit(1);
