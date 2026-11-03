@@ -396,8 +396,8 @@ void *cpuemu_thread_run(void* arg)
 
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_BT", &enable_dbg.enable_bt);
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_FT", &enable_dbg.enable_ft);
-	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_PROF", &enable_dbg.enable_watch);
-	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_WATCH", &enable_dbg.enable_prof);
+	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_PROF", &enable_dbg.enable_prof);
+	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_WATCH", &enable_dbg.enable_watch);
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_SYNC_TIME", &enable_dbg.enable_sync_time);
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_SHOW_SKIP_TIME", &enable_dbg.show_skip_time);
 	(void)cpuemu_get_devcfg_value_hex("DEBUG_FUNC_RESET_PC", &enable_dbg.reset_pc);

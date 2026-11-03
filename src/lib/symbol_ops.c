@@ -47,6 +47,95 @@ int symbol_func_add(DbgSymbolType *sym)
 }
 
 
+/*
+ * Address lookup for the per-clock debugger features (backtrace, function
+ * trace, profiling). The tables are searched with an index of symbol ids
+ * sorted by start address, rebuilt when symbols were added. The result is
+ * the same as a linear search: the lowest id whose range [addr, addr + size)
+ * contains the address. max_end[k] is the largest end among order[0..k],
+ * which bounds the backward scan over symbols that may still contain it.
+ */
+typedef struct {
+	uint32 built_count;
+	uint32 *order;
+	AthrillAddrType *max_end;
+} SymbolRangeIndex;
+
+static SymbolRangeIndex symbol_func_index;
+static SymbolRangeIndex symbol_gl_index;
+static const DbgSymbolType *symbol_sort_table;
+
+static int symbol_compare_start(const void *left, const void *right)
+{
+	uint32 a = *(const uint32 *)left;
+	uint32 b = *(const uint32 *)right;
+
+	if (symbol_sort_table[a].addr != symbol_sort_table[b].addr) {
+		return symbol_sort_table[a].addr < symbol_sort_table[b].addr ? -1 : 1;
+	}
+	return a < b ? -1 : (a > b ? 1 : 0);
+}
+
+static void symbol_index_build(SymbolRangeIndex *index, const DbgSymbolType *table, uint32 count)
+{
+	AthrillAddrType max_end = 0;
+	AthrillAddrType end;
+	uint32 k;
+
+	index->order = realloc(index->order, (count + 1U) * sizeof(uint32));
+	index->max_end = realloc(index->max_end, (count + 1U) * sizeof(AthrillAddrType));
+	ASSERT((index->order != NULL) && (index->max_end != NULL));
+	for (k = 0; k < count; k++) {
+		index->order[k] = k;
+	}
+	symbol_sort_table = table;
+	qsort(index->order, count, sizeof(uint32), symbol_compare_start);
+	for (k = 0; k < count; k++) {
+		end = table[index->order[k]].addr + table[index->order[k]].size;
+		if (end > max_end) {
+			max_end = end;
+		}
+		index->max_end[k] = max_end;
+	}
+	index->built_count = count;
+}
+
+static int symbol_index_find(SymbolRangeIndex *index, const DbgSymbolType *table, uint32 count,
+	AthrillAddrType addr)
+{
+	uint32 low = 0;
+	uint32 high = count;
+	uint32 middle;
+	uint32 k;
+	int found = -1;
+	const DbgSymbolType *symbol;
+
+	if (index->built_count != count) {
+		symbol_index_build(index, table, count);
+	}
+	/* low = number of symbols whose start address is <= addr */
+	while (low < high) {
+		middle = low + (high - low) / 2U;
+		if (table[index->order[middle]].addr <= addr) {
+			low = middle + 1U;
+		}
+		else {
+			high = middle;
+		}
+	}
+	for (k = low; k > 0U; k--) {
+		if (index->max_end[k - 1U] <= addr) {
+			break;
+		}
+		symbol = &table[index->order[k - 1U]];
+		if ((addr < symbol->addr + symbol->size)
+			&& ((found < 0) || (index->order[k - 1U] < (uint32)found))) {
+			found = (int)index->order[k - 1U];
+		}
+	}
+	return found;
+}
+
 int symbol_get_func(char *funcname, uint32 func_len, AthrillAddrType *addrp, uint32 *size)
 {
 	int i;
@@ -94,29 +183,22 @@ uint32 symbol_get_entered_sp(int funcid, uint32 core_id)
 
 int symbol_pc2funcid(AthrillAddrType pc, AthrillAddrType *funcaddr)
 {
-	int i;
+	int found;
 	static int last_funcid = -1;
 
-	if (last_funcid > 0) {
+	if (last_funcid >= 0) {
 		if ((pc >= symbol_func[last_funcid].addr) &&
 				(pc < (symbol_func[last_funcid].addr + symbol_func[last_funcid].size))) {
 			*funcaddr = symbol_func[last_funcid].addr;
 			return last_funcid;
 		}
 	}
-
-	for (i = 0; i < symbol_func_size; i++) {
-		if (pc < symbol_func[i].addr) {
-			continue;
-		}
-		if (pc >= (symbol_func[i].addr + symbol_func[i].size)) {
-			continue;
-		}
-		*funcaddr = symbol_func[i].addr;
-		last_funcid = i;
-		return  i;
+	found = symbol_index_find(&symbol_func_index, symbol_func, symbol_func_size, pc);
+	if (found >= 0) {
+		*funcaddr = symbol_func[found].addr;
+		last_funcid = found;
 	}
-	return -1;
+	return found;
 }
 char * symbol_funcid2funcname(int id)
 {
@@ -158,30 +240,22 @@ int symbol_get_gl(char *gl_name, uint32 gl_len, AthrillAddrType *addrp, uint32 *
 
 int symbol_addr2glid(AthrillAddrType addr, AthrillAddrType *gladdr)
 {
-	int i;
-	static int last_funcid = -1;
+	int found;
+	static int last_glid = -1;
 
-	if (last_funcid > 0) {
-		if ((addr >= symbol_gl[last_funcid].addr) &&
-				(addr < (symbol_gl[last_funcid].addr + symbol_gl[last_funcid].size))) {
-			*gladdr = symbol_gl[last_funcid].addr;
-			return last_funcid;
+	if (last_glid >= 0) {
+		if ((addr >= symbol_gl[last_glid].addr) &&
+				(addr < (symbol_gl[last_glid].addr + symbol_gl[last_glid].size))) {
+			*gladdr = symbol_gl[last_glid].addr;
+			return last_glid;
 		}
 	}
-
-	for (i = 0; i < symbol_gl_size; i++) {
-		if (addr < symbol_gl[i].addr) {
-			continue;
-		}
-		if (addr >= (symbol_gl[i].addr + symbol_gl[i].size)) {
-			continue;
-		}
-		*gladdr = symbol_gl[i].addr;
-		last_funcid = i;
-		return  i;
+	found = symbol_index_find(&symbol_gl_index, symbol_gl, symbol_gl_size, addr);
+	if (found >= 0) {
+		*gladdr = symbol_gl[found].addr;
+		last_glid = found;
 	}
-	return -1;
-
+	return found;
 }
 
 char * symbol_glid2glname(int id)
