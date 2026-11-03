@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +29,8 @@ static pthread_mutex_t osdep_terminate_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_once_t osdep_terminate_once = PTHREAD_ONCE_INIT;
 static void (*osdep_cleanup)(void);
 static std_bool osdep_terminate_polled = FALSE;
-static volatile sig_atomic_t osdep_terminate_requested = 0;
+/* Written by the SIGTERM thread, read by the main loop: an atomic, not volatile. */
+static atomic_int osdep_terminate_requested = 0;
 
 static void osdep_run_cleanup_and_exit(void)
 {
@@ -60,8 +62,8 @@ static void *osdep_terminate_thread(void *arg)
 	}
 	pthread_mutex_lock(&osdep_terminate_mutex);
 	polled = osdep_terminate_polled;
-	osdep_terminate_requested = 1;
 	pthread_mutex_unlock(&osdep_terminate_mutex);
+	atomic_store_explicit(&osdep_terminate_requested, 1, memory_order_release);
 	if (!polled) {
 		osdep_run_cleanup_and_exit();
 	}
@@ -100,7 +102,7 @@ void osdep_terminate_from_main_loop(void)
 
 void osdep_handle_terminate_request(void)
 {
-	if (osdep_terminate_requested == 0) {
+	if (atomic_load_explicit(&osdep_terminate_requested, memory_order_acquire) == 0) {
 		return;
 	}
 	osdep_run_cleanup_and_exit();

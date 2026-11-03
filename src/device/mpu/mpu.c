@@ -60,14 +60,24 @@ static inline std_bool region_covers(const MpuAddressRegionType *region, Athrill
 
 #ifdef SEARCH_REGION_OPTIMIZE
 /*
- * Each search remembers the ROM/RAM region it found last and tries it
- * first, with the same containment test as the full search. (It replaces
- * a 1 KiB page cache that started at page 0 with index -1 and did not
- * check the access size against the region end.)
+ * Each search remembers the index of the ROM/RAM region it found last and
+ * tries it first, with the same containment test as the full search. An
+ * index, not a pointer: dynamic_map is reallocated when regions are added.
+ * (It replaces a 1 KiB page cache that started at page 0 with index -1 and
+ * did not check the access size against the region end.)
  */
-static inline std_bool previous_region_covers(const MpuAddressRegionType *previous, AthrillAddrType addr, AthrillAddrType search_size)
+static inline MpuAddressRegionType *previous_region_covers(int previous, AthrillAddrType addr, AthrillAddrType search_size)
 {
-	return (previous != NULL) && (previous->data != NULL) && region_covers(previous, addr, search_size);
+	MpuAddressRegionType *region;
+
+	if ((previous < 0) || ((uint32)previous >= mpu_address_map.dynamic_map_num)) {
+		return NULL;
+	}
+	region = &mpu_address_map.dynamic_map[previous];
+	if ((region->data == NULL) || !region_covers(region, addr, search_size)) {
+		return NULL;
+	}
+	return region;
 }
 #endif
 
@@ -81,9 +91,10 @@ static inline MpuAddressRegionType *search_region(CoreIdType core_id, AthrillAdd
 	//printf("addr=0x%x\n", addr);
 
 #ifdef SEARCH_REGION_OPTIMIZE
-	static MpuAddressRegionType *previous_region = NULL;
+	static int previous_index = -1;
+	MpuAddressRegionType *previous_region = previous_region_covers(previous_index, addr, search_size);
 
-	if (previous_region_covers(previous_region, addr, search_size)) {
+	if (previous_region != NULL) {
 		return previous_region;
 	}
 #endif
@@ -112,7 +123,7 @@ static inline MpuAddressRegionType *search_region(CoreIdType core_id, AthrillAdd
 			}
 			//printf("2:passed1:%u:0x%p\n", i,  &mpu_address_map.map[i]);
 #ifdef SEARCH_REGION_OPTIMIZE
-			previous_region = &mpu_address_map.dynamic_map[i];
+			previous_index = (int)i;
 #endif
 			return &mpu_address_map.dynamic_map[i];
 		}
@@ -157,9 +168,10 @@ static inline MpuAddressRegionType *search_region_r(CoreIdType core_id, AthrillA
 	//printf("addr=0x%x\n", addr);
 
 #ifdef SEARCH_REGION_OPTIMIZE
-	static MpuAddressRegionType *previous_region = NULL;
+	static int previous_index = -1;
+	MpuAddressRegionType *previous_region = previous_region_covers(previous_index, addr, search_size);
 
-	if (previous_region_covers(previous_region, addr, search_size)) {
+	if (previous_region != NULL) {
 		return previous_region;
 	}
 #endif
@@ -188,7 +200,7 @@ static inline MpuAddressRegionType *search_region_r(CoreIdType core_id, AthrillA
 			}
 			//printf("2:passed1:%u:0x%p\n", i,  &mpu_address_map.map[i]);
 #ifdef SEARCH_REGION_OPTIMIZE
-			previous_region = &mpu_address_map.dynamic_map[i];
+			previous_index = (int)i;
 #endif
 			return &mpu_address_map.dynamic_map[i];
 		}
