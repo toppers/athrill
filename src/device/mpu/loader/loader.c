@@ -446,6 +446,18 @@ static Std_ReturnType Elf64_LoadProgram(const Elf64_Ehdr *elf_image, MemoryAddre
 		set_cache_code_from_map(&memap->ram[i]);
 	}
 	for (i = 0; i < memap->ram_num; i++) if (memap->ram[i].type == MemoryAddressImplType_MALLOC) set_malloc_region(memap, i);
+#ifdef EXDEV_ENABLE
+	/* External devices (memory.txt DEV), as the ELF32 loader does. */
+	for (i = 0; i < memap->dev_num; i++) {
+		ptr = mpu_address_set_dev(memap->dev[i].start, memap->dev[i].size, memap->dev[i].extdev_handle);
+		if (ptr == NULL) {
+			printf("Invalid dev file: can not load dev addr=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", memap->dev[i].start);
+			athrill_shared_library_close(memap->dev[i].extdev_handle);
+			memap->dev[i].extdev_handle = NULL;
+			return STD_E_INVALID;
+		}
+	}
+#endif
 	for (i = 0; i < elf_image->e_phnum; i++) {
 		const Elf64_Phdr *p = (const Elf64_Phdr *)((const uint8 *)elf_image + elf_image->e_phoff + elf_image->e_phentsize * i);
 		if (p->p_type != PT_LOAD) continue;
