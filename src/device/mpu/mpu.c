@@ -563,6 +563,29 @@ Std_ReturnType mpu_put_data32(CoreIdType core_id, AthrillAddrType addr, uint32 d
 }
 
 
+/*
+ * For direct memory access by a target: the ROM or RAM region containing
+ * addr, as its range and host buffer. Devices, regions with other access
+ * operations and not yet allocated MALLOC regions are not memory windows.
+ * Regions do not move after loading, so a target may keep the result.
+ */
+Std_ReturnType mpu_get_memory_window(CoreIdType core_id, AthrillAddrType addr,
+	AthrillAddrType *start, AthrillAddrType *size, uint8 **data, std_bool *writable)
+{
+	MpuAddressRegionType *region = search_region(core_id, addr, 1U);
+
+	if ((region == NULL) || (region->data == NULL) || (region->ops != &default_memory_operation)
+		|| (region->mask != MPU_ADDRESS_REGION_MASK_ALL)
+		|| ((region->type != GLOBAL_MEMORY) && (region->type != READONLY_MEMORY))) {
+		return STD_E_NOENT;
+	}
+	*start = region->start;
+	*size = region->size;
+	*data = region->data;
+	*writable = (region->type == GLOBAL_MEMORY);
+	return STD_E_OK;
+}
+
 Std_ReturnType mpu_get_pointer(CoreIdType core_id, AthrillAddrType addr, uint8 **data)
 {
 	MpuAddressRegionType *region = search_region(core_id, addr, 1U);
