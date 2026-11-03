@@ -50,10 +50,14 @@ int symbol_func_add(DbgSymbolType *sym)
 /*
  * Address lookup for the per-clock debugger features (backtrace, function
  * trace, profiling). The tables are searched with an index of symbol ids
- * sorted by start address, rebuilt when symbols were added. The result is
- * the same as a linear search: the lowest id whose range [addr, addr + size)
- * contains the address. max_end[k] is the largest end among order[0..k],
- * which bounds the backward scan over symbols that may still contain it.
+ * sorted by start address, rebuilt when symbols were added.
+ *
+ * Result of symbol_addr2glid() and symbol_pc2funcid() (each keeps its own
+ * last result): the symbol returned last if its range [addr, addr + size)
+ * still contains the address, otherwise the lowest id whose range contains
+ * it, or -1. (Before the index, a last result of id 0 was not reused.)
+ * max_end[k] is the largest end among order[0..k], which bounds the
+ * backward scan over symbols that may still contain the address.
  */
 typedef struct {
 	uint32 built_count;
