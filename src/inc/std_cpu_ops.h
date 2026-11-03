@@ -14,5 +14,11 @@ extern std_bool cpu_is_halt(CoreIdType core_id);
 extern std_bool cpu_is_halt_all(void);
 extern void cpu_mpu_construct_containers(CoreIdType core_id);
 extern std_bool cpu_illegal_access(CoreIdType core_id);
+/*
+ * Batched execution (targets that define ATHRILL_TARGET_BATCH_CLOCKS > 1):
+ * after an instruction inside a batch, may the next one run without a
+ * device tick in between? FALSE when the CPU halted or touched a device.
+ */
+extern std_bool cpu_batch_can_continue(CoreIdType core_id);
 
 #endif /* _STD_CPU_OPS_H_ */

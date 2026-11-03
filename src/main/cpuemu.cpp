@@ -269,6 +269,58 @@ static void cpuemu_set_debug_romdata(void)
 
 static DbgCpuCallbackFuncEnableType enable_dbg;
 
+/*
+ * Batched execution (background mode, one core, targets that opt in).
+ *
+ * Devices report in min_intr_interval how many clocks remain until their
+ * next event, and Hakoniwa caps it at its world-time limit. Until then the
+ * devices need no tick, so after the first instruction of a clock the CPU
+ * runs further instructions, one clock each, without device ticks. The
+ * batch ends early when the CPU halts or touches a device (an access can
+ * move a device event, e.g. a new mtimecmp); devices bring their state up
+ * to the current clock on access. Result: the same clocks and events as
+ * one tick per clock, with fewer ticks.
+ */
+#ifndef ATHRILL_TARGET_BATCH_CLOCKS
+#define ATHRILL_TARGET_BATCH_CLOCKS 1U
+#endif
+static uint32 cpuemu_max_batch_clocks = ATHRILL_TARGET_BATCH_CLOCKS;
+
+static std_bool cpuemu_run_batch(uint64 end_clock)
+{
+#if ATHRILL_TARGET_BATCH_CLOCKS > 1
+	uint64 budget = cpuemu_max_batch_clocks;
+	uint64 n;
+
+	if (cpuemu_dev_clock.min_intr_interval < budget) {
+		budget = cpuemu_dev_clock.min_intr_interval;
+	}
+	if ((end_clock - cpuemu_dev_clock.clock) < budget) {
+		budget = end_clock - cpuemu_dev_clock.clock;
+	}
+	for (n = 1U; n < budget; n++) {
+		if (cpu_batch_can_continue(0) == FALSE) {
+			break;
+		}
+		cpuemu_dev_clock.clock += 1U;
+		if ((cpu_supply_clock(0) != STD_E_OK) && (cpu_illegal_access(0) == FALSE)) {
+			std::cout << "CPU(pc=0x" << std::hex << cpu_get_pc(&virtual_cpu.cores[0].core) << std::dec << ") Exception!!\n";
+			fflush(stdout);
+			exit(1);
+		}
+	}
+	/*
+	 * A CPU that halted inside the batch is reported as running: the next
+	 * clock ticks the devices first, and only then is a skip computed from
+	 * fresh device intervals.
+	 */
+	return FALSE;
+#else
+	(void)end_clock;
+	return FALSE;
+#endif
+}
+
 static inline std_bool cpuemu_thread_run_nodbg(int core_id_num)
 {
 	std_bool is_halt;
@@ -306,6 +358,9 @@ static inline std_bool cpuemu_thread_run_nodbg(int core_id_num)
 		if (virtual_cpu.cores[i].core.is_halt != TRUE) {
 			is_halt = FALSE;
 		}
+	}
+	if ((is_halt == FALSE) && (core_id_num == 1) && (cpuemu_max_batch_clocks > 1U)) {
+		is_halt = cpuemu_run_batch(cpuemu_get_cpu_end_clock());
 	}
 	cpuemu_dev_clock.is_halt = is_halt;
 	return is_halt;
@@ -409,6 +464,11 @@ void *cpuemu_thread_run(void* arg)
 	(void)cpuemu_get_devcfg_value("DEVICE_CPU_FREQ", &virtual_cpu.cpu_freq);
 
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_SKIP_CLOCK", (uint32*)&cpuemu_dev_clock.enable_skip);
+	/* 1 = one device tick per clock (the reference behaviour for comparisons). */
+	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_MAX_BATCH_CLOCKS", &cpuemu_max_batch_clocks);
+	if ((cpuemu_max_batch_clocks == 0U) || (cpuemu_max_batch_clocks > ATHRILL_TARGET_BATCH_CLOCKS)) {
+		cpuemu_max_batch_clocks = ATHRILL_TARGET_BATCH_CLOCKS;
+	}
 	cpuemu_set_debug_romdata();
 
 	if (cpuemu_cui_mode() == TRUE) {
