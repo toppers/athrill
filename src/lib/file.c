@@ -1,6 +1,7 @@
 #include "file.h"
 #include "string.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 
 bool file_exist(const char *path)
@@ -53,14 +54,22 @@ bool file_load(FileType *file)
 		return FALSE;
     }
     /* Compare before narrowing: a larger file must not wrap into range. */
-    if ((st.st_size < 0) || ((uint64)st.st_size > MAX_FILE_SIZE)) {
-		printf("ERROR file size too large %s size=%lld(MAX=%u)\n", file->filepath.str, (long long)st.st_size, MAX_FILE_SIZE);
+    if ((st.st_size <= 0) || ((uint64)st.st_size > MAX_LOAD_FILE_SIZE)) {
+		printf("ERROR file size not supported %s size=%lld(MAX=%llu)\n", file->filepath.str,
+			(long long)st.st_size, (unsigned long long)MAX_LOAD_FILE_SIZE);
 	    fclose(fp);
 		return FALSE;
     }
     file->size = (uint32)st.st_size;
+    free(file->data);
+    file->data = malloc(file->size);
+    if (file->data == NULL) {
+		printf("ERROR can not allocate %u bytes for %s\n", file->size, file->filepath.str);
+	    fclose(fp);
+		return FALSE;
+    }
 
-    ret = fread(file->buffer, st.st_size, 1, fp);
+    ret = fread(file->data, st.st_size, 1, fp);
     if (ret == 0) {
 		printf("ERROR can not fread %s\n", file->filepath.str);
 	    fclose(fp);

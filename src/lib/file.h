@@ -7,11 +7,14 @@
 extern std_bool file_exist(const char *path);
 
 #define MAX_FILE_SIZE	((uint32)(1024 * 1024 * 10))
+/* Upper limit for file_load(); the data buffer is allocated to the file size. */
+#define MAX_LOAD_FILE_SIZE	((uint64)1024 * 1024 * 1024)
 typedef struct {
 	TokenStringType filepath;
 	void			*fp;
 	uint32			size;
-	uint8			buffer[MAX_FILE_SIZE];
+	uint8			*data;	/* file_load(): the whole file, size bytes */
+	uint8			buffer[MAX_FILE_SIZE];	/* line buffer for the text helpers */
 } FileType;
 extern std_bool file_load(FileType *file);
 

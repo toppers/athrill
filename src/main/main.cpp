@@ -222,10 +222,10 @@ int main(int argc, const char *argv[])
 	}
 
 	if (opt->is_binary_data) {
-		binary_load((uint8*)opt->load_file.buffer, 0U, opt->load_file.size);
+		binary_load((uint8*)opt->load_file.data, 0U, opt->load_file.size);
 	}
 	else {
-		if (elf_load((uint8*)opt->load_file.buffer, opt->load_file.size, &memmap, &entry_addr) != STD_E_OK) {
+		if (elf_load((uint8*)opt->load_file.data, opt->load_file.size, &memmap, &entry_addr) != STD_E_OK) {
 			std::cerr << "can not load ELF file " << opt->load_filepath << "\n";
 			return 1;
 		}
@@ -256,7 +256,7 @@ int main(int argc, const char *argv[])
 		cpuemu_set_cpu_end_clock(opt->hakoniwa_asset_name != NULL && opt->timeout == 0
 			? (uint64)-1 : opt->timeout);
 		if (opt->hakoniwa_asset_name != NULL) {
-			hakoniwa_elf_data = (uint8 *)opt->load_file.buffer;
+			hakoniwa_elf_data = (uint8 *)opt->load_file.data;
 			hakoniwa_elf_size = opt->load_file.size;
 			hakoniwa_memmap = &memmap;
 			if (athrill_hakoniwa_initialize(opt->hakoniwa_asset_name,
