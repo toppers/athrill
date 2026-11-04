@@ -4,7 +4,20 @@ athrill
 Athrill は CPU エミュレータです. 
 Athrill を使用すると，仮想マイコン上で組込みプログラムを簡単に実行/デバッグすることができます．
 ベアメタルプログラムやリアルタイムOS上で動作する組込み制御プログラムを評価できます．
-現時点の Athrill は V850 のCPU命令をサポートしています．
+
+Athrill は TOPPERS プロジェクトで V850 向けに始まりました．このブランチ（`cpp`）は
+`athrill3` で，CPU に依存しないコアと，ターゲットごとのリポジトリに分かれています．
+Athrill は次の4つの命令セットをサポートしています．
+
+| ターゲットのリポジトリ | 命令セット | 動くもの |
+| --- | --- | --- |
+| [athrill-target-v850e2m](https://github.com/toppers/athrill-target-v850e2m) | V850E2M | TOPPERS のリアルタイムOS上のプログラム |
+| [athrill-target-rh850f1x](https://github.com/toppers/athrill-target-rh850f1x) | RH850 (F1x) | RH850/F1x マイコン向けのプログラム |
+| [athrill-target-riscv](https://github.com/hakoniwalab/athrill-target-riscv) | RISC-V (RV64IMFC) | AIFoundry Erbium ボード（PX4 本家のボード）上の PX4 |
+| [athrill-target-stm32](https://github.com/hakoniwalab/athrill-target-stm32) | Armv7-M (Cortex-M7) | Pixhawk 4（`px4_fmu-v5`）向けの無改造の PX4 ファームウェア．QGroundControl から飛行 |
+
+Athrill は仮想クロック（1命令1クロック，アイドル時間は飛ばす）で動くため，同じ入力からの実行は完全に再現します．
+また，[箱庭](https://github.com/toppers/hakoniwa)と同期して動かせます（`--hakoniwa`）．
 
 # Table of Contents
 -----------------
