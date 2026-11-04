@@ -15,6 +15,6 @@ typedef struct {
 extern MpuAddressMapType	mpu_address_map;
 
 extern void mpu_add_dynamic_map(MpuAddressRegionType *p);
-extern MpuAddressRegionType *mpu_search_dynamic_map(uint32 start, uint32 size);
+extern MpuAddressRegionType *mpu_search_dynamic_map(AthrillAddrType start, AthrillAddrType size);
 
 #endif /* _MPU_H_ */

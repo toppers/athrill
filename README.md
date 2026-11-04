@@ -4,7 +4,23 @@ athrill
 Athrill is a CPU emulator. 
 Athrill was developed to easily execute and debug embedded programs on virtual microcomputer. 
 You can evaluate bare metal programs or embedded control programs running on real-time OS. 
-Athrill at the moment supports V850 CPU instructions.
+
+Athrill started in the TOPPERS project with the V850. Version 3
+(`athrill3`, from v3.0.0) is a CPU-independent core in C++, with one
+repository per target; the C generation ends with v1.2.1.
+Athrill supports four instruction sets:
+
+| Target repository | Instruction set | What runs on it |
+| --- | --- | --- |
+| [athrill-target-v850e2m](https://github.com/toppers/athrill-target-v850e2m) | V850E2M | TOPPERS real-time OS programs |
+| [athrill-target-rh850f1x](https://github.com/toppers/athrill-target-rh850f1x) | RH850 (F1x) | programs for the RH850/F1x microcontrollers |
+| [athrill-target-riscv](https://github.com/hakoniwalab/athrill-target-riscv) | RISC-V (RV64IMFC) | PX4 on the AIFoundry Erbium board, a board target in upstream PX4 |
+| [athrill-target-stm32](https://github.com/hakoniwalab/athrill-target-stm32) | Armv7-M (Cortex-M7) | the unmodified PX4 firmware of Pixhawk 4 (`px4_fmu-v5`), flown from QGroundControl |
+
+Athrill runs on a virtual clock (one clock per instruction, idle time
+skipped), so a run repeats exactly from the same inputs, and it can run in
+lockstep with the [Hakoniwa](https://github.com/toppers/hakoniwa)
+co-simulation environment (`--hakoniwa`).
 
 # Table of Contents
 -----------------
@@ -17,10 +33,12 @@ Athrill at the moment supports V850 CPU instructions.
 Athrill requires the following to run:
 
   * OS
-    * [Linux]
-      * Ubuntu(32bit)
-    * [Windows]
-      * MinGW32_NT-6.2(Windows10, Windows7)
+    * macOS (arm64)
+    * Linux (x64, arm64)
+    * Windows 11 (x64, Visual Studio 2022)
+  * Build tools
+    * CMake 3.16 or later
+    * A C11 and C++17 compiler (AppleClang, GCC, Clang, or MSVC)
 
 Athrill uses the following editors for source debugging:
 
@@ -32,12 +50,18 @@ Athrill uses the following editors for source debugging:
 
 # Install
 -----
-After downloading Athrill project, add the following athrill executable binary folder path on the environment-variable (PATH).
+This repository holds the CPU-independent core. The `athrill3` executable is built with CMake from a target repository, which pulls in this core through `cmake/AthrillCore.cmake`. For the V850E2M target:
 
 ```
-export PATH=[athrill root folder]/src/bin:$PATH 
+git clone https://github.com/toppers/athrill.git
+git clone https://github.com/toppers/athrill-target-v850e2m.git
+cmake -S athrill-target-v850e2m -B athrill-target-v850e2m/build -DCMAKE_BUILD_TYPE=Release
+cmake --build athrill-target-v850e2m/build
 ```
-Then make sure you can display usage of athrill on an arbitrary folder:
+
+The target finds this repository as the sibling `../athrill` checkout. To use a checkout somewhere else, add `-DATHRILL_SOURCE_DIR=<path to athrill>` to the first `cmake` command.
+
+Running `athrill3` without arguments displays its usage:
 
 	Usage:athrill -m<memory config file> [OPTION]... <load_file>
 	-i                             : execute on the interaction mode. if -i is not set, execute on the background mode.

@@ -16,10 +16,10 @@ typedef struct {
 	uint32 pc;
 	char *funcname;
 	uint32 funcid;
-	uint32 funcaddr;
+	AthrillAddrType funcaddr;
 	uint32 funcoff;
-	bool is_view_mode;
-	bool can_print;
+	std_bool is_view_mode;
+	std_bool can_print;
 	char *filepath;
 	int count;
 	struct {
@@ -36,21 +36,21 @@ extern char dbg_tmp_logbuf[DBG_BUFP_LEN];
 extern void dbg_log_init(char *filepath);
 extern void dbg_log_sync(void);
 
-static inline void dbg_log_set_view_mode(bool on)
+static inline void dbg_log_set_view_mode(std_bool on)
 {
 	DbgExecOpBuffer.is_view_mode = on;
 }
 
-static inline bool dbg_log_is_view_mode(void)
+static inline std_bool dbg_log_is_view_mode(void)
 {
 	return DbgExecOpBuffer.is_view_mode;
 }
-static inline void dbg_log_set_print_mode(bool on)
+static inline void dbg_log_set_print_mode(std_bool on)
 {
 	DbgExecOpBuffer.can_print = on;
 }
 
-static inline bool dbg_log_can_print(void)
+static inline std_bool dbg_log_can_print(void)
 {
 	return DbgExecOpBuffer.can_print;
 }
@@ -65,7 +65,7 @@ static inline void dbg_print_log(void)
 		DbgExecOpBuffer.buf[DbgExecOpBuffer.count].write_len = snprintf(
 				DbgExecOpBuffer.buf[DbgExecOpBuffer.count].p,
 				DBG_BUFP_LEN,
-				"[DONE> core%u pc=0x%x %s(+%x) %s",
+				"[DONE> core%u pc=0x%" ATHRILL_ADDR_HEX_FORMAT " %s(+%x) %s",
 				cpu_get_current_core_id(),
 				cpu_get_current_core_pc(),
 				DbgExecOpBuffer.funcname,
@@ -76,7 +76,7 @@ static inline void dbg_print_log(void)
 		DbgExecOpBuffer.buf[DbgExecOpBuffer.count].write_len = snprintf(
 				DbgExecOpBuffer.buf[DbgExecOpBuffer.count].p,
 				DBG_BUFP_LEN,
-				"[DONE> core%u pc=0x%x null(null) %s",
+				"[DONE> core%u pc=0x%" ATHRILL_ADDR_HEX_FORMAT " null(null) %s",
 				cpu_get_current_core_id(),
 				cpu_get_current_core_pc(),
 				dbg_tmp_logbuf);

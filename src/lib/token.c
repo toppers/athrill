@@ -68,7 +68,7 @@ static void set_token(TokenContainerType *token_container, TokenStringType *buff
 		ret64 = strtoull((const char*)buffer->str, &endptr, 16);
 		if ((errno == 0) && (*endptr == '\0')) {
 			token_container->array[inx].type = TOKEN_TYPE_VALUE_HEX;
-			token_container->array[inx].body.hex.value = (uint32)ret64;
+			token_container->array[inx].body.hex.value = (AthrillAddrType)ret64;
 			return;
 		}
 	}
@@ -164,7 +164,7 @@ bool token_split_merge(const TokenContainerType *token_container, uint8 start_in
 			(void)token_merge(out, &tmp);
 			break;
 		case TOKEN_TYPE_VALUE_HEX:
-			tmp.len = sprintf((char*)&tmp.str[0], "0x%x ", token_container->array[i].body.hex.value);
+			tmp.len = sprintf((char*)&tmp.str[0], "0x%" ATHRILL_ADDR_HEX_FORMAT " ", token_container->array[i].body.hex.value);
 			(void)token_merge(out, &tmp);
 			break;
 		default:

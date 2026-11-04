@@ -1,6 +1,16 @@
+#include <chrono>
+#include <iomanip>
+#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <thread>
+
+extern "C" {
 #include "cpu.h"
 #include "bus.h"
 #include "cpuemu_ops.h"
+#include "hakoniwa/athrill_hakoniwa.h"
 #include "bus.h"
 #include "std_device_ops.h"
 #include "std_cpu_ops.h"
@@ -12,29 +22,19 @@
 #include "symbol_ops.h"
 #include "token.h"
 #include "file.h"
-#include <stdio.h>
-#include <time.h>
-#include <sys/time.h>
+#include "osdep.h"
 #include "target/target_os_api.h"
 #include "option/option.h"
-#include <fcntl.h>
-#include <string.h>
 #include "shared_library.h"
-#ifdef OS_LINUX
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include "errno.h"
-#endif /* OS_LINUX */
 #include "athrill_device.h"
 #include "assert.h"
 #include "athrill_exdev_header.h"
+}
 
 static DeviceClockType cpuemu_dev_clock;
 std_bool private_cpuemu_is_cui_mode = FALSE;
 static uint64 cpuemu_cpu_end_clock = -1LLU;
-static uint32 cpuemu_cpu_entry_addr = 0U;
+static AthrillAddrType cpuemu_cpu_entry_addr = 0U;
 static void cpuemu_env_parse_devcfg_string(TokenStringType* strp);
 
 Std_ReturnType cpuemu_symbol_set(void)
@@ -44,7 +44,7 @@ Std_ReturnType cpuemu_symbol_set(void)
 	Std_ReturnType err;
 	DbgSymbolType sym;
 	ElfSymbolType elfsym;
-	bool disable_underscore = FALSE;
+	std_bool disable_underscore = FALSE;
 	uint32 name_index = 1U;
 
 	(void)cpuemu_get_devcfg_value("DISABLE_SYMBOL_UNDERSCORE", (uint32*)&disable_underscore);
@@ -106,17 +106,14 @@ void cpuemu_init(void *(*cpu_run)(void *), void *opt)
 {
 	CmdOptionType *copt = (CmdOptionType*)opt;
 	CoreIdType i;
-	dbg_log_init("./log.txt");
+	dbg_log_init((char*)"./log.txt");
 	if (copt->core_id_num > 0) {
 		virtual_cpu.core_id_num = copt->core_id_num;
 	}
 	else {
 		virtual_cpu.core_id_num = CPU_CONFIG_CORE_NUM;
 	}
-#ifdef OS_LINUX
-	memset(&cpuemu_dev_clock.start_tv, 0, sizeof(struct timeval));
-	memset(&cpuemu_dev_clock.elaps_tv, 0, sizeof(struct timeval));
-#endif /* OS_LINUX */
+	osdep_elaps_reset(&cpuemu_dev_clock);
 
 	cpu_init();
 	device_init(&virtual_cpu, &cpuemu_dev_clock);
@@ -148,10 +145,20 @@ void cpuemu_set_cpu_end_clock(uint64 clock)
 	return;
 }
 
-void cpuemu_set_entry_addr(uint32 entry_addr)
+void cpuemu_set_entry_addr(AthrillAddrType entry_addr)
 {
 	cpuemu_cpu_entry_addr = entry_addr;
 	return;
+}
+
+void cpuemu_reset(void)
+{
+	osdep_elaps_reset(&cpuemu_dev_clock);
+	cpu_init();
+	device_reset(&virtual_cpu, &cpuemu_dev_clock);
+	for (CoreIdType i = 0; i < virtual_cpu.core_id_num; i++) {
+		cpu_set_core_pc(i, cpuemu_cpu_entry_addr);
+	}
 }
 
 void cpuemu_get_elaps(CpuEmuElapsType *elaps)
@@ -160,49 +167,31 @@ void cpuemu_get_elaps(CpuEmuElapsType *elaps)
 	elaps->core_id_num = cpu_config_get_core_id_num();
 	elaps->total_clocks = cpuemu_dev_clock.clock;
 	elaps->intr_clocks = cpuemu_dev_clock.intclock;
-#ifdef OS_LINUX
-	elaps->elaps_tv = cpuemu_dev_clock.elaps_tv;
-#endif /* OS_LINUX */
+	osdep_elaps_copy(&cpuemu_dev_clock, elaps);
 	for (core_id = 0; core_id < elaps->core_id_num; core_id++) {
 		elaps->cpu_clocks[core_id] = virtual_cpu.cores[core_id].elaps;
 	}
 	return;
 }
 
-#ifdef OS_LINUX
 void cpuemu_start_elaps(void)
 {
-	(void) gettimeofday(&cpuemu_dev_clock.start_tv, NULL);
-	//printf("start sec=%ld usec=%ld\n", cpuemu_dev_clock.start_tv.tv_sec, cpuemu_dev_clock.start_tv.tv_usec);
+	osdep_elaps_start(&cpuemu_dev_clock);
 	return;
 }
 
 void cpuemu_end_elaps(void)
 {
-	struct timeval current;
-	struct timeval elaps_tv;
-
-	if (cpuemu_dev_clock.start_tv.tv_sec == 0) {
-		return;
-	}
-
-	(void) gettimeofday(&current, NULL);
-	cpuemu_timeval_sub(&current, &cpuemu_dev_clock.start_tv, &elaps_tv);
-	cpuemu_timeval_add(&elaps_tv, &cpuemu_dev_clock.elaps_tv, &cpuemu_dev_clock.elaps_tv);
-	//printf("current sec=%ld usec=%ld\n", current.tv_sec, current.tv_usec);
-	//printf("elaps sec=%ld usec=%ld\n", elaps_tv.tv_sec, elaps_tv.tv_usec);
-	//printf("total sec=%ld usec=%ld\n", cpuemu_dev_clock.elaps_tv.tv_sec, cpuemu_dev_clock.elaps_tv.tv_usec);
-
+	osdep_elaps_end(&cpuemu_dev_clock);
 	return;
 }
-#endif /* OS_LINUX */
 
 uint32 cpuemu_get_retaddr(CoreIdType core_id)
 {
 	return cpu_get_return_addr((const TargetCoreType *)&virtual_cpu.cores[core_id]);
 }
 
-Std_ReturnType cpuemu_get_addr_pointer(uint32 addr, uint8 **data)
+Std_ReturnType cpuemu_get_addr_pointer(AthrillAddrType addr, uint8 **data)
 {
 	return bus_get_pointer(CPU_CONFIG_CORE_ID_0, addr, data);
 }
@@ -228,37 +217,36 @@ static void cpuemu_set_debug_romdata(void)
 	if (err != STD_E_OK) {
 		return;
 	}
-	printf("rom_param_num=%d\n", param_num);
+	std::cout << "rom_param_num=" << param_num << '\n';
 	for (i = 0; i < param_num; i++) {
 		snprintf(parameter, sizeof(parameter), "DEBUG_ROM_DEFINE_%d", i);
 		err = cpuemu_get_devcfg_string(parameter, &rom_variable_name);
 		if (err != STD_E_OK) {
-			printf("not found param=%s\n", parameter);
+			std::cout << "not found param=" << parameter << '\n';
 			return;
 		}
 		err = token_split_with_delimiter(&cpuemu_rom_parameter, (uint8*)rom_variable_name, strlen(rom_variable_name), '=');
 		if (err != STD_E_OK) {
-			printf("can not get param value=%s\n", rom_variable_name);
+			std::cout << "can not get param value=" << rom_variable_name << '\n';
 			return;
 		}
-		printf("ROM:redefine %s = %d\n",
-				cpuemu_rom_parameter.array[0].body.str.str,
-				cpuemu_rom_parameter.array[1].body.dec.value);
+		std::cout << "ROM:redefine " << cpuemu_rom_parameter.array[0].body.str.str
+			<< " = " << cpuemu_rom_parameter.array[1].body.dec.value << '\n';
 		{
 			int ret;
 			char *gl_name = (char*)cpuemu_rom_parameter.array[0].body.str.str;
 			uint32 gl_len = strlen(gl_name);
-			uint32 addr;
+			AthrillAddrType addr;
 			uint32 size;
 			uint8* datap;
 			ret = symbol_get_gl(gl_name, gl_len, &addr, &size);
 			if (ret < 0) {
-				printf("can not found global variable=%s\n", gl_name);
+				std::cout << "can not found global variable=" << gl_name << '\n';
 				return;
 			}
 			err = bus_get_pointer(0U, addr, &datap);
 			if (err != 0) {
-				printf("can not found memory pointer=%s\n", gl_name);
+				std::cout << "can not found memory pointer=" << gl_name << '\n';
 				return;
 			}
 			switch (size) {
@@ -272,7 +260,7 @@ static void cpuemu_set_debug_romdata(void)
 				*((uint32*)datap) = (uint32)cpuemu_rom_parameter.array[1].body.dec.value;
 				break;
 			default:
-				printf("can not set pointer because gl_size(%s:%u) > 4\n", gl_name, size);
+				std::cout << "can not set pointer because gl_size(" << gl_name << ':' << size << ") > 4\n";
 				break;
 			}
 		}
@@ -280,37 +268,57 @@ static void cpuemu_set_debug_romdata(void)
 	return;
 }
 
-#ifdef CONFIG_STAT_PERF
-ProfStatType cpuemu_cpu_total_prof;
-ProfStatType cpuemu_dev_total_prof;
-ProfStatType cpuemu_dbg_total_prof[DEBUG_STAT_NUM];
-ProfStatType cpuemu_tool1_prof;
-ProfStatType cpuemu_tool2_prof;
-
-#define CPUEMU_CPU_TOTAL_PROF_START()		profstat_start(&cpuemu_cpu_total_prof)
-#define CPUEMU_CPU_TOTAL_PROF_END()			profstat_end(&cpuemu_cpu_total_prof)
-#define CPUEMU_DEV_TOTAL_PROF_START()		profstat_start(&cpuemu_dev_total_prof)
-#define CPUEMU_DEV_TOTAL_PROF_END()			profstat_end(&cpuemu_dev_total_prof)
-#define CPUEMU_DBG_TOTAL_PROF_START(inx)	profstat_start(&cpuemu_dbg_total_prof[(inx)])
-#define CPUEMU_DBG_TOTAL_PROF_END(inx)		profstat_end(&cpuemu_dbg_total_prof[(inx)])
-#define CPUEMU_TOOL1_PROF_START()			profstat_start(&cpuemu_tool1_prof)
-#define CPUEMU_TOOL1_PROF_END()				profstat_end(&cpuemu_tool1_prof)
-#define CPUEMU_TOOL2_PROF_START()			profstat_start(&cpuemu_tool2_prof)
-#define CPUEMU_TOOL2_PROF_END()				profstat_end(&cpuemu_tool2_prof)
-#else
-#define CPUEMU_CPU_TOTAL_PROF_START()
-#define CPUEMU_CPU_TOTAL_PROF_END()
-#define CPUEMU_DEV_TOTAL_PROF_START()
-#define CPUEMU_DEV_TOTAL_PROF_END()
-#define CPUEMU_DBG_TOTAL_PROF_START(inx)
-#define CPUEMU_DBG_TOTAL_PROF_END(inx)
-#define CPUEMU_TOOL1_PROF_START()
-#define CPUEMU_TOOL1_PROF_END()
-#define CPUEMU_TOOL2_PROF_START()
-#define CPUEMU_TOOL2_PROF_END()
-#endif /* CONFIG_STAT_PERF */
 
 static DbgCpuCallbackFuncEnableType enable_dbg;
+
+/*
+ * Batched execution (background mode, one core, targets that opt in).
+ *
+ * Devices report in min_intr_interval how many clocks remain until their
+ * next event, and Hakoniwa caps it at its world-time limit. Until then the
+ * devices need no tick, so after the first instruction of a clock the CPU
+ * runs further instructions, one clock each, without device ticks. The
+ * batch ends early when the CPU halts or touches a device (an access can
+ * move a device event, e.g. a new mtimecmp); devices bring their state up
+ * to the current clock on access. Result: the same clocks and events as
+ * one tick per clock, with fewer ticks.
+ */
+#ifndef ATHRILL_TARGET_BATCH_CLOCKS
+#define ATHRILL_TARGET_BATCH_CLOCKS 1U
+#endif
+static uint32 cpuemu_max_batch_clocks = ATHRILL_TARGET_BATCH_CLOCKS;
+
+static std_bool cpuemu_run_batch(uint64 end_clock)
+{
+#if ATHRILL_TARGET_BATCH_CLOCKS > 1
+	uint64 budget = cpuemu_max_batch_clocks;
+	uint64 n;
+
+	if (cpuemu_dev_clock.min_intr_interval < budget) {
+		budget = cpuemu_dev_clock.min_intr_interval;
+	}
+	if ((end_clock - cpuemu_dev_clock.clock) < budget) {
+		budget = end_clock - cpuemu_dev_clock.clock;
+	}
+	if (budget > 1U) {
+		if ((cpu_supply_clocks(0, budget - 1U, &cpuemu_dev_clock.clock, &n) != STD_E_OK)
+			&& (cpu_illegal_access(0) == FALSE)) {
+			std::cout << "CPU(pc=0x" << std::hex << cpu_get_pc(&virtual_cpu.cores[0].core) << std::dec << ") Exception!!\n";
+			fflush(stdout);
+			exit(1);
+		}
+	}
+	/*
+	 * A CPU that halted inside the batch is reported as running: the next
+	 * clock ticks the devices first, and only then is a skip computed from
+	 * fresh device intervals.
+	 */
+	return FALSE;
+#else
+	(void)end_clock;
+	return FALSE;
+#endif
+}
 
 static inline std_bool cpuemu_thread_run_nodbg(int core_id_num)
 {
@@ -324,23 +332,22 @@ static inline std_bool cpuemu_thread_run_nodbg(int core_id_num)
 	device_supply_clock_athrill_device();
 #endif /* EXDEV_ENABLE */
 	device_supply_clock(&cpuemu_dev_clock);
+	if (athrill_hakoniwa_stage(cpuemu_dev_clock.clock, virtual_cpu.cpu_freq,
+		&cpuemu_dev_clock.min_intr_interval) == FALSE) {
+		return TRUE;
+	}
 
 	/**
 	 * CPU 実行
 	 */
 	is_halt = TRUE;
-#ifndef DOPTIMIZE_USE_ONLY_1CPU	
+	/* TODO: The single-CPU optimisation was never active because its guard was misspelled. */
 	for (i = 0; i < core_id_num; i++) {
-#endif
 		virtual_cpu.current_core = &virtual_cpu.cores[i];
-		/**
-		 * CPU 実行開始通知
-		 */
-		dbg_cpu_callback_start_nodbg(cpu_get_pc(&virtual_cpu.cores[i].core), cpu_get_sp(&virtual_cpu.cores[i].core));
 
 		err = cpu_supply_clock(i);
 		if ((err != STD_E_OK) && (cpu_illegal_access(i) == FALSE)) {
-			printf("CPU(pc=0x%x) Exception!!\n", cpu_get_pc(&virtual_cpu.cores[i].core));
+			std::cout << "CPU(pc=0x" << std::hex << cpu_get_pc(&virtual_cpu.cores[i].core) << std::dec << ") Exception!!\n";
 			fflush(stdout);
 			exit(1);
 		}
@@ -350,9 +357,10 @@ static inline std_bool cpuemu_thread_run_nodbg(int core_id_num)
 		if (virtual_cpu.cores[i].core.is_halt != TRUE) {
 			is_halt = FALSE;
 		}
-#ifndef DOPTIMIZE_USE_ONLY_1CPU	
 	}
-#endif
+	if ((is_halt == FALSE) && (core_id_num == 1) && (cpuemu_max_batch_clocks > 1U)) {
+		is_halt = cpuemu_run_batch(cpuemu_get_cpu_end_clock());
+	}
 	cpuemu_dev_clock.is_halt = is_halt;
 	return is_halt;
 }
@@ -362,20 +370,18 @@ static inline std_bool cpuemu_thread_run_dbg(int core_id_num)
 	CoreIdType i;
 	Std_ReturnType err;
 
-	CPUEMU_TOOL1_PROF_START();
-		CPUEMU_TOOL2_PROF_START();
-		CPUEMU_TOOL2_PROF_END();
-	CPUEMU_TOOL1_PROF_END();
 
 	/**
 	 * デバイス実行実行
 	 */
-	CPUEMU_DEV_TOTAL_PROF_START();
 #ifdef EXDEV_ENABLE
 	device_supply_clock_athrill_device();
 #endif /* EXDEV_ENABLE */
 	device_supply_clock(&cpuemu_dev_clock);
-	CPUEMU_DEV_TOTAL_PROF_END();
+	if (athrill_hakoniwa_stage(cpuemu_dev_clock.clock, virtual_cpu.cpu_freq,
+		&cpuemu_dev_clock.min_intr_interval) == FALSE) {
+		return TRUE;
+	}
 
 	/**
 	 * CPU 実行
@@ -384,41 +390,29 @@ static inline std_bool cpuemu_thread_run_dbg(int core_id_num)
 	for (i = 0; i < core_id_num; i++) {
 		virtual_cpu.current_core = &virtual_cpu.cores[i];
 
-		CPUEMU_CPU_TOTAL_PROF_START();
 		/*
 		 * バスのアクセスログをクリアする
 		 */
-		CPUEMU_DBG_TOTAL_PROF_START(0);
 		bus_access_set_log(BUS_ACCESS_TYPE_NONE, 8U, 0, 0);
-		CPUEMU_DBG_TOTAL_PROF_END(0);
 
 		/**
 		 * CPU 実行開始通知
 		 */
-		CPUEMU_DBG_TOTAL_PROF_START(1);
 		dbg_cpu_callback_start(cpu_get_pc(&virtual_cpu.cores[i].core), cpu_get_sp(&virtual_cpu.cores[i].core));
-		CPUEMU_DBG_TOTAL_PROF_END(1);
 
-		CPUEMU_DBG_TOTAL_PROF_START(2);
 		dbg_notify_cpu_clock_supply_start(&virtual_cpu.cores[i].core);
-		CPUEMU_DBG_TOTAL_PROF_END(2);
 
-		CPUEMU_DBG_TOTAL_PROF_START(3);
 		err = cpu_supply_clock(i);
 		if ((err != STD_E_OK) && (cpu_illegal_access(i) == FALSE)) {
-			printf("CPU(pc=0x%x) Exception!!\n", cpu_get_pc(&virtual_cpu.cores[i].core));
+			std::cout << "CPU(pc=0x" << std::hex << cpu_get_pc(&virtual_cpu.cores[i].core) << std::dec << ") Exception!!\n";
 			fflush(stdout);
 			cpuctrl_set_force_break();
 		}
-		CPUEMU_DBG_TOTAL_PROF_END(3);
 		/**
 		 * CPU 実行完了通知
 		 */
-		CPUEMU_DBG_TOTAL_PROF_START(4);
 		dbg_notify_cpu_clock_supply_end(&virtual_cpu.cores[i].core, &enable_dbg);
-		CPUEMU_DBG_TOTAL_PROF_END(4);
 
-		CPUEMU_CPU_TOTAL_PROF_END();
 		if (virtual_cpu.cores[i].core.is_halt != TRUE) {
 			is_halt = FALSE;
 		}
@@ -427,12 +421,43 @@ static inline std_bool cpuemu_thread_run_dbg(int core_id_num)
 	return is_halt;
 }
 
-#ifdef ATHRILL_PROFILE
-#include <signal.h>
-#include <setjmp.h>
-void intr_handler(int sig);
-jmp_buf buf;
-#endif
+
+/*
+ * Optionally keep pace with wall-clock time and report the skipped clocks
+ * before the main loop jumps to the next device interrupt.
+ */
+static void cpuemu_sync_skipped_clock(void)
+{
+	osdep_sync_skipped_clock(cpuemu_dev_clock.min_intr_interval,
+		virtual_cpu.cpu_freq, enable_dbg.enable_sync_time, enable_dbg.show_skip_time);
+	return;
+}
+
+/*
+ * Real-time pacing (DEBUG_FUNC_REAL_TIME 1): simulated time must not run
+ * ahead of wall-clock time. After every millisecond of simulated time, and
+ * after a clock skip, the two are compared and the lead is slept off. A run
+ * that is slower than real time is not affected. Simulated results do not
+ * change; only inputs from outside (e.g. a TCP UART) arrive at other
+ * simulated times.
+ */
+static uint32 cpuemu_real_time;
+static uint64 cpuemu_real_time_next_clock;
+static std::chrono::steady_clock::time_point cpuemu_real_time_start;
+
+static void cpuemu_pace_real_time(uint64 clock)
+{
+	if (clock < cpuemu_real_time_next_clock) {
+		return;
+	}
+	const uint64 simulated_usec = clock / virtual_cpu.cpu_freq;
+	const uint64 wall_usec = (uint64)std::chrono::duration_cast<std::chrono::microseconds>(
+		std::chrono::steady_clock::now() - cpuemu_real_time_start).count();
+	if (simulated_usec > wall_usec) {
+		std::this_thread::sleep_for(std::chrono::microseconds(simulated_usec - wall_usec));
+	}
+	cpuemu_real_time_next_clock = clock + 1000ULL * virtual_cpu.cpu_freq;
+}
 
 void *cpuemu_thread_run(void* arg)
 {
@@ -451,8 +476,8 @@ void *cpuemu_thread_run(void* arg)
 
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_BT", &enable_dbg.enable_bt);
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_FT", &enable_dbg.enable_ft);
-	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_PROF", &enable_dbg.enable_watch);
-	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_WATCH", &enable_dbg.enable_prof);
+	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_PROF", &enable_dbg.enable_prof);
+	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_WATCH", &enable_dbg.enable_watch);
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_SYNC_TIME", &enable_dbg.enable_sync_time);
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_SHOW_SKIP_TIME", &enable_dbg.show_skip_time);
 	(void)cpuemu_get_devcfg_value_hex("DEBUG_FUNC_RESET_PC", &enable_dbg.reset_pc);
@@ -464,6 +489,12 @@ void *cpuemu_thread_run(void* arg)
 	(void)cpuemu_get_devcfg_value("DEVICE_CPU_FREQ", &virtual_cpu.cpu_freq);
 
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_SKIP_CLOCK", (uint32*)&cpuemu_dev_clock.enable_skip);
+	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_REAL_TIME", &cpuemu_real_time);
+	/* 1 = one device tick per clock (the reference behaviour for comparisons). */
+	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_MAX_BATCH_CLOCKS", &cpuemu_max_batch_clocks);
+	if ((cpuemu_max_batch_clocks == 0U) || (cpuemu_max_batch_clocks > ATHRILL_TARGET_BATCH_CLOCKS)) {
+		cpuemu_max_batch_clocks = ATHRILL_TARGET_BATCH_CLOCKS;
+	}
 	cpuemu_set_debug_romdata();
 
 	if (cpuemu_cui_mode() == TRUE) {
@@ -474,87 +505,40 @@ void *cpuemu_thread_run(void* arg)
 	}
 	uint64 end_clock = cpuemu_get_cpu_end_clock();
 	uint64 *clockp = &cpuemu_dev_clock.clock;
-	bool enable_skip = cpuemu_dev_clock.enable_skip;
+	std_bool enable_skip = cpuemu_dev_clock.enable_skip;
 
-#ifdef ATHRILL_PROFILE
-  if ( signal(SIGINT, intr_handler) == SIG_ERR ) {
-    exit(1);
-  }
-
-  if ( setjmp(buf) == 0 ) {
-#endif
+	cpuemu_real_time_start = std::chrono::steady_clock::now();
 	while (TRUE) {
 		if ((*clockp)>= end_clock) {
 			dbg_log_sync();
-			//printf("EXIT for timeout(%I64u).\n", cpuemu_dev_clock.clock);
-			printf("EXIT for timeout("PRINT_FMT_UINT64").\n", cpuemu_dev_clock.clock);
+			athrill_hakoniwa_finalize();
+			std::cout << "EXIT for timeout(" << cpuemu_dev_clock.clock << ").\n";
 			exit(1);
 		}
 		is_halt = do_cpu_run(core_id_num);
 
-		if (enable_skip == TRUE) {
-			if ((is_halt == TRUE) && (cpuemu_dev_clock.can_skip_clock == TRUE) && (cpuemu_dev_clock.min_intr_interval != DEVICE_CLOCK_MAX_INTERVAL)) {
-#ifdef OS_LINUX
-				uint64 skipc_usec = 0;
-				if (enable_dbg.enable_sync_time > 0) {
-					skipc_usec = ( (cpuemu_dev_clock.min_intr_interval - 1) / virtual_cpu.cpu_freq );
-					if (skipc_usec > ((uint64)enable_dbg.enable_sync_time)) {
-						(void)usleep((useconds_t)(skipc_usec - ((uint64)enable_dbg.enable_sync_time)));
-					}
-				}
-				if (enable_dbg.show_skip_time != 0) {
-					static struct timeval prev_elaps;
-					struct timeval result;
-					struct timeval elaps;
-					gettimeofday(&elaps, NULL);
-					cpuemu_timeval_sub(&elaps, &prev_elaps, &result);
-#ifdef OS_MAC
-					printf("skip-clock = %llu : %ld sec %d usec sync_time=%d \n", skipc_usec, result.tv_sec, result.tv_usec, enable_dbg.enable_sync_time);
-#else
-                    printf("skip-clock = %llu : %ld sec %ld usec sync_time=%u \n", skipc_usec, result.tv_sec, result.tv_usec, enable_dbg.enable_sync_time);
-#endif
-					prev_elaps = elaps;
-				}
-#endif /* OS_LINUX */
-#ifndef CPUEMU_CLOCK_BUG_FIX
-				if (cpuemu_dev_clock.min_intr_interval > 2U) {
-					cpuemu_dev_clock.clock += (cpuemu_dev_clock.min_intr_interval - 1);
-				}
-#else
-				if (cpuemu_dev_clock.min_intr_interval != DEVICE_CLOCK_MAX_INTERVAL) {
-					cpuemu_dev_clock.clock += (cpuemu_dev_clock.min_intr_interval);
-				}
-#endif /* CPUEMU_CLOCK_BUG_FIX */
-				else {
-					cpuemu_dev_clock.clock += 1U;
-				}
-			}
-#ifndef CPUEMU_CLOCK_BUG_FIX
-#else
-			else {
-				cpuemu_dev_clock.clock += 1U;
-			}
-#endif /* CPUEMU_CLOCK_BUG_FIX */
+		if ((enable_skip == TRUE) && (is_halt == TRUE)
+				&& (cpuemu_dev_clock.can_skip_clock == TRUE)
+				&& (cpuemu_dev_clock.min_intr_interval != DEVICE_CLOCK_MAX_INTERVAL)) {
+			/*
+			 * CPU is halted: jump to the next device interrupt.
+			 */
+			cpuemu_sync_skipped_clock();
+			cpuemu_dev_clock.clock += cpuemu_dev_clock.min_intr_interval;
 		}
-#ifndef CPUEMU_CLOCK_BUG_FIX
-#else
 		else {
 			cpuemu_dev_clock.clock += 1U;
 		}
-#endif /* CPUEMU_CLOCK_BUG_FIX */
+		if (cpuemu_real_time != 0U) {
+			cpuemu_pace_real_time(cpuemu_dev_clock.clock);
+		}
 	}
-#ifdef ATHRILL_PROFILE
-  }
-#endif
 	return NULL;
 }
 
-#ifdef ATHRILL_PROFILE
-void intr_handler(int sig) {
-  printf("Interrupt : %d\n", sig);
-  longjmp(buf, 1);
-}
-#endif
+uint64 cpuemu_get_clock(void) { return cpuemu_dev_clock.clock; }
+uint32 cpuemu_get_cpu_frequency(void) { return virtual_cpu.cpu_freq; }
+
 
 
 typedef struct {
@@ -564,12 +548,12 @@ typedef struct {
 } CpuEmuFifoFileType;
 
 static const TokenStringType fifo_tx_string = {
-		.len = 2,
-		.str = { 'T', 'X', '\0' },
+		2,
+		{ 'T', 'X', '\0' },
 };
 static const TokenStringType fifo_rx_string = {
-		.len = 2,
-		.str = { 'R', 'X', '\0' },
+		2,
+		{ 'R', 'X', '\0' },
 };
 
 
@@ -598,30 +582,30 @@ static Std_ReturnType parse_fifopath(char *buffer, uint32 len)
 
 	if (token_strcmp(&fifo_tx_string, &token_container.array[0].body.str) == TRUE) {
 		if (cpuemu_fifo_file.tx_path.len > 0) {
-			printf("ERROR: INVALID parameter number of TX >= 2\n");
+			std::cout << "ERROR: INVALID parameter number of TX >= 2\n";
 			return STD_E_INVALID;
 		}
 		cpuemu_fifo_file.tx_path = cpuemu_fifo_file.folder_path;
 		if (token_merge(&cpuemu_fifo_file.tx_path, &token_container.array[1].body.str) == FALSE) {
-			printf("ERROR: INVALID filename is too long: %s\n", token_container.array[1].body.str.str);
+			std::cout << "ERROR: INVALID filename is too long: " << token_container.array[1].body.str.str << '\n';
 			return STD_E_INVALID;
 		}
 	}
 	else if (token_strcmp(&fifo_rx_string, &token_container.array[0].body.str) == TRUE) {
 		if (cpuemu_fifo_file.rx_path.len > 0) {
-			printf("ERROR: INVALID parameter number of RX >= 2\n");
+			std::cout << "ERROR: INVALID parameter number of RX >= 2\n";
 			return STD_E_INVALID;
 		}
 		cpuemu_fifo_file.rx_path = cpuemu_fifo_file.folder_path;
 		if (token_merge(&cpuemu_fifo_file.rx_path, &token_container.array[1].body.str) == FALSE) {
-			printf("ERROR: INVALID filename is too long: %s\n", token_container.array[1].body.str.str);
+			std::cout << "ERROR: INVALID filename is too long: " << token_container.array[1].body.str.str << '\n';
 			return STD_E_INVALID;
 		}
 	}
 
 	return STD_E_OK;
 errdone:
-	printf("ERROR: Invalid parameter. Format should b {TX|RX} <fifo name>\n");
+	std::cout << "ERROR: Invalid parameter. Format should b {TX|RX} <fifo name>\n";
 	return err;
 }
 
@@ -636,7 +620,7 @@ Std_ReturnType cpuemu_set_comm_fifocfg(const char* fifocfg)
 	uint32 len;
 	Std_ReturnType err;
 	char buffer[4096];
-	bool ret;
+	std_bool ret;
 
 	ret = token_string_set(&cpuemu_fifocfg.filepath, fifocfg);
 	if (ret == FALSE) {
@@ -664,7 +648,7 @@ Std_ReturnType cpuemu_set_comm_fifocfg(const char* fifocfg)
 		}
 	}
 	else {
-		printf("ERROR: can not found data on %s...\n", fifocfg);
+		std::cout << "ERROR: can not found data on " << fifocfg << "...\n";
 		goto errdone;
 	}
 
@@ -677,22 +661,22 @@ Std_ReturnType cpuemu_set_comm_fifocfg(const char* fifocfg)
 		}
 	}
 	else {
-		printf("ERROR: can not found data on %s...\n", fifocfg);
+		std::cout << "ERROR: can not found data on " << fifocfg << "...\n";
 		goto errdone;
 	}
 
 	err = STD_E_INVALID;
 	if (file_exist(cpuemu_get_comm_rx_fifo()) == FALSE) {
-		printf("ERROR: can not found fifo file %s...\n", cpuemu_get_comm_rx_fifo());
+		std::cout << "ERROR: can not found fifo file " << cpuemu_get_comm_rx_fifo() << "...\n";
 		goto errdone;
 	}
 	if (file_exist(cpuemu_get_comm_tx_fifo()) == FALSE) {
-		printf("ERROR: can not found fifo file %s...\n", cpuemu_get_comm_rx_fifo());
+		std::cout << "ERROR: can not found fifo file " << cpuemu_get_comm_rx_fifo() << "...\n";
 		goto errdone;
 	}
 
-	printf("RX fifo:%s\n", cpuemu_get_comm_rx_fifo());
-	printf("TX fifo:%s\n", cpuemu_get_comm_tx_fifo());
+	std::cout << "RX fifo:" << cpuemu_get_comm_rx_fifo() << '\n';
+	std::cout << "TX fifo:" << cpuemu_get_comm_tx_fifo() << '\n';
 
 	file_close(&cpuemu_fifocfg);
 	return STD_E_OK;
@@ -741,7 +725,7 @@ Std_ReturnType cpuemu_load_devcfg(const char *path)
 {
 	Std_ReturnType err = STD_E_OK;
 	uint32 len;
-	bool ret;
+	std_bool ret;
 
 	cpuemu_devcfg.param_num = 0;
 
@@ -763,11 +747,11 @@ Std_ReturnType cpuemu_load_devcfg(const char *path)
 
 		err = token_split(&devcfg_token_container, (uint8*)dvcfg_buffer, len);
 		if (err != STD_E_OK) {
-			printf("ERROR: can not parse data on %s...\n", path);
+			std::cout << "ERROR: can not parse data on " << path << "...\n";
 			goto errdone;
 		}
 		if (devcfg_token_container.num != 2) {
-			printf("ERROR: the token is invalid %s on %s...\n", dvcfg_buffer, path);
+			std::cout << "ERROR: the token is invalid " << dvcfg_buffer << " on " << path << "...\n";
 			goto errdone;
 		}
 		cpuemu_devcfg.param[cpuemu_devcfg.param_num].key = devcfg_token_container.array[0];
@@ -809,7 +793,7 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 {
 	Std_ReturnType err = STD_E_OK;
 	uint32 len;
-	bool ret;
+	std_bool ret;
 	MemoryAddressType *memp = NULL;
 
 	map->ram_num = 0;
@@ -837,7 +821,7 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 
 		err = token_split(&memcfg_token_container, (uint8*)memcfg_buffer, len);
 		if (err != STD_E_OK) {
-			printf("ERROR: can not parse data on %s...\n", path);
+			std::cout << "ERROR: can not parse data on " << path << "...\n";
 			goto errdone;
 		}
 		/*
@@ -845,13 +829,13 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 		 * opt = {V|X}, V= load from virtual address, X = executable region
 		 */
 		if ((memcfg_token_container.num != 3) && (memcfg_token_container.num != 4)) {
-			printf("ERROR: the token is invalid %s on %s...\n", memcfg_buffer, path);
+			std::cout << "ERROR: the token is invalid " << memcfg_buffer << " on " << path << "...\n";
 			goto errdone;
 		}
 		if (!strcmp("ROM", (char*)memcfg_token_container.array[0].body.str.str)) {
-			printf("ROM");
+			std::cout << "ROM";
 			map->rom_num++;
-			map->rom = realloc(map->rom, map->rom_num * sizeof(MemoryAddressType));
+			map->rom = (MemoryAddressType*)realloc(map->rom, map->rom_num * sizeof(MemoryAddressType));
 			ASSERT(map->rom != NULL);
 			memp = &map->rom[map->rom_num - 1];
 			memp->type = MemoryAddressImplType_ROM;
@@ -860,9 +844,9 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			analize_memmap_arguments(&memcfg_token_container, map, memp);
 		}
 		else if (!strcmp("RAM", (char*)memcfg_token_container.array[0].body.str.str)) {
-			printf("RAM");
+			std::cout << "RAM";
 			map->ram_num++;
-			map->ram = realloc(map->ram, map->ram_num * sizeof(MemoryAddressType));
+			map->ram = (MemoryAddressType*)realloc(map->ram, map->ram_num * sizeof(MemoryAddressType));
 			ASSERT(map->ram != NULL);
 			memp = &map->ram[map->ram_num - 1];
 			memp->type = MemoryAddressImplType_RAM;
@@ -870,50 +854,50 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			memp->mmap_addr = NULL;
 			analize_memmap_arguments(&memcfg_token_container, map, memp);
 		}
-#ifdef OS_LINUX
 		else if (!strcmp("MMAP", (char*)memcfg_token_container.array[0].body.str.str)) {
+			if (osdep_supports_mapped_memory() == FALSE) {
+				std::cout << "WARNING: unknown memory type=" << (char*)memcfg_token_container.array[0].body.str.str << '\n';
+				continue;
+			}
 			map->ram_num++;
-			map->ram = realloc(map->ram, map->ram_num * sizeof(MemoryAddressType));
+			map->ram = (MemoryAddressType*)realloc(map->ram, map->ram_num * sizeof(MemoryAddressType));
 			ASSERT(map->ram != NULL);
 			memp = &map->ram[map->ram_num - 1];
 			memp->type = MemoryAddressImplType_MMAP;
 			{
 				char* filepath;
-				int fd;
-				int err;
-				struct stat statbuf;
+				OsdepMappedFile mapped_file;
 				AthrillDeviceMmapInfoType info;
 
 				cpuemu_env_parse_devcfg_string(&memcfg_token_container.array[2].body.str);
 				filepath = (char*)memcfg_token_container.array[2].body.str.str;
 				//printf("mmap path=%s\n", filepath);
-				fd = open(filepath, O_RDWR);
-				if (fd < 0) {
-					printf("can not open mmapfile:%s err=%d\n", filepath, errno);
-					ASSERT(fd >= 0);
+				err = osdep_open_mapped_file(filepath, &mapped_file);
+				if (err != STD_E_OK) {
+					std::cout << "can not open mmapfile:" << filepath << " err=" << mapped_file.error_number << '\n';
+					ASSERT(err == STD_E_OK);
 				}
-				err = fstat(fd, &statbuf);
-				ASSERT(err >= 0);
-				memp->size = ((statbuf.st_size + 8191) / 8192) * 8;
+				memp->size = (uint32)(((mapped_file.file_size + 8191) / 8192) * 8);
 				if (memp->size == 0) {
 					memp->size = 8;
 				}
-				memp->mmap_addr = mmap(NULL, memp->size * 1024, (PROT_READ|PROT_WRITE), MAP_SHARED, fd, 0);
-				ASSERT(memp->mmap_addr != NULL);
-#ifdef OS_MAC
-                printf("MMAP(%s filesize=%lld)", filepath, statbuf.st_size);
-#else
-				printf("MMAP(%s filesize=%lu)", filepath, statbuf.st_size);
-#endif
+				err = osdep_map_open_file(&mapped_file, memp->size * 1024U);
+				ASSERT(err == STD_E_OK);
+				memp->mmap_addr = mapped_file.address;
+				std::cout << "MMAP(" << filepath << " filesize=" << mapped_file.file_size << ')';
 				analize_memmap_arguments(&memcfg_token_container, map, memp);
-                info.fd = fd;
+				info.fd = mapped_file.fd;
 				info.addr = CAST_UINT32_TO_ADDR(memcfg_token_container.array[1].body.hex.value);
 				athrill_device_set_mmap_info(&info);
 			}
 		}
 		else if (!strcmp("MALLOC", (char*)memcfg_token_container.array[0].body.str.str)) {
+			if (osdep_supports_mapped_memory() == FALSE) {
+				std::cout << "WARNING: unknown memory type=" << (char*)memcfg_token_container.array[0].body.str.str << '\n';
+				continue;
+			}
 			map->ram_num++;
-			map->ram = realloc(map->ram, map->ram_num * sizeof(MemoryAddressType));
+			map->ram = (MemoryAddressType*)realloc(map->ram, map->ram_num * sizeof(MemoryAddressType));
 			ASSERT(map->ram != NULL);
 			memp = &map->ram[map->ram_num - 1];
 			memp->type = MemoryAddressImplType_MALLOC;
@@ -921,13 +905,12 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			memp->mmap_addr = NULL;
 			if ((memp->size % (MPU_MALLOC_REGION_UNIT_SIZE * MPU_MALLOC_REGION_UNIT_GROUP_NUM)) != 0) {
 				err = STD_E_INVALID;
-				printf("ERROR: Invalid MALLOC size(%u). The size must be multiples of 10MB.\n", memp->size);
+				std::cout << "ERROR: Invalid MALLOC size(" << memp->size << "). The size must be multiples of 10MB.\n";
 				goto errdone;
 			}
 			analize_memmap_arguments(&memcfg_token_container, map, memp);
-			printf("MALLOC");
+			std::cout << "MALLOC";
 		}
-#endif /* OS_LINUX */
 #ifdef EXDEV_ENABLE
 		else if (!strcmp("DEV", (char*)memcfg_token_container.array[0].body.str.str)) {
 			char error_message[512];
@@ -937,51 +920,49 @@ Std_ReturnType cpuemu_load_memmap(const char *path, MemoryAddressMapType *map)
 			AthrillExDeviceHeaderType *ext_dev_header;
 
 			if (handle == NULL) {
-				printf("ERROR: Can not load shared library %s reason=%s\n", filepath, error_message);
+				std::cout << "ERROR: Can not load shared library " << filepath << " reason=" << error_message << '\n';
 				continue;
 			}
-			ext_dev_header = athrill_shared_library_symbol(
+			ext_dev_header = (AthrillExDeviceHeaderType*)athrill_shared_library_symbol(
 				handle, "athrill_ex_device", error_message, sizeof(error_message));
 			if (ext_dev_header == NULL) {
-				printf(
-					"ERROR: Can not find symbol(athrill_ex_device) on %s reason=%s\n",
-					filepath,
-					error_message);
+				std::cout << "ERROR: Can not find symbol(athrill_ex_device) on " << filepath
+					<< " reason=" << error_message << '\n';
 				athrill_shared_library_close(handle);
 				continue;
 			}
 			if (ext_dev_header->magicno != ATHRILL_EXTERNAL_DEVICE_MAGICNO) {
-				printf("ERROR: magicno is invalid(0x%x) on %s\n", ext_dev_header->magicno, filepath);
+				std::cout << "ERROR: magicno is invalid(0x" << std::hex << ext_dev_header->magicno << std::dec << ") on " << filepath << '\n';
 				athrill_shared_library_close(handle);
 				continue;
 			}
 			if (ext_dev_header->version != ATHRILL_EXTERNAL_DEVICE_VERSION) {
-				printf("ERROR: version is invalid(0x%x) on %s\n", ext_dev_header->version, filepath);
+				std::cout << "ERROR: version is invalid(0x" << std::hex << ext_dev_header->version << std::dec << ") on " << filepath << '\n';
 				athrill_shared_library_close(handle);
 				continue;
 			}
 			if (ext_dev_header->memory_size <= 0) {
-				printf("ERROR: memory size is invalid(%d) on %s\n", ext_dev_header->memory_size, filepath);
+				std::cout << "ERROR: memory size is invalid(" << ext_dev_header->memory_size << ") on " << filepath << '\n';
 				athrill_shared_library_close(handle);
 				continue;
 			}
 			map->dev_num++;
-			map->dev = realloc(map->dev, map->dev_num * sizeof(MemoryAddressType));
+			map->dev = (MemoryAddressType*)realloc(map->dev, map->dev_num * sizeof(MemoryAddressType));
 			ASSERT(map->dev != NULL);
 			memp = &map->dev[map->dev_num - 1];
 			memp->type = MemoryAddressImplType_DEV;
 			memp->extdev_handle = handle;
 			memp->size = (uint32)ext_dev_header->memory_size;
 			memp->mmap_addr = NULL;
-			printf("DEV");
+			std::cout << "DEV";
 		}
 #endif
 		else {
-			printf("WARNING: unknown memory type=%s\n", (char*)memcfg_token_container.array[0].body.str.str);
+			std::cout << "WARNING: unknown memory type=" << (char*)memcfg_token_container.array[0].body.str.str << '\n';
 			continue;
 		}
-		memp->start = memcfg_token_container.array[1].body.hex.value;
-		printf(" : START=0x%x SIZE=%u\n", memp->start, memp->size);
+		memp->start = (AthrillAddrType)memcfg_token_container.array[1].body.hex.value;
+		std::cout << " : START=0x" << std::hex << memp->start << std::dec << " SIZE=" << memp->size << '\n';
 	}
 
 	file_close(&memcfg_file);
@@ -1030,7 +1011,7 @@ Std_ReturnType cpuemu_get_devcfg_value_hex(const char* key, uint32 *value)
 		if (token_strcmp(&cpuemu_devcfg.param[i].key.body.str, &token) == FALSE) {
 			continue;
 		}
-		*value = cpuemu_devcfg.param[i].value.body.hex.value;
+		*value = (uint32)cpuemu_devcfg.param[i].value.body.hex.value;
 		return STD_E_OK;
 	}
 	return STD_E_NOENT;
@@ -1040,8 +1021,8 @@ static void cpuemu_env_parse_devcfg_string(TokenStringType* strp)
 {
 	static char env_name[TOKEN_STRING_MAX_SIZE];
 	static char out_name[TOKEN_STRING_MAX_SIZE];
-	char *start = strchr((const char*)strp->str, '{');
-	char *end = strchr((const char*)strp->str, '}');
+	const char *start = strchr((const char*)strp->str, '{');
+	const char *end = strchr((const char*)strp->str, '}');
 	if ((start == NULL) || (end == NULL)) {
 		return;
 	}
@@ -1087,7 +1068,7 @@ Std_ReturnType cpuemu_get_devcfg_string(const char* key, char **value)
 		}
 		cpuemu_env_parse_devcfg_string(&cpuemu_devcfg.param[i].value.body.str);
 		*value = (char*)cpuemu_devcfg.param[i].value.body.str.str;
-		printf("%s = %s\n", key, *value);
+		std::cout << key << " = " << *value << '\n';
 		return STD_E_OK;
 	}
 	return STD_E_NOENT;

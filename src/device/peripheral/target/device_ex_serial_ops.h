@@ -5,11 +5,11 @@ typedef struct {
 	/*
 	 * シリアル出力をCPUエミュレータから外部に出力する．
 	 */
-	bool (*putchar) (uint8 channel, uint8 data);
+	std_bool (*putchar) (uint8 channel, uint8 data);
 	/*
 	 * シリアル入力をCPUエミュレータの外部から入力する．
 	 */
-	bool (*getchar) (uint8 channel, uint8 *data);
+	std_bool (*getchar) (uint8 channel, uint8 *data);
 
 	void (*flush) (uint8 channel);
 } DeviceExSerialOpType;

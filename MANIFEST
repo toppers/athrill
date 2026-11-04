@@ -1,5 +1,5 @@
 PACKAGE athrill
-VERSION 1.2.1
+VERSION 3.0.0
 
 MANIFEST
 README.ja.md
@@ -15,19 +15,11 @@ bin/linux/variable_conflict_check.groovy
 bin/linux/variable_conflict_check.sh
 bin/windows/athrill_scenario_cmd.sh
 bin/windows/sakura.sh
-build/core/linux/Makefile.bus
-build/core/linux/Makefile.cpu
-build/core/linux/Makefile.cui
-build/core/linux/Makefile.device
-build/core/linux/Makefile.loader
-build/core/linux/Makefile.main
-build/core/linux/Makefile.mpu
-build/core/linux/Makefile.mros
-build/core/linux/Makefile.std
 cmake/AthrillCore.cmake
 command/remote/remote_cui_client/Makefile
 command/remote/remote_cui_client/cpuemu_config.h
 command/remote/remote_cui_client/main.c
+config/hakoniwa/athrill-pdudef.json
 src/bus/bus.c
 src/bus/bus.h
 src/cpu/cpu.h
@@ -154,6 +146,9 @@ src/device/peripheral/mros-dev/mros-src/transfer/cimpl/mros_topic_data_subscribe
 src/device/peripheral/serial/fifo/serial_fifo.c
 src/device/peripheral/serial/fifo/serial_fifo.h
 src/device/peripheral/target/device_ex_serial_ops.h
+src/hakoniwa/athrill_hakoniwa.cpp
+src/hakoniwa/athrill_hakoniwa.h
+src/hakoniwa/athrill_hakoniwa_disabled.cpp
 src/inc/athrill_device.h
 src/inc/athrill_exdev.h
 src/inc/athrill_exdev_header.h
@@ -219,6 +214,8 @@ src/lib/hash.h
 src/lib/list.h
 src/lib/loader/elf.h
 src/lib/loader/elf_common.h
+src/lib/loader/elf_image_check.c
+src/lib/loader/elf_image_check.h
 src/lib/object_container.h
 src/lib/shared_library.c
 src/lib/shared_library.h
@@ -240,11 +237,16 @@ src/lib/udp/udp_comm.h
 src/lib/udp/udp_common.h
 src/lib/winsock_wrapper/winsock_wrapper.c
 src/lib/winsock_wrapper/winsock_wrapper.h
-src/main/cpuemu.c
-src/main/main.c
+src/main/cpuemu.cpp
+src/main/main.cpp
 src/main/option/argument_parser.c
 src/main/option/argument_parser.h
 src/main/option/option.c
 src/main/option/option.h
-src/platform/windows/include/sys/time.h
-src/platform/windows/include/unistd.h
+src/osdep/osdep.h
+src/osdep/posix/osdep_posix.c
+src/osdep/windows/include/sys/time.h
+src/osdep/windows/include/unistd.h
+src/osdep/windows/osdep_windows.c
+test/malformed_elf_test.py
+test/symbol_lookup_test.c

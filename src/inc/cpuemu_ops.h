@@ -9,7 +9,7 @@
 #include <sys/time.h>
 #endif /* OS_LINUX */
 
-typedef struct {
+typedef struct CpuEmuElapsType {
 	uint64	total_clocks;
 	uint64	intr_clocks;
 	int     core_id_num;
@@ -20,18 +20,19 @@ typedef struct {
 } CpuEmuElapsType;
 extern void cpuemu_init(void *(*cpu_run)(void *), void *opt);
 extern void cpuemu_get_elaps(CpuEmuElapsType *elaps);
-#ifdef OS_LINUX
 extern void cpuemu_start_elaps(void);
 extern void cpuemu_end_elaps(void);
-#endif /* OS_LINUX */
 extern uint32 cpuemu_get_retaddr(CoreIdType core_id);
-extern Std_ReturnType cpuemu_get_addr_pointer(uint32 addr, uint8 **data);
+extern Std_ReturnType cpuemu_get_addr_pointer(AthrillAddrType addr, uint8 **data);
 extern void cpuemu_get_register(CoreIdType core_id, TargetCoreType *cpu);
 
 extern void *cpuemu_thread_run(void* arg);
+extern uint64 cpuemu_get_clock(void);
+extern uint32 cpuemu_get_cpu_frequency(void);
 extern uint64 cpuemu_get_cpu_end_clock(void);
 extern void cpuemu_set_cpu_end_clock(uint64 clock);
-extern void cpuemu_set_entry_addr(uint32 entry_addr);
+extern void cpuemu_set_entry_addr(AthrillAddrType entry_addr);
+extern void cpuemu_reset(void);
 
 
 extern Std_ReturnType cpuemu_set_comm_fifocfg(const char* fifocfg);
@@ -56,12 +57,12 @@ typedef enum {
 
 typedef struct {
 	MemoryAddressImplType type;
-	uint32	start;						/* unit:byte */
-	uint32	size;						/* unit:KB */
+	AthrillAddrType	start;				/* unit:byte */
+	AthrillAddrType	size;				/* unit:KB */
 	void *mmap_addr;
 	void *extdev_handle;
-	bool region_executable;				/* X */
-	bool region_elf_load_from_vaddr;	/* V */
+	std_bool region_executable;				/* X */
+	std_bool region_elf_load_from_vaddr;	/* V */
 } MemoryAddressType;
 
 typedef struct {

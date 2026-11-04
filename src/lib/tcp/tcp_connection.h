@@ -5,7 +5,7 @@
 
 typedef struct {
 	TcpSocketType	socket;
-	bool			connected;
+	std_bool			connected;
 } TcpConnectionType;
 
 extern Std_ReturnType tcp_connection_send(TcpConnectionType *connection, const char *data, uint32 size, uint32 *res);

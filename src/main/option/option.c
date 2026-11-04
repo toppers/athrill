@@ -44,6 +44,15 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 {
 	  int opt;
 	  ArgumentParserState parser;
+	  static const ArgumentParserLongOption long_options[] = {
+		  { "hakoniwa", 1, 256 },
+		  { "pdudef", 1, 257 },
+		  { "delta-usec", 1, 258 },
+		  { "max-delay-usec", 1, 259 },
+		  { "disable-conductor", 0, 260 },
+		  { "real-sleep-msec", 1, 261 },
+		  { NULL, 0, 0 }
+	  };
 
 	  cmd_option.fifocfgpath = NULL;
 	  cmd_option.load_filepath = NULL;
@@ -51,9 +60,15 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 	  cmd_option.is_interaction = FALSE;
 	  cmd_option.is_remote = FALSE;
 	  cmd_option.timeout = 0;
+	  cmd_option.hakoniwa_asset_name = NULL;
+	  cmd_option.hakoniwa_pdudef_path = NULL;
+	  cmd_option.hakoniwa_delta_usec = 1000;
+	  cmd_option.hakoniwa_max_delay_usec = 20000;
+	  cmd_option.hakoniwa_disable_conductor = FALSE;
+	  cmd_option.hakoniwa_real_sleep_msec = 0;
 	  argument_parser_init(&parser);
 
-	  while ((opt = argument_parser_next(&parser, argc, argv, "irbt:p:d:c:m:")) != -1) {
+	  while ((opt = argument_parser_next_long(&parser, argc, argv, "irbt:p:d:c:m:", long_options)) != -1) {
 		  switch (opt) {
 		  case 'i':
 	    	cmd_option.is_interaction = TRUE;
@@ -91,6 +106,33 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 			cmd_option.buffer_devcfgpath[strlen(parser.argument)] = '\0';
 	        cmd_option.devcfgpath = cmd_option.buffer_devcfgpath;
 	        break;
+		  case 256:
+			cmd_option.hakoniwa_asset_name = (char *)parser.argument;
+			break;
+		  case 257:
+			cmd_option.hakoniwa_pdudef_path = (char *)parser.argument;
+			break;
+		  case 258:
+			if (cmd_atoi((char *)parser.argument, &cmd_option.hakoniwa_delta_usec) < 0 || cmd_option.hakoniwa_delta_usec == 0) {
+				printf("error! --delta-usec %s\n", parser.argument);
+				return NULL;
+			}
+			break;
+		  case 259:
+			if (cmd_atoi((char *)parser.argument, &cmd_option.hakoniwa_max_delay_usec) < 0 || cmd_option.hakoniwa_max_delay_usec == 0) {
+				printf("error! --max-delay-usec %s\n", parser.argument);
+				return NULL;
+			}
+			break;
+		  case 260:
+			cmd_option.hakoniwa_disable_conductor = TRUE;
+			break;
+		  case 261:
+			if (cmd_atoi((char *)parser.argument, &cmd_option.hakoniwa_real_sleep_msec) < 0) {
+				printf("error! --real-sleep-msec %s\n", parser.argument);
+				return NULL;
+			}
+			break;
 	      default:
 	        printf("parse_args:error! \'%c\' \'%c\'\n", opt, parser.error_option);
 	        return NULL;
@@ -104,6 +146,10 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 #endif
 		if (parser.index >= argc) {
 			printf("ERROR: not found <load file>\n");
+			return NULL;
+		}
+		if (strlen(argv[parser.index]) >= TOKEN_STRING_MAX_SIZE) {
+			printf("ERROR: load file path is too long\n");
 			return NULL;
 		}
 	  memcpy(cmd_option.load_file.filepath.str, argv[parser.index], strlen(argv[parser.index]));

@@ -80,37 +80,16 @@ static inline void profstat_end(ProfStatType *prof)
 	prof->total += elaps;
 	return;
 }
-#ifdef CONFIG_STAT_PERF
-#define DEBUG_STAT_NUM	5
-extern ProfStatType cpuemu_cpu_total_prof;
-extern ProfStatType cpuemu_dev_total_prof;
-extern ProfStatType cpuemu_dbg_total_prof[DEBUG_STAT_NUM];
-extern ProfStatType cpuemu_dev_timer_prof;
-extern ProfStatType cpuemu_dev_serial_prof;
-extern ProfStatType cpuemu_dev_intr_prof;
-extern ProfStatType cpuemu_dev_adev1_prof;
-extern ProfStatType cpuemu_dev_adev2_prof;
-extern ProfStatType cpuemu_tool1_prof;
-extern ProfStatType cpuemu_tool2_prof;
-
-#define PROFSTAT_START(arg)	profstat_start(arg)
-#define PROFSTAT_END(arg)	profstat_end(arg)
-#else
 #define PROFSTAT_START(arg)
 #define PROFSTAT_END(arg)
-#endif
 #endif /* OS_LINUX */
 
 /*
  * スキップ可能な最大クロック数
  */
-#ifndef CPUEMU_CLOCK_BUG_FIX
-#define DEVICE_CLOCK_MAX_INTERVAL	-1
-#else
 #define DEVICE_CLOCK_MAX_INTERVAL	-1ULL
-#endif /* CPUEMU_CLOCK_BUG_FIX */
 
-typedef struct {
+typedef struct DeviceClockType {
 	uint64 clock;
 	uint64 intclock;//割込み処理で消費している時間
 #ifdef OS_LINUX
@@ -144,6 +123,7 @@ typedef struct {
 
 #ifndef ATHRILL_EXT_DEVICE
 extern void device_init(CpuType *cpu, DeviceClockType *dev_clock);
+extern void device_reset(CpuType *cpu, DeviceClockType *dev_clock);
 extern void device_supply_clock(DeviceClockType *dev_clock);
 /*
  * デバイスクロック参照

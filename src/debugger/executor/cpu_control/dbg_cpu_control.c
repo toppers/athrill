@@ -70,15 +70,9 @@ static uint32 current_access_glid = -1;
 
 void dbg_cpu_callback_start(uint32 pc, uint32 sp)
 {
-	uint32 funcpc;
+	AthrillAddrType funcpc;
 	current_pc = pc;
 	current_funcid = symbol_pc2funcid(pc, &funcpc);
-	current_sp = sp;
-	return;
-}
-void dbg_cpu_callback_start_nodbg(uint32 pc, uint32 sp)
-{
-	current_pc = pc;
 	current_sp = sp;
 	return;
 }
@@ -203,7 +197,7 @@ static DataAccessInfoType **data_access_info_table_gl;
 
 DataAccessInfoType *cpuctrl_get_func_access_info_table(const char* glname)
 {
-	uint32 addr;
+	AthrillAddrType addr;
 	uint32 size;
 	int glid;
 	glid = symbol_get_gl((char*)glname, strlen(glname), &addr, &size);
@@ -238,7 +232,7 @@ void cpuctrl_set_func_log_trace(uint32 coreId, uint32 pc, uint32 sp)
 {
 	uint32 inx;
 	uint32 next;
-	uint32 funcpc;
+	AthrillAddrType funcpc;
 	char *funcname;
 	int funcid;
 
@@ -474,7 +468,7 @@ static void cpuctrl_access_context_add(uint8 access_type, DataAccessInfoType *ac
 {
 	DataAccessContextType context;
 	int glid;
-	uint32 gladdr;
+	AthrillAddrType gladdr;
 	uint32 index = 0;
 	DataAccessContextType *dp = NULL;
 	CpuEmuElapsType elaps;
@@ -536,12 +530,12 @@ static void cpuctrl_access_context_add(uint8 access_type, DataAccessInfoType *ac
 
 	return;
 }
-static void cpuctrl_set_access(uint32 access_type, uint32 access_addr, uint32 size)
+static void cpuctrl_set_access(uint32 access_type, AthrillAddrType access_addr, uint32 size)
 {
 	uint32 i;
 	sint32 prev_glid = -1;
 	sint32 glid;
-	uint32 gladdr;
+	AthrillAddrType gladdr;
 	DataAccessInfoType *access_infop;
 #ifndef SUPRESS_DETECT_WARNING_MESSAGE
 	bool found = FALSE;
@@ -576,7 +570,7 @@ static void cpuctrl_set_access(uint32 access_type, uint32 access_addr, uint32 si
 		MpuAddressRegionEnumType type = mpu_address_region_type_get(access_addr, &is_malloc);
 
 		if ((type != DEVICE) && (is_malloc == FALSE)) {
-			uint32 gladdr;
+			AthrillAddrType gladdr;
 			int stack_glid = symbol_addr2glid(current_sp, &gladdr);
 
 			printf("WARNING: Found invalid data write on not variable region(addr=0x%x size=%u) : %s(0x%x)@%s\n",
@@ -593,7 +587,7 @@ bool cpu_may_store_on_stack_overflow(uint32 start_addr, uint32 size)
 {
 	uint32 i;
 	sint32 glid;
-	uint32 gladdr;
+	AthrillAddrType gladdr;
 
 	int stack_glid = symbol_addr2glid(current_sp, &gladdr);
 
@@ -612,7 +606,7 @@ bool cpu_may_store_on_stack_overflow(uint32 start_addr, uint32 size)
 	return FALSE;
 }
 
-int cpuctrl_is_break_read_access(uint32 access_addr, uint32 size)
+int cpuctrl_is_break_read_access(AthrillAddrType access_addr, uint32 size)
 {
 	uint32 i;
 	uint32 watch_start;
@@ -641,7 +635,7 @@ int cpuctrl_is_break_read_access(uint32 access_addr, uint32 size)
 	return -1;
 }
 
-int cpuctrl_is_break_write_access(uint32 access_addr, uint32 size)
+int cpuctrl_is_break_write_access(AthrillAddrType access_addr, uint32 size)
 {
 	uint32 i;
 	uint32 watch_start;
@@ -831,7 +825,7 @@ void cpuctrl_profile_collect(uint32 coreId, uint32 pc)
 {
 	int funcid;
 	uint32 funcpc;
-	uint32 funcaddr;
+	AthrillAddrType funcaddr;
 	CpuEmuElapsType elaps;
 
 	funcid = symbol_pc2funcid(pc, &funcaddr);
@@ -905,7 +899,7 @@ void cpuctrl_set_stack_pointer(uint32 sp)
 	uint32 inx;
 	uint32 next;
 	uint32 prev;
-	uint32 gladdr;
+	AthrillAddrType gladdr;
 	int glid;
 
 	glid = symbol_addr2glid(sp, &gladdr);

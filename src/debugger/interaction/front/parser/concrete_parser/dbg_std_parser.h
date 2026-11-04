@@ -12,7 +12,7 @@ typedef enum {
 } DbgCmdBreakType;
 typedef struct {
 	DbgCmdBreakType		type;
-	uint32 				break_addr;
+	AthrillAddrType 		break_addr;
 	TokenStringType		symbol;
 	uint32				line;
 } DbgCmdExecutorBreakType;
@@ -47,7 +47,7 @@ typedef enum {
 typedef struct {
 	DbgCmdCoreType 		type;
 	CoreIdType			core_id;
-	bool				is_debug_mode;
+	std_bool				is_debug_mode;
 } DbgCmdExecutorCoreType;
 extern DbgCmdExecutorType *dbg_parse_core(DbgCmdExecutorType *arg, const TokenContainerType *token_container);
 
@@ -64,14 +64,14 @@ typedef enum {
 typedef struct {
 	DbgCmdDPrintType	type;
 	TokenStringType		symbol;
-	uint32 				addr;
+	AthrillAddrType 	addr;
 	uint32 				size;
 	TokenStringType		dataType;
 	TokenStringType		dataTypeName;
 } DbgCmdExecutorPrintType;
 extern DbgCmdExecutorType *dbg_parse_print(DbgCmdExecutorType *arg, const TokenContainerType *token_container);
 typedef struct {
-	uint32 				addr;
+	AthrillAddrType 	addr;
 	uint8 				value;
 } DbgCmdExecutorMemsetType;
 extern DbgCmdExecutorType *dbg_parse_memset(DbgCmdExecutorType *arg, const TokenContainerType *token_container);
@@ -93,7 +93,7 @@ extern DbgCmdExecutorType *dbg_parse_info_cpu(DbgCmdExecutorType *arg, const Tok
 
 typedef struct {
 	uint32 				bt_number;
-	bool				bt_way; /* FALSE: latest, TRUE: oldest */
+	std_bool				bt_way; /* FALSE: latest, TRUE: oldest */
 } DbgCmdExecutorFuncTraceType;
 extern DbgCmdExecutorType *dbg_parse_func_trace(DbgCmdExecutorType *arg, const TokenContainerType *token_container);
 
@@ -115,7 +115,7 @@ typedef struct {
 	DbgCmdDWatchDataType	type;
 	uint8					watch_type;
 	TokenStringType			symbol;
-	uint32 					addr;
+	AthrillAddrType 		addr;
 	uint32 					size;
 	uint32					delno;
 } DbgCmdExecutorWatchDataType;

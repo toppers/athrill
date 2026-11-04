@@ -7,7 +7,7 @@
 typedef struct {
 	uint16	server_port;
 	uint16	client_port;
-	bool	is_wait;
+	std_bool	is_wait;
 } UdpCommConfigType;
 
 #define UDP_BUFFER_LEN	4096

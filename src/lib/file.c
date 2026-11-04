@@ -1,6 +1,7 @@
 #include "file.h"
 #include "string.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 
 bool file_exist(const char *path)
@@ -52,14 +53,23 @@ bool file_load(FileType *file)
 	    fclose(fp);
 		return FALSE;
     }
-    file->size = st.st_size;
-    if (file->size > MAX_FILE_SIZE) {
-			printf("ERROR file size too large %s size=%u(MAX=%u)\n", file->filepath.str, file->size, MAX_FILE_SIZE);
+    /* Compare before narrowing: a larger file must not wrap into range. */
+    if ((st.st_size <= 0) || ((uint64)st.st_size > MAX_LOAD_FILE_SIZE)) {
+		printf("ERROR file size not supported %s size=%lld(MAX=%llu)\n", file->filepath.str,
+			(long long)st.st_size, (unsigned long long)MAX_LOAD_FILE_SIZE);
+	    fclose(fp);
+		return FALSE;
+    }
+    file->size = (uint32)st.st_size;
+    free(file->data);
+    file->data = malloc(file->size);
+    if (file->data == NULL) {
+		printf("ERROR can not allocate %u bytes for %s\n", file->size, file->filepath.str);
 	    fclose(fp);
 		return FALSE;
     }
 
-    ret = fread(file->buffer, st.st_size, 1, fp);
+    ret = fread(file->data, st.st_size, 1, fp);
     if (ret == 0) {
 		printf("ERROR can not fread %s\n", file->filepath.str);
 	    fclose(fp);
@@ -98,13 +108,14 @@ bool file_ropen_filepath(const char *dir, const char *filename, FileType *file)
 uint32 file_getline(FileType *file, char *line, int size)
 {
 	uint32 n = 0;
-	char c;
-	while (n < size) {
+	int c;	/* int, not char: EOF must stay distinct from the byte 0xff */
+	/* Leave room for the '\0' that callers write after the line. */
+	while ((int)(n + 1U) < size) {
 		c = fgetc(file->fp);
-		if (c < 0 || c == '\n') {
+		if (c == EOF || c == '\n') {
 			break;
 		}
-		line[n] = c;
+		line[n] = (char)c;
 		n++;
 	}
 	return n;

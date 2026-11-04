@@ -31,20 +31,20 @@ static AthrillDeviceMmapInfoTableType athrill_mmap_table;
 
 void device_init_athrill_device(void)
 {
-    uint32 addr;
+    AthrillAddrType addr;
     uint32 size;
     int err;
 
     err = symbol_get_gl("athrill_device_func_call", 
         strlen("athrill_device_func_call"), &addr, &size);
     if (err >= 0) {
-		printf("athrill_device_func_call=0x%x\n", addr);
+		printf("athrill_device_func_call=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", addr);
 	    athrill_device_func_call_addr = addr;
     }
     err = symbol_get_gl("athrill_device_raise_interrupt", 
         strlen("athrill_device_raise_interrupt"), &addr, &size);
     if (err >= 0) {
-		printf("athrill_device_raise_interrupt=0x%x\n", addr);
+		printf("athrill_device_raise_interrupt=0x%" ATHRILL_ADDR_HEX_FORMAT "\n", addr);
 	    athrill_device_raise_interrupt_addr = addr;
     }
 
@@ -235,29 +235,11 @@ static void do_athrill_device_external_raise_interrupt(void)
 	(void)intc_raise_intr(data);
 	return;
 }
-#ifdef CONFIG_STAT_PERF
-ProfStatType cpuemu_dev_adev1_prof;
-ProfStatType cpuemu_dev_adev2_prof;
-
-#define CPUEMU_DEV_ADEV1_PROF_START()	profstat_start(&cpuemu_dev_adev1_prof)
-#define CPUEMU_DEV_ADEV1_PROF_END()		profstat_end(&cpuemu_dev_adev1_prof)
-#define CPUEMU_DEV_ADEV2_PROF_START()	profstat_start(&cpuemu_dev_adev2_prof)
-#define CPUEMU_DEV_ADEV2_PROF_END()		profstat_end(&cpuemu_dev_adev2_prof)
-#else
-#define CPUEMU_DEV_ADEV1_PROF_START()
-#define CPUEMU_DEV_ADEV1_PROF_END()	
-#define CPUEMU_DEV_ADEV2_PROF_START()
-#define CPUEMU_DEV_ADEV2_PROF_END()	
-#endif /* CONFIG_STAT_PERF */
 void device_supply_clock_athrill_device(void)
 {
-    CPUEMU_DEV_ADEV1_PROF_START();
 	do_athrill_device_func_call();
-    CPUEMU_DEV_ADEV1_PROF_END();
 
-    CPUEMU_DEV_ADEV2_PROF_START();
 	do_athrill_device_external_raise_interrupt();
-    CPUEMU_DEV_ADEV2_PROF_END();
     return;
 }
 

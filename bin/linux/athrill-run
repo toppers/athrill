@@ -32,6 +32,6 @@ fi
 ELF_FILE=`ls  | grep -v "\.o" | grep -v "\.exe" | xargs file | grep ELF | awk -F\: '{print $1}'`
 echo "OK: found ${ELF_FILE}"
 
-athrill2 -c${CORE_NUM} -i -m memory.txt -d device_config.txt ${ELF_FILE}
+athrill3 -c${CORE_NUM} -i -m memory.txt -d device_config.txt ${ELF_FILE}
 
 exit 0

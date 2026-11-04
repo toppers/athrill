@@ -10,7 +10,7 @@
 #include "target/target_os_api.h"
 
 typedef struct {
-	uint32 vaddr;
+	AthrillAddrType vaddr;
 	uint32 level;
 } PrintControlType;
 
@@ -146,7 +146,7 @@ static void print_base_type_data(PrintControlType *ctrl, DwarfDataBaseType *obj,
 		printf("Unknown base type");
 		break;
 	}
-	printf(" (%s:%u) @ 0x%x(0x%x)\n", obj->info.typename, type_size, ctrl->vaddr + off, off);
+	printf(" (%s:%u) @ 0x%" ATHRILL_ADDR_HEX_FORMAT "(0x%x)\n", obj->info.typename, type_size, ctrl->vaddr + off, off);
 	return;
 }
 static void print_space(PrintControlType *ctrl)
@@ -337,7 +337,7 @@ static void print_pointer_type_data(PrintControlType *ctrl, DwarfDataPointerType
 	print_ref_typename(ctrl, (DwarfDataType *)type);
 	printf(": %u )", type->info.size);
 	printf(" 0x%x", elf_get_data32(&top_addr[off], 0));
-	printf("  @ 0x%x(0x%x)\n", ctrl->vaddr + off, off);
+	printf("  @ 0x%" ATHRILL_ADDR_HEX_FORMAT "(0x%x)\n", ctrl->vaddr + off, off);
 	return;
 }
 
@@ -367,7 +367,7 @@ static void print_enum_type_data(PrintControlType *ctrl, DwarfDataEnumulatorType
 		memp = (DwarfDataEnumMember *)type->members->data[i];
 		if (memp->const_value == value) {
 			printf("%s.%s(%d)", type->info.typename, memp->name, memp->const_value);
-			printf("  @ 0x%x(0x%x)\n", ctrl->vaddr + off, off);
+			printf("  @ 0x%" ATHRILL_ADDR_HEX_FORMAT "(0x%x)\n", ctrl->vaddr + off, off);
 			return;
 		}
 	}
@@ -509,7 +509,7 @@ bool print_local_variable_type(char *variable_name)
 	sint32 vaddr;
 	uint32 pc = cpu_get_current_core_pc();
 	int funcId;
-	uint32 funcaddr;
+	AthrillAddrType funcaddr;
 	char *func_Name;
 	bool needPrint = TRUE;
 
@@ -545,7 +545,7 @@ bool print_local_variable_type(char *variable_name)
 }
 
 
-bool print_variable_with_data_type(char *variable_name, uint32 vaddr, uint8 *top_addr, uint32 size)
+bool print_variable_with_data_type(char *variable_name, AthrillAddrType vaddr, uint8 *top_addr, uint32 size)
 {
 	DwarfDataVariableType *variable;
 	DwarfDataType *type;
@@ -566,7 +566,7 @@ bool print_variable_with_data_type(char *variable_name, uint32 vaddr, uint8 *top
 	return print_any_data_type(&ctrl, type, top_addr, 0);
 }
 
-bool print_addr_with_data_type(uint32 vaddr, uint8 *top_addr, char* dataType, char* dataTypeName)
+bool print_addr_with_data_type(AthrillAddrType vaddr, uint8 *top_addr, char* dataType, char* dataTypeName)
 {
 	PrintControlType ctrl;
 	DwarfDataType *type;
@@ -588,4 +588,3 @@ bool print_addr_with_data_type(uint32 vaddr, uint8 *top_addr, char* dataType, ch
 	}
 	return print_any_data_type(&ctrl, type, top_addr, 0);
 }
-

@@ -17,7 +17,7 @@ typedef enum {
 typedef struct {
 	char* 				name;
 	uint32 				size;
-	uint32 				addr;
+	AthrillAddrType 	addr;
 	ElfSymbolEnumType	type;
 } ElfSymbolType;
 extern Std_ReturnType elfsym_get_symbol(uint32 index, ElfSymbolType *elfsym);

@@ -18,6 +18,6 @@ typedef struct ElfDwarfLocEntryType_tag {
 } ElfDwarfLocEntryType;
 
 extern Std_ReturnType elf_dwarf_loc_load(uint8 *elf_data);
-extern bool printLocalValueV850(DwarfDataSubprogramType *subprogram, DwarfLocalVariableType *localVariable, uint32 pc, uint32 funcaddr, uint32 *vaddr);
+extern std_bool printLocalValueV850(DwarfDataSubprogramType *subprogram, DwarfLocalVariableType *localVariable, uint32 pc, uint32 funcaddr, uint32 *vaddr);
 
 #endif /* _ELF_DWARF_LOC_H_ */

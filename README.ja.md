@@ -4,7 +4,20 @@ athrill
 Athrill は CPU エミュレータです. 
 Athrill を使用すると，仮想マイコン上で組込みプログラムを簡単に実行/デバッグすることができます．
 ベアメタルプログラムやリアルタイムOS上で動作する組込み制御プログラムを評価できます．
-現時点の Athrill は V850 のCPU命令をサポートしています．
+
+Athrill は TOPPERS プロジェクトで V850 向けに始まりました．バージョン3（`athrill3`，v3.0.0 から）は
+C++ で書かれた CPU に依存しないコアと，ターゲットごとのリポジトリに分かれています．C 版は v1.2.1 が最後です．
+Athrill は次の4つの命令セットをサポートしています．
+
+| ターゲットのリポジトリ | 命令セット | 動くもの |
+| --- | --- | --- |
+| [athrill-target-v850e2m](https://github.com/toppers/athrill-target-v850e2m) | V850E2M | TOPPERS のリアルタイムOS上のプログラム |
+| [athrill-target-rh850f1x](https://github.com/toppers/athrill-target-rh850f1x) | RH850 (F1x) | RH850/F1x マイコン向けのプログラム |
+| [athrill-target-riscv](https://github.com/hakoniwalab/athrill-target-riscv) | RISC-V (RV64IMFC) | AIFoundry Erbium ボード（PX4 本家のボード）上の PX4 |
+| [athrill-target-stm32](https://github.com/hakoniwalab/athrill-target-stm32) | Armv7-M (Cortex-M7) | Pixhawk 4（`px4_fmu-v5`）向けの無改造の PX4 ファームウェア．QGroundControl から飛行 |
+
+Athrill は仮想クロック（1命令1クロック，アイドル時間は飛ばす）で動くため，同じ入力からの実行は完全に再現します．
+また，[箱庭](https://github.com/toppers/hakoniwa)と同期して動かせます（`--hakoniwa`）．
 
 # Table of Contents
 -----------------
@@ -17,10 +30,12 @@ Athrill を使用すると，仮想マイコン上で組込みプログラムを
 Athrill は， 以下の環境で動作します：
 
   * OS
-    * [Linux]
-      * Ubuntu(32bit)
-    * [Windows]
-      * MinGW32_NT-6.2(Windows10, Windows7)
+    * macOS（arm64）
+    * Linux（x64，arm64）
+    * Windows 11（x64，Visual Studio 2022）
+  * ビルドツール
+    * CMake 3.16 以降
+    * C11 と C++17 に対応したコンパイラ（AppleClang，GCC，Clang，MSVC）
 
 Athrill は， ソースデバッグ用に以下のエディタを使用します:
 
@@ -32,12 +47,18 @@ Athrill は， ソースデバッグ用に以下のエディタを使用しま�
 
 # Install
 -----
-Athrill プロジェクトをダウンロード後,  環境変数(PATH)にathrillの実行バイナリフォルダのパスを追加しててください．
+このリポジトリは CPU に依存しないコア部分です．`athrill3` の実行ファイルは，ターゲットのリポジトリから CMake でビルドします．ターゲット側が `cmake/AthrillCore.cmake` を通してこのコアを取り込みます．V850E2M の場合：
 
 ```
-export PATH=[athrill root folder]/src/bin:$PATH 
+git clone https://github.com/toppers/athrill.git
+git clone https://github.com/toppers/athrill-target-v850e2m.git
+cmake -S athrill-target-v850e2m -B athrill-target-v850e2m/build -DCMAKE_BUILD_TYPE=Release
+cmake --build athrill-target-v850e2m/build
 ```
-任意のフォルダ上でathrillを空打ちし， usageが表示されればインストール完了です：
+
+ターゲットは，隣に置いた `../athrill` をこのリポジトリとして使います．別の場所にあるチェックアウトを使う場合は，最初の `cmake` コマンドに `-DATHRILL_SOURCE_DIR=<athrill のパス>` を追加します．
+
+引数なしで `athrill3` を実行すると，usage が表示されます：
 
 	Usage:athrill -m<memory config file> [OPTION]... <load_file>
 	-i                             : execute on the interaction mode. if -i is not set, execute on the background mode.

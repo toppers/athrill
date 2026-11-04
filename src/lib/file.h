@@ -4,22 +4,25 @@
 #include "std_types.h"
 #include "token.h"
 
-extern bool file_exist(const char *path);
+extern std_bool file_exist(const char *path);
 
 #define MAX_FILE_SIZE	((uint32)(1024 * 1024 * 10))
+/* Upper limit for file_load(); the data buffer is allocated to the file size. */
+#define MAX_LOAD_FILE_SIZE	((uint64)1024 * 1024 * 1024)
 typedef struct {
 	TokenStringType filepath;
 	void			*fp;
 	uint32			size;
-	uint8			buffer[MAX_FILE_SIZE];
+	uint8			*data;	/* file_load(): the whole file, size bytes */
+	uint8			buffer[MAX_FILE_SIZE];	/* line buffer for the text helpers */
 } FileType;
-extern bool file_load(FileType *file);
+extern std_bool file_load(FileType *file);
 
 extern uint32 file_get_parent_folder_pathlen(const char *filepath);
 
-extern bool file_ropen(FileType *file);
-extern bool file_wopen(FileType *file);
-extern bool file_ropen_filepath(const char *dir, const char *filename, FileType *file);
+extern std_bool file_ropen(FileType *file);
+extern std_bool file_wopen(FileType *file);
+extern std_bool file_ropen_filepath(const char *dir, const char *filename, FileType *file);
 extern uint32 file_getline(FileType *file, char *line, int size);
 extern uint32 file_readline(FileType *file, char *line, int size, int lineno);
 
@@ -28,6 +31,6 @@ extern void file_appendline(FileType *file);
 
 extern void file_close(FileType *file);
 
-extern bool file_printline(const char *dir, const char *filename, FileType *file, uint32 start, uint32 end);
+extern std_bool file_printline(const char *dir, const char *filename, FileType *file, uint32 start, uint32 end);
 
 #endif /* _FILE_H_ */

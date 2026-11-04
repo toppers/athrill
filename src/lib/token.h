@@ -11,7 +11,7 @@ typedef enum {
 } TokenEnumType;
 
 typedef struct {
-	uint32 value;
+	AthrillAddrType value;
 } TokenValueHexType;
 
 typedef struct {
@@ -41,12 +41,12 @@ typedef struct {
 
 extern Std_ReturnType token_split(TokenContainerType *token_container, uint8 *str, uint32 len);
 extern Std_ReturnType token_split_with_delimiter(TokenContainerType *token_container, uint8 *str, uint32 len, char delimiter);
-extern bool token_split_merge(const TokenContainerType *token_container, uint8 start_index, TokenStringType *out);
+extern std_bool token_split_merge(const TokenContainerType *token_container, uint8 start_index, TokenStringType *out);
 extern void token_trim_newline(TokenStringType *token);
 
-extern bool token_string_set(TokenStringType *dest, const char* src);
-extern bool token_strcmp(const TokenStringType *str1, const TokenStringType *str2);
-extern bool token_merge(TokenStringType *dest, const TokenStringType *src);
+extern std_bool token_string_set(TokenStringType *dest, const char* src);
+extern std_bool token_strcmp(const TokenStringType *str1, const TokenStringType *str2);
+extern std_bool token_merge(TokenStringType *dest, const TokenStringType *src);
 
 
 

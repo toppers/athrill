@@ -6,7 +6,7 @@
 
 typedef struct {
 	char *name;
-	uint32 addr;
+	AthrillAddrType addr;
 	uint32 size;
 	uint32 enter_sp[CPU_CONFIG_CORE_NUM];
 } DbgSymbolType;
@@ -14,16 +14,16 @@ typedef struct {
 extern uint32 symbol_get_func_num(void);
 extern uint32 symbol_get_gl_num(void);
 
-extern int symbol_get_func(char *funcname, uint32 func_len, uint32 *addrp, uint32 *size);
-extern char * symbol_pc2func(uint32 pc);
-extern int symbol_pc2funcid(uint32 pc, uint32 *funcaddr);
+extern int symbol_get_func(char *funcname, uint32 func_len, AthrillAddrType *addrp, uint32 *size);
+extern char * symbol_pc2func(AthrillAddrType pc);
+extern int symbol_pc2funcid(AthrillAddrType pc, AthrillAddrType *funcaddr);
 extern char * symbol_funcid2funcname(int id);
-extern uint32 symbol_funcid2funcaddr(int id);
-extern int symbol_get_gl(char *gl_name, uint32 gl_len, uint32 *addrp, uint32 *size);
+extern AthrillAddrType symbol_funcid2funcaddr(int id);
+extern int symbol_get_gl(char *gl_name, uint32 gl_len, AthrillAddrType *addrp, uint32 *size);
 
-extern int symbol_addr2glid(uint32 addr, uint32 *gladdr);
+extern int symbol_addr2glid(AthrillAddrType addr, AthrillAddrType *gladdr);
 extern char * symbol_glid2glname(int id);
-extern uint32 symbol_glid2gladdr(int id);
+extern AthrillAddrType symbol_glid2gladdr(int id);
 
 extern void symbol_print_gl(char *gl_name, uint32 show_num);
 extern void symbol_print_func(char *gl_name, uint32 show_num);
