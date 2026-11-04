@@ -4,7 +4,22 @@ athrill
 Athrill is a CPU emulator. 
 Athrill was developed to easily execute and debug embedded programs on virtual microcomputer. 
 You can evaluate bare metal programs or embedded control programs running on real-time OS. 
-Athrill at the moment supports V850 CPU instructions.
+
+Athrill started in the TOPPERS project with the V850. This branch (`cpp`)
+is `athrill3`: a CPU-independent core, with one repository per target.
+Athrill supports four instruction sets:
+
+| Target repository | Instruction set | What runs on it |
+| --- | --- | --- |
+| [athrill-target-v850e2m](https://github.com/toppers/athrill-target-v850e2m) | V850E2M | TOPPERS real-time OS programs |
+| [athrill-target-rh850f1x](https://github.com/toppers/athrill-target-rh850f1x) | RH850 (F1x) | programs for the RH850/F1x microcontrollers |
+| [athrill-target-riscv](https://github.com/hakoniwalab/athrill-target-riscv) | RISC-V (RV64IMFC) | PX4 on the AIFoundry Erbium board, a board target in upstream PX4 |
+| [athrill-target-stm32](https://github.com/hakoniwalab/athrill-target-stm32) | Armv7-M (Cortex-M7) | the unmodified PX4 firmware of Pixhawk 4 (`px4_fmu-v5`), flown from QGroundControl |
+
+Athrill runs on a virtual clock (one clock per instruction, idle time
+skipped), so a run repeats exactly from the same inputs, and it can run in
+lockstep with the [Hakoniwa](https://github.com/toppers/hakoniwa)
+co-simulation environment (`--hakoniwa`).
 
 # Table of Contents
 -----------------
