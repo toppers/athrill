@@ -24,6 +24,7 @@ OBJS	+=	tcp_client.o
 OBJS	+=	tcp_connection.o
 OBJS	+=	tcp_server.o
 OBJS	+=	comm_buffer.o
+OBJS	+=	shared_library.o
 
 
 all:	$(LIBTARGET)
