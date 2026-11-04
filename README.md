@@ -5,8 +5,9 @@ Athrill is a CPU emulator.
 Athrill was developed to easily execute and debug embedded programs on virtual microcomputer. 
 You can evaluate bare metal programs or embedded control programs running on real-time OS. 
 
-Athrill started in the TOPPERS project with the V850. This branch (`cpp`)
-is `athrill3`: a CPU-independent core, with one repository per target.
+Athrill started in the TOPPERS project with the V850. Version 3
+(`athrill3`, from v3.0.0) is a CPU-independent core in C++, with one
+repository per target; the C generation ends with v1.2.1.
 Athrill supports four instruction sets:
 
 | Target repository | Instruction set | What runs on it |

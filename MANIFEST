@@ -1,5 +1,5 @@
 PACKAGE athrill
-VERSION 1.1.3
+VERSION 3.0.0
 
 MANIFEST
 README.ja.md
@@ -19,6 +19,7 @@ cmake/AthrillCore.cmake
 command/remote/remote_cui_client/Makefile
 command/remote/remote_cui_client/cpuemu_config.h
 command/remote/remote_cui_client/main.c
+config/hakoniwa/athrill-pdudef.json
 src/bus/bus.c
 src/bus/bus.h
 src/cpu/cpu.h
@@ -145,6 +146,9 @@ src/device/peripheral/mros-dev/mros-src/transfer/cimpl/mros_topic_data_subscribe
 src/device/peripheral/serial/fifo/serial_fifo.c
 src/device/peripheral/serial/fifo/serial_fifo.h
 src/device/peripheral/target/device_ex_serial_ops.h
+src/hakoniwa/athrill_hakoniwa.cpp
+src/hakoniwa/athrill_hakoniwa.h
+src/hakoniwa/athrill_hakoniwa_disabled.cpp
 src/inc/athrill_device.h
 src/inc/athrill_exdev.h
 src/inc/athrill_exdev_header.h
@@ -210,6 +214,8 @@ src/lib/hash.h
 src/lib/list.h
 src/lib/loader/elf.h
 src/lib/loader/elf_common.h
+src/lib/loader/elf_image_check.c
+src/lib/loader/elf_image_check.h
 src/lib/object_container.h
 src/lib/shared_library.c
 src/lib/shared_library.h
@@ -242,3 +248,5 @@ src/osdep/posix/osdep_posix.c
 src/osdep/windows/include/sys/time.h
 src/osdep/windows/include/unistd.h
 src/osdep/windows/osdep_windows.c
+test/malformed_elf_test.py
+test/symbol_lookup_test.c
