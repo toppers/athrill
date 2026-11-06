@@ -1,4 +1,5 @@
 #include "gdb_rsp.h"
+#include "gdb_rsp_target.h"
 #include "cpu_control/dbg_cpu_control.h"
 #include "cpu_control/dbg_cpu_thread_control.h"
 #include "bus.h"
@@ -14,12 +15,6 @@
 #include <unistd.h>
 
 #define RSP_PACKET_SIZE 8192
-
-extern void dbg_target_gdb_set_pc(uint32 core_id, uint32 pc);
-extern uint32 dbg_target_gdb_reg_count(void);
-extern uint32 dbg_target_gdb_reg_size(uint32 regno);
-extern std_bool dbg_target_gdb_read_reg(uint32 core_id, uint32 regno, uint8 *bytes);
-extern std_bool dbg_target_gdb_write_reg(uint32 core_id, uint32 regno, const uint8 *bytes);
 
 static int read_byte(int fd, uint8 *byte)
 {
