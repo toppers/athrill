@@ -78,11 +78,16 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 	    	cmd_option.is_remote = TRUE;
 	        break;
 	      case 'g':
+#ifndef ATHRILL_ENABLE_GDB_RSP
+			printf("error! -g is not supported by this target (built without ATHRILL_ENABLE_GDB_RSP)\n");
+			return NULL;
+#else
 			if (cmd_atoi32((char *)parser.argument, &cmd_option.gdb_port) < 0 || cmd_option.gdb_port == 0 || cmd_option.gdb_port > 65535) {
 				printf("error! -g %s (expected port 1..65535)\n", parser.argument);
 				return NULL;
 			}
 			cmd_option.is_interaction = TRUE;
+#endif
 	        break;
 	      case 'b':
 		    cmd_option.is_binary_data = TRUE;
@@ -146,6 +151,7 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 	        return NULL;
 	    }
 	  }
+#ifdef ATHRILL_ENABLE_GDB_RSP
 	  if (cmd_option.gdb_port != 0) {
 		  if (cmd_option.core_id_num > 1) {
 			  printf("error! -g currently supports one core only\n");
@@ -153,6 +159,7 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 		  }
 		  cmd_option.core_id_num = 1;
 	  }
+#endif
 #if 0
 	  printf("i = %d\n", cmd_option.is_interaction);
 	  printf("b = %d\n", cmd_option.is_binary_data);

@@ -14,7 +14,9 @@ extern "C" {
 #include "cpu_control/dbg_cpu_thread_control.h"
 #include "cpuemu_config.h"
 #include "cpuemu_ops.h"
+#ifdef ATHRILL_ENABLE_GDB_RSP
 #include "../debugger/rsp/gdb_rsp.h"
+#endif
 #include "cui/cui_ops.h"
 #include "cui/stdio/cui_ops_stdio.h"
 #include "cui/udp/cui_ops_udp.h"
@@ -173,7 +175,9 @@ int main(int argc, const char *argv[])
 		std::cout << ' ' << std::left << std::setw(30) << "-c" << std::right << " : set core num. if -c is not set, core num = 2.\n";
 		std::cout << ' ' << std::left << std::setw(30) << "-i" << std::right << " : execute on the interaction mode. if -i is not set, execute on the background mode.\n";
 		std::cout << ' ' << std::left << std::setw(30) << "-r" << std::right << " : execute on the remote mode. this option is valid on the interaction mode.\n";
-		std::cout << ' ' << std::left << std::setw(30) << "-g<port>" << std::right << " : start the GDB remote serial protocol server.\n";
+#ifdef ATHRILL_ENABLE_GDB_RSP
+		std::cout << ' ' << std::left << std::setw(30) << "-g<port>" << std::right << " : start the GDB remote serial protocol server (target-dependent).\n";
+#endif
 		std::cout << ' ' << std::left << std::setw(30) << "-t<timeout>" << std::right << " : set program end time using <timeout> clocks. this option is valid on the background mode.\n";
 		std::cout << ' ' << std::left << std::setw(30) << "-m<memory config file>" << std::right << " : set athrill memory configuration. rom, ram region is configured on your system.\n";
 		//printf(" %-30s : set communication path with an another emulator.\n", "-p<fifo config file>");
@@ -240,6 +244,7 @@ int main(int argc, const char *argv[])
 
 	cpuemu_set_entry_addr(entry_addr);
 	if (opt->is_interaction == TRUE) {
+#ifdef ATHRILL_ENABLE_GDB_RSP
 		if (opt->gdb_port != 0) {
 			/* CPU debug callbacks use the CUI output hooks even in GDB mode. */
 			cui_ops_stdio_init();
@@ -252,7 +257,8 @@ int main(int argc, const char *argv[])
 			}
 			return 0;
 		}
-		else if (opt->is_remote == TRUE) {
+#endif
+		if (opt->is_remote == TRUE) {
 			uint32 athrill_listen_port = CPUEMU_CONFIG_CUI_EMULATOR_PORTNO;
 			uint32 client_listen_port = CPUEMU_CONFIG_CUI_CLIENT_PORTNO;
 			(void)cpuemu_get_devcfg_value("DEBUG_FUNC_REMOTE_ATHRILL_LISTEN_PORT_NO", &athrill_listen_port);
