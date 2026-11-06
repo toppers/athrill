@@ -22,6 +22,9 @@ skipped), so a run repeats exactly from the same inputs, and it can run in
 lockstep with the [Hakoniwa](https://github.com/toppers/hakoniwa)
 co-simulation environment (`--hakoniwa`).
 
+Command-line options, memory maps, and core device parameters are described in the
+[configuration reference](docs/configuration.md).
+
 # Table of Contents
 -----------------
   * [Requirements](#requirements)

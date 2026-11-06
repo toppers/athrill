@@ -19,6 +19,9 @@ Athrill は次の4つの命令セットをサポートしています．
 Athrill は仮想クロック（1命令1クロック，アイドル時間は飛ばす）で動くため，同じ入力からの実行は完全に再現します．
 また，[箱庭](https://github.com/toppers/hakoniwa)と同期して動かせます（`--hakoniwa`）．
 
+起動オプション，メモリマップ，コア共通のデバイスパラメータは
+[configuration reference（英語）](docs/configuration.md)にまとめています．
+
 # Table of Contents
 -----------------
   * [Requirements](#requirements)
