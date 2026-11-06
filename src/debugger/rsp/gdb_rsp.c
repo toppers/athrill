@@ -15,7 +15,6 @@
 
 #define RSP_PACKET_SIZE 8192
 
-extern uint32 dbg_target_gdb_pc(uint32 core_id);
 extern void dbg_target_gdb_set_pc(uint32 core_id, uint32 pc);
 extern uint32 dbg_target_gdb_reg_count(void);
 extern uint32 dbg_target_gdb_reg_size(uint32 regno);
@@ -121,7 +120,12 @@ static int await_stop(int fd)
 		rc = select(fd + 1, &rfds, NULL, NULL, &timeout);
 		if (rc > 0 && FD_ISSET(fd, &rfds)) {
 			uint8 ch;
-			if (!read_byte(fd, &ch)) return -1;
+			if (!read_byte(fd, &ch)) {
+				/* A disconnected debugger must not leave the target running. */
+				cpuctrl_set_force_break();
+				cputhr_control_dbg_waitfor_cpu_stopped();
+				return -1;
+			}
 			if (ch == 3) {
 				stop_signal = 2;
 				cpuctrl_set_force_break();
@@ -143,7 +147,7 @@ static int dispatch_packet(int fd, char *packet, int *should_close)
 	char *sep;
 	*should_close = FALSE;
 
-	if (strncmp(packet, "qSupported", 10) == 0) return send_packet(fd, "PacketSize=2000;swbreak+;vContSupported+");
+	if (strncmp(packet, "qSupported", 10) == 0) return send_packet(fd, "PacketSize=2000;vContSupported+");
 	if (strcmp(packet, "?" ) == 0) return stop_reply(fd, 5, "");
 	if (strcmp(packet, "qAttached") == 0) return send_packet(fd, "1");
 	if (strcmp(packet, "qC") == 0) return send_packet(fd, "QC1");
@@ -230,9 +234,9 @@ static int dispatch_packet(int fd, char *packet, int *should_close)
 			dbg_target_gdb_set_pc(0, address);
 		}
 		if (stepping) {
-			/* The callback checks debug/clock-stop before executing an instruction. */
-			cpuctrl_set_cont_clocks(TRUE, 2);
-			cpuctrl_set_debug_mode(FALSE);
+			/* Match the CLI `next` path: resume in debug mode for one instruction. */
+			cpuctrl_set_cont_clocks(FALSE, 0);
+			cpuctrl_set_debug_mode(TRUE);
 			cputhr_control_dbg_wakeup_cpu_and_wait_for_cpu_stopped();
 			return stop_reply(fd, 5, "");
 		}
@@ -277,6 +281,8 @@ int gdb_rsp_run(uint16 port)
 	for (;;) {
 		client_fd = accept(server_fd, NULL, NULL);
 		if (client_fd < 0) continue;
+		/* Breakpoints belong to the previous GDB session. */
+		cpuctrl_del_all_break(BREAK_POINT_TYPE_FOREVER);
 		cputhr_control_dbg_waitfor_cpu_stopped();
 		while (!close_client) {
 			int len = read_packet(client_fd, packet, sizeof(packet));
