@@ -10,6 +10,8 @@ extern "C" {
 /* Target facts used by the core's idle/spin halt policy. */
 typedef struct {
 	const char *name;
+	/* The idle function used when DEVICE_CONFIG_IDLE_FUNCTION is absent (NULL: none). */
+	const char *default_idle_function;
 	std_bool (*is_branch_to_self)(CoreIdType core_id, AthrillAddrType pc);
 	std_bool (*halt_ready)(CoreIdType core_id);
 } AthrillIdleSpinHaltTargetOps;

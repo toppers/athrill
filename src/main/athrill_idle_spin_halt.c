@@ -40,7 +40,11 @@ static void read_idle_function(void)
 	std_bool configured;
 
 	configured = cpuemu_get_devcfg_string(IDLE_FUNCTION_CONFIG, &name) == STD_E_OK;
-	if (!configured || (strcmp(name, "none") == 0)) {
+	if (!configured && (target_ops != NULL)) {
+		/* The target's default keeps configurations without the line working as before. */
+		name = (char *)target_ops->default_idle_function;
+	}
+	if ((name == NULL) || (strcmp(name, "none") == 0)) {
 		return;
 	}
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_SKIP_CLOCK", &skip);
