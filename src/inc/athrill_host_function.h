@@ -1,9 +1,4 @@
-/*
- * Public interface for user-written host functions.
- *
- * Copyright (c) 2026 TOPPERS Project
- * SPDX-License-Identifier: MIT
- */
+/* Public interface for user-written host functions. */
 #ifndef ATHRILL_HOST_FUNCTION_H
 #define ATHRILL_HOST_FUNCTION_H
 
