@@ -45,7 +45,7 @@ static int hakoniwa_reset_athrill(void)
  *  Y: function
  *  Z: bug fix, small changes
  */
-#define ATHRILL_CORE_VERSION "3.0.0"
+#define ATHRILL_CORE_VERSION "3.1.0"
 
 #ifndef ATHRILL_TARGET_ARCH
 #define ATHRILL_TARGET_ARCH "UNKNOWN"

@@ -1,5 +1,5 @@
 PACKAGE athrill
-VERSION 3.0.0
+VERSION 3.1.0
 
 MANIFEST
 README.ja.md
@@ -20,6 +20,7 @@ command/remote/remote_cui_client/Makefile
 command/remote/remote_cui_client/cpuemu_config.h
 command/remote/remote_cui_client/main.c
 config/hakoniwa/athrill-pdudef.json
+docs/configuration.md
 src/bus/bus.c
 src/bus/bus.h
 src/cpu/cpu.h
@@ -46,6 +47,9 @@ src/debugger/interaction/inc/dbg_interaction_std_ids.h
 src/debugger/interaction/inc/target/rh850/dbg_interaction_target_ids.h
 src/debugger/interaction/inc/target/v850e2m/dbg_interaction_target_ids.h
 src/debugger/interaction/inc/target/v850esfk3/dbg_interaction_target_ids.h
+src/debugger/rsp/gdb_rsp.c
+src/debugger/rsp/gdb_rsp.h
+src/debugger/rsp/gdb_rsp_target.h
 src/device/mpu/loader/loader.c
 src/device/mpu/loader/loader.h
 src/device/mpu/mpu.c
@@ -152,6 +156,9 @@ src/hakoniwa/athrill_hakoniwa_disabled.cpp
 src/inc/athrill_device.h
 src/inc/athrill_exdev.h
 src/inc/athrill_exdev_header.h
+src/inc/athrill_host_function.h
+src/inc/athrill_host_function_internal.h
+src/inc/athrill_idle_spin_halt.h
 src/inc/athrill_mpthread.h
 src/inc/cpu_config_ops.h
 src/inc/cpuemu_ops.h
@@ -237,6 +244,8 @@ src/lib/udp/udp_comm.h
 src/lib/udp/udp_common.h
 src/lib/winsock_wrapper/winsock_wrapper.c
 src/lib/winsock_wrapper/winsock_wrapper.h
+src/main/athrill_host_function.c
+src/main/athrill_idle_spin_halt.c
 src/main/cpuemu.cpp
 src/main/main.cpp
 src/main/option/argument_parser.c
@@ -250,3 +259,4 @@ src/osdep/windows/include/unistd.h
 src/osdep/windows/osdep_windows.c
 test/malformed_elf_test.py
 test/symbol_lookup_test.c
+tools/check-config-docs.sh
