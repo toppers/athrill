@@ -29,6 +29,7 @@ Command-line options, memory maps, and core device parameters are described in t
 -----------------
   * [Requirements](#requirements)
   * [Install](#install)
+  * [GDB remote debugging](#gdb-remote-debugging)
   * [License](#license)
 
 # Requirements
@@ -63,6 +64,22 @@ cmake --build athrill-target-v850e2m/build
 ```
 
 The target finds this repository as the sibling `../athrill` checkout. To use a checkout somewhere else, add `-DATHRILL_SOURCE_DIR=<path to athrill>` to the first `cmake` command.
+
+## GDB remote debugging
+
+The `-g<port>` option starts a GDB Remote Serial Protocol server. It is available only when the target enables `ATHRILL_ENABLE_GDB_RSP` at configure time and provides the register access functions declared in `src/debugger/rsp/gdb_rsp_target.h`. Currently, the RH850F1x target enables this option; other targets leave it disabled by default. A build without this support rejects `-g` with an explanatory error and does not show it in the usage output.
+
+The server listens on localhost and supports one core (`-c1`). Start Athrill with the target's memory configuration and ELF file, then connect with `gdb-multiarch`:
+
+```sh
+athrill3 -c1 -m memory.txt -g1234 app.elf
+gdb-multiarch
+(gdb) set osabi none
+(gdb) file app.elf
+(gdb) target remote :1234
+```
+
+GDB `kill` exits Athrill. GDB `detach` leaves Athrill paused while it waits for another connection. A new connection clears breakpoints from the previous session. Memory reads use the normal bus read path, so reading memory-mapped peripheral registers can have device-specific side effects.
 
 Running `athrill3` without arguments displays its usage:
 
