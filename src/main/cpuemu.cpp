@@ -459,6 +459,18 @@ static void cpuemu_pace_real_time(uint64 clock)
 	cpuemu_real_time_next_clock = clock + 1000ULL * virtual_cpu.cpu_freq;
 }
 
+/*
+ * Cleans up the external devices before exit(): exit() destroys the static
+ * objects of the device libraries before the atexit() cleanup would run.
+ */
+static void cpuemu_exit_with_cleanup(int status)
+{
+#ifdef EXDEV_ENABLE
+	athrill_device_cleanup();
+#endif /* EXDEV_ENABLE */
+	exit(status);
+}
+
 void *cpuemu_thread_run(void* arg)
 {
 	std_bool is_halt;
@@ -507,14 +519,21 @@ void *cpuemu_thread_run(void* arg)
 	uint64 *clockp = &cpuemu_dev_clock.clock;
 	std_bool enable_skip = cpuemu_dev_clock.enable_skip;
 
+	/*
+	 * SIGTERM is handled here, between two steps, so that the external
+	 * devices are never cleaned up while this loop is still using them.
+	 */
+	osdep_terminate_from_main_loop();
 	cpuemu_real_time_start = std::chrono::steady_clock::now();
 	while (TRUE) {
 		if ((*clockp)>= end_clock) {
 			dbg_log_sync();
 			athrill_hakoniwa_finalize();
 			std::cout << "EXIT for timeout(" << cpuemu_dev_clock.clock << ").\n";
-			exit(1);
+			fflush(stdout);
+			cpuemu_exit_with_cleanup(1);
 		}
+		osdep_handle_terminate_request();
 		is_halt = do_cpu_run(core_id_num);
 
 		if ((enable_skip == TRUE) && (is_halt == TRUE)

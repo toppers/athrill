@@ -27,6 +27,7 @@
  */
 static pthread_mutex_t osdep_terminate_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_once_t osdep_terminate_once = PTHREAD_ONCE_INIT;
+#define OSDEP_TERMINATE_GRACE_SEC 3
 static void (*osdep_cleanup)(void);
 static std_bool osdep_terminate_polled = FALSE;
 /* Written by the SIGTERM thread, read by the main loop: an atomic, not volatile. */
@@ -67,6 +68,14 @@ static void *osdep_terminate_thread(void *arg)
 	if (!polled) {
 		osdep_run_cleanup_and_exit();
 	}
+	/*
+	 * The main loop exits on its own at its next step. If it is blocked
+	 * (a device waiting for outside data that never comes), leave without
+	 * the cleanup rather than cleaning up under the running loop.
+	 */
+	sleep(OSDEP_TERMINATE_GRACE_SEC);
+	fprintf(stderr, "athrill: no exit %d s after SIGTERM, leaving without cleanup\n", OSDEP_TERMINATE_GRACE_SEC);
+	_exit(1);
 	return NULL;
 }
 
