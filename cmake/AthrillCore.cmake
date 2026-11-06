@@ -87,6 +87,7 @@ endif()
 set(ATHRILL_MAIN_SOURCES
 	"${ATHRILL_SRC_DIR}/main/cpuemu.cpp"
 	"${ATHRILL_SRC_DIR}/main/athrill_host_function.c"
+	"${ATHRILL_SRC_DIR}/main/athrill_idle_spin_halt.c"
     "${ATHRILL_OSDEP_SOURCE}"
     "${ATHRILL_SRC_DIR}/main/option/argument_parser.c"
     "${ATHRILL_SRC_DIR}/main/option/option.c"
