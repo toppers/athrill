@@ -586,6 +586,40 @@ Std_ReturnType mpu_get_memory_window(CoreIdType core_id, AthrillAddrType addr,
 	return STD_E_OK;
 }
 
+/*
+ * A complete, plain-memory range for a host function.  Unlike the bus access
+ * helpers this never calls a device operation, and unlike get_pointer it
+ * checks the whole range and the CPU's MPU permissions before returning a
+ * host pointer.
+ */
+Std_ReturnType mpu_get_host_memory(CoreIdType core_id, AthrillAddrType addr,
+	AthrillAddrType size, std_bool write, uint8 **data)
+{
+	MpuAddressRegionType *region;
+	AthrillAddrType end;
+	CpuMemoryAccessType access = write ? CpuMemoryAccess_WRITE : CpuMemoryAccess_READ;
+	(void)access;
+
+	if (size == 0U) {
+		*data = NULL;
+		return STD_E_OK;
+	}
+	end = addr + size;
+	if (end < addr) {
+		return STD_E_SEGV;
+	}
+	region = search_region(core_id, addr, size);
+	if ((region == NULL) || (region->data == NULL) || (region->ops != &default_memory_operation)
+		|| (region->mask != MPU_ADDRESS_REGION_MASK_ALL)
+		|| ((region->type != GLOBAL_MEMORY) && (region->type != READONLY_MEMORY))
+		|| (write && (region->type != GLOBAL_MEMORY))
+		|| !CPU_HAS_PERMISSION(core_id, region->type, access, addr, size)) {
+		return STD_E_SEGV;
+	}
+	*data = &region->data[addr - region->start];
+	return STD_E_OK;
+}
+
 Std_ReturnType mpu_get_pointer(CoreIdType core_id, AthrillAddrType addr, uint8 **data)
 {
 	MpuAddressRegionType *region = search_region(core_id, addr, 1U);

@@ -14,6 +14,8 @@ extern Std_ReturnType mpu_put_data32(CoreIdType core_id, AthrillAddrType addr, u
 extern Std_ReturnType mpu_get_pointer(CoreIdType core_id, AthrillAddrType addr, uint8 **data);
 extern Std_ReturnType mpu_get_memory_window(CoreIdType core_id, AthrillAddrType addr,
 	AthrillAddrType *start, AthrillAddrType *size, uint8 **data, std_bool *writable);
+extern Std_ReturnType mpu_get_host_memory(CoreIdType core_id, AthrillAddrType addr,
+	AthrillAddrType size, std_bool write, uint8 **data);
 
 
 /*

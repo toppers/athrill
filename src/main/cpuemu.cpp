@@ -29,6 +29,7 @@ extern "C" {
 #include "athrill_device.h"
 #include "assert.h"
 #include "athrill_exdev_header.h"
+#include "athrill_host_function_internal.h"
 }
 
 static DeviceClockType cpuemu_dev_clock;
@@ -116,6 +117,10 @@ void cpuemu_init(void *(*cpu_run)(void *), void *opt)
 	osdep_elaps_reset(&cpuemu_dev_clock);
 
 	cpu_init();
+	if (athrill_host_function_init() != STD_E_OK) {
+		std::cerr << "ERROR: host-function initialisation failed\n";
+		exit(1);
+	}
 	device_init(&virtual_cpu, &cpuemu_dev_clock);
 	cputhr_control_init();
 	cpuctrl_init();
@@ -732,6 +737,8 @@ typedef struct {
 	struct {
 		TokenValueType	key;
 		TokenValueType	value;
+		TokenValueType	second_value;
+		uint32			value_num;
 	} param[CPUEMU_DEVCFG_PARAM_MAXNUM];
 } CpuEmuDevCfgType;
 
@@ -769,12 +776,23 @@ Std_ReturnType cpuemu_load_devcfg(const char *path)
 			std::cout << "ERROR: can not parse data on " << path << "...\n";
 			goto errdone;
 		}
-		if (devcfg_token_container.num != 2) {
+		if ((devcfg_token_container.num != 2)
+			&& !((devcfg_token_container.num == 3)
+				&& (strcmp((char *)devcfg_token_container.array[0].body.str.str,
+					"DEVICE_CONFIG_HOST_FUNCTION") == 0))) {
 			std::cout << "ERROR: the token is invalid " << dvcfg_buffer << " on " << path << "...\n";
+			goto errdone;
+		}
+		if (cpuemu_devcfg.param_num >= CPUEMU_DEVCFG_PARAM_MAXNUM) {
+			std::cout << "ERROR: too many device parameters on " << path << "...\n";
 			goto errdone;
 		}
 		cpuemu_devcfg.param[cpuemu_devcfg.param_num].key = devcfg_token_container.array[0];
 		cpuemu_devcfg.param[cpuemu_devcfg.param_num].value = devcfg_token_container.array[1];
+		cpuemu_devcfg.param[cpuemu_devcfg.param_num].value_num = devcfg_token_container.num - 1U;
+		if (devcfg_token_container.num == 3) {
+			cpuemu_devcfg.param[cpuemu_devcfg.param_num].second_value = devcfg_token_container.array[2];
+		}
 		cpuemu_devcfg.param_num++;
 		//printf("param=%s\n", devcfg_token_container.array[0].body.str.str);
 		//printf("value=%s\n", devcfg_token_container.array[1].body.str.str);
@@ -1088,6 +1106,35 @@ Std_ReturnType cpuemu_get_devcfg_string(const char* key, char **value)
 		cpuemu_env_parse_devcfg_string(&cpuemu_devcfg.param[i].value.body.str);
 		*value = (char*)cpuemu_devcfg.param[i].value.body.str.str;
 		std::cout << key << " = " << *value << '\n';
+		return STD_E_OK;
+	}
+	return STD_E_NOENT;
+}
+
+Std_ReturnType cpuemu_get_devcfg_string_pair_at(const char *key, uint32 occurrence,
+	char **first, char **second)
+{
+	uint32 i;
+	uint32 found = 0U;
+	TokenStringType token;
+
+	token.len = strlen(key);
+	memcpy(token.str, key, token.len);
+	token.str[token.len] = '\0';
+	for (i = 0U; i < cpuemu_devcfg.param_num; i++) {
+		if ((cpuemu_devcfg.param[i].value_num != 2U)
+			|| (cpuemu_devcfg.param[i].value.type != TOKEN_TYPE_STRING)
+			|| (cpuemu_devcfg.param[i].second_value.type != TOKEN_TYPE_STRING)
+			|| !token_strcmp(&cpuemu_devcfg.param[i].key.body.str, &token)) {
+			continue;
+		}
+		if (found++ != occurrence) {
+			continue;
+		}
+		cpuemu_env_parse_devcfg_string(&cpuemu_devcfg.param[i].value.body.str);
+		cpuemu_env_parse_devcfg_string(&cpuemu_devcfg.param[i].second_value.body.str);
+		*first = (char *)cpuemu_devcfg.param[i].value.body.str.str;
+		*second = (char *)cpuemu_devcfg.param[i].second_value.body.str.str;
 		return STD_E_OK;
 	}
 	return STD_E_NOENT;
