@@ -30,6 +30,7 @@ extern "C" {
 #include "assert.h"
 #include "athrill_exdev_header.h"
 #include "athrill_host_function_internal.h"
+#include "athrill_idle_spin_halt.h"
 }
 
 static DeviceClockType cpuemu_dev_clock;
@@ -117,6 +118,7 @@ void cpuemu_init(void *(*cpu_run)(void *), void *opt)
 	osdep_elaps_reset(&cpuemu_dev_clock);
 
 	cpu_init();
+	athrill_idle_spin_halt_init();
 	if (athrill_host_function_init() != STD_E_OK) {
 		std::cerr << "ERROR: host-function initialisation failed\n";
 		exit(1);
