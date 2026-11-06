@@ -4,6 +4,11 @@ enable_language(CXX)
 
 option(ATHRILL_ENABLE_HAKONIWA "Enable Hakoniwa lockstep asset support" OFF)
 option(ATHRILL_ENABLE_GDB_RSP "Enable the GDB remote serial protocol server (target must provide register access)" OFF)
+if(ATHRILL_ENABLE_GDB_RSP AND (WIN32 OR NOT UNIX))
+    message(FATAL_ERROR
+        "ATHRILL_ENABLE_GDB_RSP is not supported on this operating system; "
+        "the GDB RSP server requires a POSIX host")
+endif()
 
 set(ATHRILL_ADDRESS_WIDTH "32" CACHE STRING "Athrill bus address width (32 or 64)")
 set_property(CACHE ATHRILL_ADDRESS_WIDTH PROPERTY STRINGS 32 64)

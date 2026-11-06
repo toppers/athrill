@@ -296,5 +296,5 @@ int gdb_rsp_run(uint16 port)
 	}
 }
 #else
-int gdb_rsp_run(uint16 port) { (void)port; return -1; }
+#error "GDB RSP support requires POSIX sockets"
 #endif
