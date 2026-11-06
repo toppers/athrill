@@ -8,6 +8,13 @@
 #include "symbol_ops.h"
 #include "file_address_mapping.h"
 
+static std_bool dbg_cpu_callback_gdb_mode = FALSE;
+
+void dbg_cpu_callback_set_gdb_mode(std_bool enabled)
+{
+	dbg_cpu_callback_gdb_mode = enabled;
+}
+
 void dbg_notify_cpu_clock_supply_start(const TargetCoreType *core)
 {
 	CoreIdType core_id;
@@ -29,7 +36,7 @@ void dbg_notify_cpu_clock_supply_start(const TargetCoreType *core)
 	 */
 	if (cpuctrl_is_timeout_cont_clocks(core_id) == TRUE) {
 		need_stop = TRUE;
-		printf("\nCONT TIMEOUT\n");
+		if (dbg_cpu_callback_gdb_mode == FALSE) printf("\nCONT TIMEOUT\n");
 		//printf("[DBG>");
 	}
 	else if ((cpuctrl_is_break_point(pc) == TRUE)) {
@@ -38,10 +45,10 @@ void dbg_notify_cpu_clock_supply_start(const TargetCoreType *core)
 		 need_stop = TRUE;
 		 funcid = symbol_pc2funcid(pc, &funcaddr);
 		 if (funcid >= 0) {
-			 printf("\nHIT break:0x%x %s(+0x%" ATHRILL_ADDR_HEX_FORMAT ")\n", pc, symbol_funcid2funcname(funcid), pc - funcaddr);
+			 if (dbg_cpu_callback_gdb_mode == FALSE) printf("\nHIT break:0x%x %s(+0x%" ATHRILL_ADDR_HEX_FORMAT ")\n", pc, symbol_funcid2funcname(funcid), pc - funcaddr);
 		 }
 		 else {
-			 printf("\nHIT break:0x%x\n", pc);
+			 if (dbg_cpu_callback_gdb_mode == FALSE) printf("\nHIT break:0x%x\n", pc);
 		 }
 
 	}
@@ -50,14 +57,16 @@ void dbg_notify_cpu_clock_supply_start(const TargetCoreType *core)
 	}
 
 	if (need_stop == TRUE) {
-		ValueFileType value;
-		Std_ReturnType err = file_address_mapping_get(pc, &value);
-		dbg_cpu_control_print_source(pc);
-		if (err == STD_E_OK) {
-			CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "%s %u\n", value.file, value.line));
-		}
-		else {
-			CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "OK\n"));
+		if (dbg_cpu_callback_gdb_mode == FALSE) {
+			ValueFileType value;
+			Std_ReturnType err = file_address_mapping_get(pc, &value);
+			dbg_cpu_control_print_source(pc);
+			if (err == STD_E_OK) {
+				CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "%s %u\n", value.file, value.line));
+			}
+			else {
+				CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "OK\n"));
+			}
 		}
 		//fflush(stdout);
 		//CUI_PRINTF((CPU_PRINT_BUF(), CPU_PRINT_BUF_LEN(), "core[%u].pc = 0x%x\n", cpu_get_core_id(core), pc));

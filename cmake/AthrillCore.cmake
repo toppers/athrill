@@ -95,6 +95,7 @@ set(ATHRILL_MAIN_SOURCES
     "${ATHRILL_SRC_DIR}/debugger/executor/cpu_control/dbg_cpu_callback.c"
     "${ATHRILL_SRC_DIR}/debugger/executor/cpu_control/dbg_cpu_control.c"
     "${ATHRILL_SRC_DIR}/debugger/executor/cpu_control/dbg_cpu_thread_control.c"
+    "${ATHRILL_SRC_DIR}/debugger/rsp/gdb_rsp.c"
 )
 
 set(ATHRILL_MAIN_ENTRY_SOURCE "${ATHRILL_SRC_DIR}/main/main.cpp")
