@@ -8,6 +8,7 @@
 #define ATHRILL_HOST_FUNCTION_H
 
 #include "std_types.h"
+#include "std_errno.h"
 
 #ifdef __cplusplus
 extern "C" {
