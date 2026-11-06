@@ -28,6 +28,7 @@ file is always required.
 | `-c <cores>` | Decimal number of guest cores. If absent or zero, uses the target's compiled `CPU_CONFIG_CORE_NUM`. Do not exceed the target's compiled core capacity. | `-c 1` |
 | `-i` | Interactive debugger mode. Without it, Athrill runs in background mode. It cannot be combined with `--hakoniwa`. | `-i` |
 | `-r` | In `-i` mode, use the UDP remote debugger instead of standard input/output. It has no effect without `-i`. The two ports are configurable below. | `-i -r` |
+| `-g <port>` | Start the GDB Remote Serial Protocol server on localhost at the given TCP port. Requires a target built with `ATHRILL_ENABLE_GDB_RSP=ON` (currently RH850F1x on POSIX hosts; Windows is unsupported). Without the feature, `-g` is rejected. Implies interactive mode: cannot be combined with `--hakoniwa`; `-t` has no effect and `-r` is ignored. Supports one core only; `-c` values above 1 are rejected. | `-g 1234` |
 | `-t <clocks>` | Stop after this many virtual CPU clocks in background mode. The stored default is zero: an ordinary background run therefore exits at clock zero, while Hakoniwa converts zero to an unlimited run. `-1` is accepted and becomes the maximum unsigned value, which is effectively unlimited. Interactive mode does not install this limit. | `-t 100000` |
 | `-b` | Treat the load file as raw binary and copy it at guest address zero. Without it, the file must be ELF and symbols are loaded. The memory map must cover the bytes either way. | `-b` |
 | `-m <file>` | Read the memory configuration described below. The parser permits omission, but an ELF or binary still needs mapped memory that covers what is loaded. | `-m memory.txt` |
@@ -43,6 +44,25 @@ file is always required.
 `-t` accepts a signed decimal string and stores it as an unsigned 64-bit value; apart from the useful `-1` case,
 use non-negative values. The three Hakoniwa time options use the same parser; `--delta-usec` and
 `--max-delay-usec` additionally reject zero.
+
+### GDB remote debugging
+
+Connect to a running server with `gdb-multiarch`:
+
+```text
+gdb-multiarch
+(gdb) set osabi none
+(gdb) file <ELF>
+(gdb) target remote :1234
+```
+
+The RSP server only binds to localhost. GDB `kill` exits Athrill; `detach` leaves it paused and waiting for another
+connection. A new connection clears breakpoints from the previous session. Memory reads use Athrill's normal bus
+read path, so reading memory-mapped peripheral registers can have device-specific side effects. Multi-core and
+Windows hosts are not supported.
+
+Targets that implement GDB register access must enable `ATHRILL_ENABLE_GDB_RSP` and provide the adapter functions
+declared in `src/debugger/rsp/gdb_rsp_target.h`.
 
 ## Memory configuration (`-m`)
 

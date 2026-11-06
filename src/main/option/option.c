@@ -59,6 +59,7 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 	  cmd_option.is_binary_data = FALSE;
 	  cmd_option.is_interaction = FALSE;
 	  cmd_option.is_remote = FALSE;
+	  cmd_option.gdb_port = 0;
 	  cmd_option.timeout = 0;
 	  cmd_option.hakoniwa_asset_name = NULL;
 	  cmd_option.hakoniwa_pdudef_path = NULL;
@@ -68,13 +69,25 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 	  cmd_option.hakoniwa_real_sleep_msec = 0;
 	  argument_parser_init(&parser);
 
-	  while ((opt = argument_parser_next_long(&parser, argc, argv, "irbt:p:d:c:m:", long_options)) != -1) {
+	  while ((opt = argument_parser_next_long(&parser, argc, argv, "irbt:p:d:c:m:g:", long_options)) != -1) {
 		  switch (opt) {
 		  case 'i':
 	    	cmd_option.is_interaction = TRUE;
 	        break;
 		  case 'r':
 	    	cmd_option.is_remote = TRUE;
+	        break;
+	      case 'g':
+#ifndef ATHRILL_ENABLE_GDB_RSP
+			printf("error! -g is not supported by this target (built without ATHRILL_ENABLE_GDB_RSP)\n");
+			return NULL;
+#else
+			if (cmd_atoi32((char *)parser.argument, &cmd_option.gdb_port) < 0 || cmd_option.gdb_port == 0 || cmd_option.gdb_port > 65535) {
+				printf("error! -g %s (expected port 1..65535)\n", parser.argument);
+				return NULL;
+			}
+			cmd_option.is_interaction = TRUE;
+#endif
 	        break;
 	      case 'b':
 		    cmd_option.is_binary_data = TRUE;
@@ -138,6 +151,15 @@ CmdOptionType *parse_args(int argc, const char* argv[])
 	        return NULL;
 	    }
 	  }
+#ifdef ATHRILL_ENABLE_GDB_RSP
+	  if (cmd_option.gdb_port != 0) {
+		  if (cmd_option.core_id_num > 1) {
+			  printf("error! -g currently supports one core only\n");
+			  return NULL;
+		  }
+		  cmd_option.core_id_num = 1;
+	  }
+#endif
 #if 0
 	  printf("i = %d\n", cmd_option.is_interaction);
 	  printf("b = %d\n", cmd_option.is_binary_data);

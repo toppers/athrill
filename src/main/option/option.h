@@ -10,6 +10,7 @@ typedef struct {
 	uint64	timeout;
 	std_bool	is_binary_data;
 	std_bool	is_remote;
+	uint32		gdb_port;
 
 	char	*fifocfgpath;
 	char	buffer_fifopath[4096];

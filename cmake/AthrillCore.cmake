@@ -3,6 +3,7 @@ include_guard(GLOBAL)
 enable_language(CXX)
 
 option(ATHRILL_ENABLE_HAKONIWA "Enable Hakoniwa lockstep asset support" OFF)
+option(ATHRILL_ENABLE_GDB_RSP "Enable the GDB remote serial protocol server (target must provide register access)" OFF)
 
 set(ATHRILL_ADDRESS_WIDTH "32" CACHE STRING "Athrill bus address width (32 or 64)")
 set_property(CACHE ATHRILL_ADDRESS_WIDTH PROPERTY STRINGS 32 64)
@@ -96,6 +97,10 @@ set(ATHRILL_MAIN_SOURCES
     "${ATHRILL_SRC_DIR}/debugger/executor/cpu_control/dbg_cpu_control.c"
     "${ATHRILL_SRC_DIR}/debugger/executor/cpu_control/dbg_cpu_thread_control.c"
 )
+if(ATHRILL_ENABLE_GDB_RSP)
+    list(APPEND ATHRILL_MAIN_SOURCES
+        "${ATHRILL_SRC_DIR}/debugger/rsp/gdb_rsp.c")
+endif()
 
 set(ATHRILL_MAIN_ENTRY_SOURCE "${ATHRILL_SRC_DIR}/main/main.cpp")
 
@@ -246,6 +251,10 @@ function(athrill_apply_common_settings target_name)
         ${ATHRILL_BASE_INCLUDE_DIRS})
     target_compile_definitions("${target_name}" PRIVATE
         ATHRILL_ADDRESS_WIDTH=${ATHRILL_ADDRESS_WIDTH})
+    if(ATHRILL_ENABLE_GDB_RSP)
+        target_compile_definitions("${target_name}" PRIVATE
+            ATHRILL_ENABLE_GDB_RSP)
+    endif()
     if(MSVC)
         target_compile_features("${target_name}" PRIVATE c_std_11 cxx_std_17)
         target_compile_options("${target_name}" PRIVATE
