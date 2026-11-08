@@ -13,7 +13,7 @@
 typedef struct {
 	bool 				is_set;
 	BreakPointEumType	type;
-	uint32 				addr;
+	AthrillAddrType		addr;
 } DbgCpuCtrlBreakPointType;
 
 static int dbg_cpuctrl_break_points_num = 0U;
@@ -347,7 +347,7 @@ static DbgCpuCtrlBreakPointType *search_free_break_point_space(void)
 	return NULL;
 }
 
-static DbgCpuCtrlBreakPointType *search_break_point(uint32 addr)
+static DbgCpuCtrlBreakPointType *search_break_point(AthrillAddrType addr)
 {
 	uint32 i;
 	for (i = 0; i < DBG_CPU_CONTROL_BREAK_SETSIZE; i++) {
@@ -361,7 +361,7 @@ static DbgCpuCtrlBreakPointType *search_break_point(uint32 addr)
 	return NULL;
 }
 
-static DbgCpuCtrlBreakPointType *search_break_point_with_type(uint32 addr, BreakPointEumType type)
+static DbgCpuCtrlBreakPointType *search_break_point_with_type(AthrillAddrType addr, BreakPointEumType type)
 {
 	uint32 i;
 	for (i = 0; i < DBG_CPU_CONTROL_BREAK_SETSIZE; i++) {
@@ -378,7 +378,7 @@ static DbgCpuCtrlBreakPointType *search_break_point_with_type(uint32 addr, Break
 	return NULL;
 }
 
-bool cpuctrl_get_break(uint32 index, uint32 *addrp)
+bool cpuctrl_get_break(uint32 index, AthrillAddrType *addrp)
 {
 	if (index >= DBG_CPU_CONTROL_BREAK_SETSIZE) {
 		return FALSE;
@@ -390,7 +390,7 @@ bool cpuctrl_get_break(uint32 index, uint32 *addrp)
 	return TRUE;
 }
 
-bool cpuctrl_is_break_point(uint32 addr)
+bool cpuctrl_is_break_point(AthrillAddrType addr)
 {
 	if (dbg_cpuctrl_break_points_num > 0) {
 		if (search_break_point(addr) != NULL) {
@@ -408,7 +408,7 @@ bool cpuctrl_is_debug_mode(void)
 	return (dbg_cpuctrl_dbg_mode != DBG_CPUCTRL_DBG_MODE_NONE);
 }
 
-bool cpuctrl_set_break(uint32 addr, BreakPointEumType type)
+bool cpuctrl_set_break(AthrillAddrType addr, BreakPointEumType type)
 {
 	DbgCpuCtrlBreakPointType *bp;
 	if (search_break_point_with_type(addr, type) != NULL) {

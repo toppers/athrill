@@ -35,9 +35,9 @@ typedef enum {
 	BREAK_POINT_TYPE_FOREVER,
 	BREAK_POINT_TYPE_ONLY_ONCE,
 } BreakPointEumType;
-extern std_bool cpuctrl_is_break_point(uint32 addr);
-extern std_bool cpuctrl_get_break(uint32 index, uint32 *addrp);
-extern std_bool cpuctrl_set_break(uint32 addr, BreakPointEumType type);
+extern std_bool cpuctrl_is_break_point(AthrillAddrType addr);
+extern std_bool cpuctrl_get_break(uint32 index, AthrillAddrType *addrp);
+extern std_bool cpuctrl_set_break(AthrillAddrType addr, BreakPointEumType type);
 extern std_bool cpuctrl_del_break(uint32 index);
 extern void cpuctrl_del_all_break(BreakPointEumType type);
 

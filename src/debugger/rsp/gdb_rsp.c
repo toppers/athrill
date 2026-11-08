@@ -82,6 +82,18 @@ static int parse_hex_u32(const char *text, uint32 *value)
 	return 0;
 }
 
+/* An address of the target's width (AthrillAddrType: 32 or 64 bits). */
+static int parse_hex_addr(const char *text, AthrillAddrType *value)
+{
+	char *end;
+	unsigned long long v;
+	errno = 0;
+	v = strtoull(text, &end, 16);
+	if (text == end || *end != '\0' || errno != 0 || v > (unsigned long long)ATHRILL_ADDR_MAX) return -1;
+	*value = (AthrillAddrType)v;
+	return 0;
+}
+
 static char *hex_encode(char *out, const uint8 *data, size_t len)
 {
 	static const char digits[] = "0123456789abcdef";
@@ -92,6 +104,54 @@ static char *hex_encode(char *out, const uint8 *data, size_t len)
 	}
 	*out = '\0';
 	return out;
+}
+
+/* No target description unless the target defines one (gdb_rsp_target.h). */
+__attribute__((weak)) const char *dbg_target_gdb_target_xml(void)
+{
+	return NULL;
+}
+
+/*
+ * qXfer:features:read:target.xml:<offset>,<length>: the part of the target
+ * description, 'm' when more follows, 'l' for the last part. '#', '$', '}'
+ * and '*' are escaped ('}' then the byte XOR 0x20), as for binary data.
+ */
+static int send_target_xml(int fd, const char *args)
+{
+	static const char annex[] = "target.xml:";
+	char reply[RSP_PACKET_SIZE + 1];
+	const char *xml = dbg_target_gdb_target_xml();
+	unsigned long long offset, length;
+	size_t total, out = 1;
+	char *end;
+
+	if (xml == NULL || strncmp(args, annex, sizeof(annex) - 1) != 0) return send_packet(fd, "E00");
+	args += sizeof(annex) - 1;
+	errno = 0;
+	offset = strtoull(args, &end, 16);
+	if (end == args || *end != ',' || errno != 0) return send_packet(fd, "E01");
+	args = end + 1;
+	length = strtoull(args, &end, 16);
+	if (end == args || *end != '\0' || errno != 0) return send_packet(fd, "E01");
+	total = strlen(xml);
+	if (offset > total) return send_packet(fd, "E01");
+	if (length > RSP_PACKET_SIZE - 2) length = RSP_PACKET_SIZE - 2;
+	xml += offset;
+	while (*xml != '\0' && out + 2 <= length + 1) {
+		char ch = *xml;
+		if (ch == '#' || ch == '$' || ch == '}' || ch == '*') {
+			reply[out++] = '}';
+			reply[out++] = (char)(ch ^ 0x20);
+		}
+		else {
+			reply[out++] = ch;
+		}
+		xml++;
+	}
+	reply[0] = (*xml == '\0') ? 'l' : 'm';
+	reply[out] = '\0';
+	return send_packet(fd, reply);
 }
 
 static int stop_reply(int fd, uint8 signal, const char *reason)
@@ -136,13 +196,18 @@ static int await_stop(int fd)
 static int dispatch_packet(int fd, char *packet, int *should_close)
 {
 	char response[RSP_PACKET_SIZE + 1];
-	uint32 address, length;
+	AthrillAddrType address;
+	uint32 length;
 	uint8 data[4096];
 	int i;
 	char *sep;
 	*should_close = FALSE;
 
-	if (strncmp(packet, "qSupported", 10) == 0) return send_packet(fd, "PacketSize=2000;vContSupported+");
+	if (strncmp(packet, "qSupported", 10) == 0) {
+		return send_packet(fd, (dbg_target_gdb_target_xml() != NULL) ?
+			"PacketSize=2000;vContSupported+;qXfer:features:read+" : "PacketSize=2000;vContSupported+");
+	}
+	if (strncmp(packet, "qXfer:features:read:", 20) == 0) return send_target_xml(fd, packet + 20);
 	if (strcmp(packet, "?" ) == 0) return stop_reply(fd, 5, "");
 	if (strcmp(packet, "qAttached") == 0) return send_packet(fd, "1");
 	if (strcmp(packet, "qC") == 0) return send_packet(fd, "QC1");
@@ -198,8 +263,8 @@ static int dispatch_packet(int fd, char *packet, int *should_close)
 		sep = strchr(packet + 1, ',');
 		if (sep == NULL || (size_t)(sep - (packet + 1)) >= 32) return send_packet(fd, "E01");
 		*sep = '\0';
-		if (parse_hex_u32(packet + 1, &address) < 0 || parse_hex_u32(sep + 1, &length) < 0 || length > sizeof(data)) return send_packet(fd, "E01");
-		for (i = 0; i < (int)length; i++) if (bus_get_data8(0, address + (uint32)i, &data[i]) != STD_E_OK) return send_packet(fd, "E02");
+		if (parse_hex_addr(packet + 1, &address) < 0 || parse_hex_u32(sep + 1, &length) < 0 || length > sizeof(data)) return send_packet(fd, "E01");
+		for (i = 0; i < (int)length; i++) if (bus_get_data8(0, address + (AthrillAddrType)i, &data[i]) != STD_E_OK) return send_packet(fd, "E02");
 		hex_encode(response, data, length);
 		return send_packet(fd, response);
 	}
@@ -213,11 +278,11 @@ static int dispatch_packet(int fd, char *packet, int *should_close)
 		*sep = '\0';
 		*address_sep = '\0';
 		type = (uint32)strtoul(packet + 1, NULL, 16);
-		if (type != 0 || parse_hex_u32(sep + 1, &address) < 0 || parse_hex_u32(address_sep + 1, &size) < 0) return send_packet(fd, "");
+		if (type != 0 || parse_hex_addr(sep + 1, &address) < 0 || parse_hex_u32(address_sep + 1, &size) < 0) return send_packet(fd, "");
 		if (size == 0) return send_packet(fd, "E01");
 		if (packet[0] == 'Z') return send_packet(fd, cpuctrl_set_break(address, BREAK_POINT_TYPE_FOREVER) ? "OK" : "E02");
 		for (i = 0; i < DBG_CPU_CONTROL_BREAK_SETSIZE; i++) {
-			uint32 current;
+			AthrillAddrType current;
 			if (cpuctrl_get_break((uint32)i, &current) && current == address) { cpuctrl_del_break((uint32)i); return send_packet(fd, "OK"); }
 		}
 		return send_packet(fd, "E03");
@@ -225,7 +290,7 @@ static int dispatch_packet(int fd, char *packet, int *should_close)
 	if (packet[0] == 'c' || packet[0] == 's' || strncmp(packet, "vCont;c", 7) == 0 || strncmp(packet, "vCont;s", 7) == 0) {
 		std_bool stepping = packet[0] == 's' || strncmp(packet, "vCont;s", 7) == 0 || strstr(packet, ";s") != NULL;
 		if (packet[1] != '\0' && packet[0] != 'v') {
-			if (parse_hex_u32(packet + 1, &address) < 0) return send_packet(fd, "E01");
+			if (parse_hex_addr(packet + 1, &address) < 0) return send_packet(fd, "E01");
 			dbg_target_gdb_set_pc(0, address);
 		}
 		if (stepping) {
@@ -247,10 +312,10 @@ static int dispatch_packet(int fd, char *packet, int *should_close)
 		char *colon = strchr(sep, ':');
 		if (colon == NULL) return send_packet(fd, "E01");
 		*colon++ = '\0';
-		if (parse_hex_u32(packet + 1, &address) < 0 || parse_hex_u32(sep, &length) < 0 || length > sizeof(data) || strlen(colon) != length * 2) return send_packet(fd, "E01");
+		if (parse_hex_addr(packet + 1, &address) < 0 || parse_hex_u32(sep, &length) < 0 || length > sizeof(data) || strlen(colon) != length * 2) return send_packet(fd, "E01");
 		for (i = 0; i < (int)length; i++) {
 			int hi = hex_value(colon[i * 2]), lo = hex_value(colon[i * 2 + 1]);
-			if (hi < 0 || lo < 0 || bus_put_data8(0, address + (uint32)i, (uint8)((hi << 4) | lo)) != STD_E_OK) return send_packet(fd, "E02");
+			if (hi < 0 || lo < 0 || bus_put_data8(0, address + (AthrillAddrType)i, (uint8)((hi << 4) | lo)) != STD_E_OK) return send_packet(fd, "E02");
 		}
 		return send_packet(fd, "OK");
 	}

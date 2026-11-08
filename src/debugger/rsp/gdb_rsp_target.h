@@ -18,7 +18,19 @@ extern uint32 dbg_target_gdb_reg_size(uint32 regno);
 extern std_bool dbg_target_gdb_read_reg(uint32 core_id, uint32 regno, uint8 *bytes);
 extern std_bool dbg_target_gdb_write_reg(uint32 core_id, uint32 regno, const uint8 *bytes);
 
-/* Set the target program counter to pc. */
-extern void dbg_target_gdb_set_pc(uint32 core_id, uint32 pc);
+/* Set the target program counter to pc (AthrillAddrType: uint32 on 32-bit
+ * targets, so their uint32 definitions match; uint64 on 64-bit targets). */
+extern void dbg_target_gdb_set_pc(uint32 core_id, AthrillAddrType pc);
+
+/* Defined by cores whose server sends the target description below, so a
+ * target can offer a larger register image only to them. */
+#define ATHRILL_GDB_RSP_TARGET_XML 1
+
+/* Optional: the target's GDB target description (a self-contained
+ * target.xml listing the registers in the order of the register image),
+ * or NULL for none. A target that does not define it gets a weak default
+ * returning NULL: the server then advertises no qXfer:features, as before.
+ */
+extern const char *dbg_target_gdb_target_xml(void);
 
 #endif /* ATHRILL_GDB_RSP_TARGET_H */
