@@ -16,10 +16,15 @@ typedef struct {
 	AthrillAddrType		addr;
 } DbgCpuCtrlBreakPointType;
 
-static int dbg_cpuctrl_break_points_num = 0U;
-DbgCpuCtrlBreakPointType dbg_cpuctrl_break_points[DBG_CPU_CONTROL_BREAK_SETSIZE] = {
-		{ TRUE, BREAK_POINT_TYPE_FOREVER, 0x00 },
-};
+/*
+ * The breakpoints the user (CUI, GDB) set, and how many of them are set
+ * (either type), so that no breakpoint costs one comparison per clock.
+ * The table starts empty: the debugger's first stop comes from the debug
+ * mode (dbg_cpuctrl_dbg_mode), not from a breakpoint, so every address,
+ * 0 included, is an ordinary breakpoint address (#81).
+ */
+static uint32 dbg_cpuctrl_break_points_num = 0U;
+DbgCpuCtrlBreakPointType dbg_cpuctrl_break_points[DBG_CPU_CONTROL_BREAK_SETSIZE];
 
 typedef struct {
 	bool					is_set;
@@ -392,15 +397,10 @@ bool cpuctrl_get_break(uint32 index, AthrillAddrType *addrp)
 
 bool cpuctrl_is_break_point(AthrillAddrType addr)
 {
-	if (dbg_cpuctrl_break_points_num > 0) {
-		if (search_break_point(addr) != NULL) {
-			return TRUE;
-		}
+	if (dbg_cpuctrl_break_points_num == 0U) {
+		return FALSE;
 	}
-	else if (dbg_cpuctrl_break_points[0].addr == addr) {
-		return TRUE;
-	}
-	return FALSE;
+	return (search_break_point(addr) != NULL) ? TRUE : FALSE;
 }
 
 bool cpuctrl_is_debug_mode(void)
@@ -419,36 +419,30 @@ bool cpuctrl_set_break(AthrillAddrType addr, BreakPointEumType type)
 		bp->type = type;
 		bp->is_set = TRUE;
 		bp->addr = addr;
-		if (type != BREAK_POINT_TYPE_ONLY_ONCE) {
-			dbg_cpuctrl_break_points_num++;
-		}
+		dbg_cpuctrl_break_points_num++;
 		return TRUE;
 	}
 	return FALSE;
 }
 
 
+/* Delete breakpoint index; FALSE when the index is out of range or not set. */
 bool cpuctrl_del_break(uint32 index)
 {
-	if (index > 0) {
-		if (dbg_cpuctrl_break_points[index].is_set == TRUE) {
-			dbg_cpuctrl_break_points_num--;
-		}
-		dbg_cpuctrl_break_points[index].is_set = FALSE;
-		return TRUE;
+	if ((index >= DBG_CPU_CONTROL_BREAK_SETSIZE) || (dbg_cpuctrl_break_points[index].is_set == FALSE)) {
+		return FALSE;
 	}
-	return FALSE;
+	dbg_cpuctrl_break_points[index].is_set = FALSE;
+	dbg_cpuctrl_break_points_num--;
+	return TRUE;
 }
 void cpuctrl_del_all_break(BreakPointEumType type)
 {
 	 uint32 i;
 	 for (i = 0; i < DBG_CPU_CONTROL_BREAK_SETSIZE; i++) {
-		 if (dbg_cpuctrl_break_points[i].type == type) {
-			 cpuctrl_del_break(i);
+		 if ((dbg_cpuctrl_break_points[i].is_set == TRUE) && (dbg_cpuctrl_break_points[i].type == type)) {
+			 (void)cpuctrl_del_break(i);
 		 }
-	 }
-	 if (type != BREAK_POINT_TYPE_ONLY_ONCE) {
-		 dbg_cpuctrl_break_points_num = 0;
 	 }
 	 return;
 }
