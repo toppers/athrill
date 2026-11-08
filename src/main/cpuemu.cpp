@@ -467,6 +467,31 @@ static void cpuemu_pace_real_time(uint64 clock)
 }
 
 /*
+ * Progress report (DEBUG_FUNC_PROGRESS_MSEC n): every n milliseconds of
+ * simulated time, and at the first step after a skip past such a point, one
+ * line on stderr gives the clock, the simulated time and the wall time since
+ * the CPU loop started, for a front end to show the virtual time and the
+ * real-time factor. It only writes; simulated results do not change.
+ */
+static uint32 cpuemu_progress_msec;
+static uint64 cpuemu_progress_next_clock;
+
+static void cpuemu_report_progress(uint64 clock)
+{
+	if (clock < cpuemu_progress_next_clock) {
+		return;
+	}
+	const uint64 simulated_usec = clock / virtual_cpu.cpu_freq;
+	const uint64 wall_usec = (uint64)std::chrono::duration_cast<std::chrono::microseconds>(
+		std::chrono::steady_clock::now() - cpuemu_real_time_start).count();
+	fprintf(stderr, "PROGRESS clock=%llu virtual_usec=%llu wall_usec=%llu\n",
+		(unsigned long long)clock, (unsigned long long)simulated_usec, (unsigned long long)wall_usec);
+	fflush(stderr);
+	const uint64 period = (uint64)cpuemu_progress_msec * 1000ULL * virtual_cpu.cpu_freq;
+	cpuemu_progress_next_clock = clock - (clock % period) + period;
+}
+
+/*
  * Cleans up the external devices before exit(): exit() destroys the static
  * objects of the device libraries before the atexit() cleanup would run.
  */
@@ -509,6 +534,7 @@ void *cpuemu_thread_run(void* arg)
 
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_ENABLE_SKIP_CLOCK", (uint32*)&cpuemu_dev_clock.enable_skip);
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_REAL_TIME", &cpuemu_real_time);
+	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_PROGRESS_MSEC", &cpuemu_progress_msec);
 	/* 1 = one device tick per clock (the reference behaviour for comparisons). */
 	(void)cpuemu_get_devcfg_value("DEBUG_FUNC_MAX_BATCH_CLOCKS", &cpuemu_max_batch_clocks);
 	if ((cpuemu_max_batch_clocks == 0U) || (cpuemu_max_batch_clocks > ATHRILL_TARGET_BATCH_CLOCKS)) {
@@ -557,6 +583,9 @@ void *cpuemu_thread_run(void* arg)
 		}
 		if (cpuemu_real_time != 0U) {
 			cpuemu_pace_real_time(cpuemu_dev_clock.clock);
+		}
+		if (cpuemu_progress_msec != 0U) {
+			cpuemu_report_progress(cpuemu_dev_clock.clock);
 		}
 	}
 	return NULL;
