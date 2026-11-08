@@ -49,6 +49,17 @@ static std_bool memory_map_covers(const MemoryAddressMapType *memap, AthrillAddr
 	return FALSE;
 }
 
+/*
+ * The address a PT_LOAD segment is loaded at: p_paddr, the ELF load
+ * address (in ROM-to-RAM layouts p_vaddr is the run address and the
+ * start-up code copies from p_paddr). Some linkers leave p_paddr 0 and
+ * give only p_vaddr: then p_vaddr (#5). A segment at address 0 has both 0.
+ */
+static uint64 elf_load_address(uint64 paddr, uint64 vaddr)
+{
+	return ((paddr == 0U) && (vaddr != 0U)) ? vaddr : paddr;
+}
+
 static Std_ReturnType load_segment(const uint8 *elf_data, uint64 offset, uint64 load_addr,
 	uint64 file_size, uint64 memory_size, MemoryAddressMapType *memap)
 {
@@ -91,7 +102,7 @@ Std_ReturnType elf_reload(uint8 *elf_data, uint64 elf_size, MemoryAddressMapType
 			const Elf64_Phdr *p = (const Elf64_Phdr *)(elf_data + image64->e_phoff + image64->e_phentsize * i);
 			Std_ReturnType err;
 			if (p->p_type != PT_LOAD) continue;
-			err = load_segment(elf_data, p->p_offset, p->p_paddr, p->p_filesz, p->p_memsz, memap);
+			err = load_segment(elf_data, p->p_offset, elf_load_address(p->p_paddr, p->p_vaddr), p->p_filesz, p->p_memsz, memap);
 			if (err == STD_E_INVALID) return err;
 		}
 		return STD_E_OK;
@@ -114,7 +125,8 @@ Std_ReturnType elf_reload(uint8 *elf_data, uint64 elf_size, MemoryAddressMapType
 		phdr = (Elf32_Phdr *)(((uint8 *)elf_image) + elf_image->e_phoff + elf_image->e_phentsize * i);
 		Std_ReturnType err;
 		if (phdr->p_type != PT_LOAD) continue;
-		err = load_segment((const uint8 *)elf_image, phdr->p_offset, phdr->p_paddr,
+		err = load_segment((const uint8 *)elf_image, phdr->p_offset,
+			(AthrillAddrType)elf_load_address(phdr->p_paddr, phdr->p_vaddr),
 			phdr->p_filesz, phdr->p_memsz, memap);
 		if (err == STD_E_INVALID) return err;
 	}
@@ -407,17 +419,18 @@ static Std_ReturnType Elf_LoadProgram(const Elf32_Ehdr *elf_image, MemoryAddress
 		/* p_paddr is the ELF load address.  In ROM-to-RAM layouts p_vaddr is
 		 * the run address and startup code performs the copy from p_paddr. */
 		{
-			std_bool was_rom = mpu_address_get_rom(phdr->p_paddr, phdr->p_filesz) != NULL;
-			err = load_segment((const uint8 *)elf_image, phdr->p_offset, phdr->p_paddr,
+			uint32 load = (uint32)elf_load_address(phdr->p_paddr, phdr->p_vaddr);
+			std_bool was_rom = mpu_address_get_rom(load, phdr->p_filesz) != NULL;
+			err = load_segment((const uint8 *)elf_image, phdr->p_offset, load,
 				phdr->p_filesz, phdr->p_memsz, memap);
 			if (err == STD_E_NOENT) continue;
 			if (err != STD_E_OK) {
-				printf("Invalid elf file: can not load addr=0x%x\n", phdr->p_paddr);
+				printf("Invalid elf file: can not load addr=0x%x\n", load);
 				return STD_E_INVALID;
 			}
 			/* Keep the established V850 loader output unchanged. */
 			if (was_rom)
-				printf("Elf loading was succeeded:0x%x - 0x%x : %u.%u KB\n", phdr->p_paddr, phdr->p_paddr + phdr->p_memsz, phdr->p_filesz/1024, phdr->p_filesz % 1024);
+				printf("Elf loading was succeeded:0x%x - 0x%x : %u.%u KB\n", load, load + phdr->p_memsz, phdr->p_filesz/1024, phdr->p_filesz % 1024);
 		}
 	}
 	return 0;
@@ -460,24 +473,26 @@ static Std_ReturnType Elf64_LoadProgram(const Elf64_Ehdr *elf_image, MemoryAddre
 #endif
 	for (i = 0; i < elf_image->e_phnum; i++) {
 		const Elf64_Phdr *p = (const Elf64_Phdr *)((const uint8 *)elf_image + elf_image->e_phoff + elf_image->e_phentsize * i);
+		uint64 load;
 		if (p->p_type != PT_LOAD) continue;
+		load = elf_load_address(p->p_paddr, p->p_vaddr);
 #if ATHRILL_ADDRESS_WIDTH == 32
-		if (p->p_paddr > UINT32_MAX || p->p_vaddr > UINT32_MAX || p->p_filesz > UINT32_MAX || p->p_memsz > UINT32_MAX ||
-			p->p_memsz > UINT64_MAX - p->p_paddr || p->p_paddr + p->p_memsz > UINT64_C(0x100000000)) {
+		if (load > UINT32_MAX || p->p_vaddr > UINT32_MAX || p->p_filesz > UINT32_MAX || p->p_memsz > UINT32_MAX ||
+			p->p_memsz > UINT64_MAX - load || load + p->p_memsz > UINT64_C(0x100000000)) {
 			printf("Invalid ELF64: PT_LOAD address range 0x%llx..0x%llx is above the 32-bit Athrill bus\n",
-				(unsigned long long)p->p_paddr, (unsigned long long)(p->p_paddr + p->p_memsz));
+				(unsigned long long)load, (unsigned long long)(load + p->p_memsz));
 			return STD_E_INVALID;
 		}
 #endif
 		if ((p->p_flags & PF_X) != 0) virtual_cpu_cache_code_add_with_check((uint32)p->p_memsz, p->p_vaddr);
-		err = load_segment((const uint8 *)elf_image, p->p_offset, p->p_paddr,
+		err = load_segment((const uint8 *)elf_image, p->p_offset, (AthrillAddrType)load,
 			p->p_filesz, p->p_memsz, memap);
 		if (err == STD_E_NOENT) continue;
 		if (err != STD_E_OK) return STD_E_INVALID;
-		if ((p->p_paddr + p->p_memsz) <= UINT32_MAX)
-			printf("ELF64 loading succeeded: 0x%08x - 0x%08x\n", (uint32)p->p_paddr, (uint32)(p->p_paddr + p->p_memsz));
+		if ((load + p->p_memsz) <= UINT32_MAX)
+			printf("ELF64 loading succeeded: 0x%08x - 0x%08x\n", (uint32)load, (uint32)(load + p->p_memsz));
 		else
-			printf("ELF64 loading succeeded: 0x%llx - 0x%llx\n", (unsigned long long)p->p_paddr, (unsigned long long)(p->p_paddr + p->p_memsz));
+			printf("ELF64 loading succeeded: 0x%llx - 0x%llx\n", (unsigned long long)load, (unsigned long long)(load + p->p_memsz));
 	}
 	return STD_E_OK;
 }
