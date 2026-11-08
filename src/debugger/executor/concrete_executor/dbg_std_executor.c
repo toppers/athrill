@@ -135,7 +135,7 @@ void dbg_std_executor_break(void *executor)
 	 }
 	 else if (parsed_args->type == DBG_CMD_BREAK_INFO) {
 		 uint32 i;
-		 uint32 addr;  /* breakpoint table entries are 32-bit */
+		 AthrillAddrType addr;
 		 for (i = 0; i < DBG_CPU_CONTROL_BREAK_SETSIZE; i++) {
 			 int funcid;
 			 AthrillAddrType funcaddr;

@@ -19,7 +19,7 @@ void dbg_notify_cpu_clock_supply_start(const TargetCoreType *core)
 {
 	CoreIdType core_id;
 	bool need_stop = FALSE;
-	uint32 pc = cpu_get_pc(core);
+	AthrillAddrType pc = cpu_get_pc(core);
 	bool is_debug_mode;
 
 
@@ -45,10 +45,10 @@ void dbg_notify_cpu_clock_supply_start(const TargetCoreType *core)
 		 need_stop = TRUE;
 		 funcid = symbol_pc2funcid(pc, &funcaddr);
 		 if (funcid >= 0) {
-			 if (dbg_cpu_callback_gdb_mode == FALSE) printf("\nHIT break:0x%x %s(+0x%" ATHRILL_ADDR_HEX_FORMAT ")\n", pc, symbol_funcid2funcname(funcid), pc - funcaddr);
+			 if (dbg_cpu_callback_gdb_mode == FALSE) printf("\nHIT break:0x%" ATHRILL_ADDR_HEX_FORMAT " %s(+0x%" ATHRILL_ADDR_HEX_FORMAT ")\n", pc, symbol_funcid2funcname(funcid), pc - funcaddr);
 		 }
 		 else {
-			 if (dbg_cpu_callback_gdb_mode == FALSE) printf("\nHIT break:0x%x\n", pc);
+			 if (dbg_cpu_callback_gdb_mode == FALSE) printf("\nHIT break:0x%" ATHRILL_ADDR_HEX_FORMAT "\n", pc);
 		 }
 
 	}
@@ -84,7 +84,7 @@ void dbg_notify_cpu_clock_supply_start(const TargetCoreType *core)
 
 void dbg_notify_cpu_clock_supply_end(const TargetCoreType *core, const DbgCpuCallbackFuncEnableType *enable_dbg)
 {
-	uint32 pc = cpu_get_pc(core);
+	AthrillAddrType pc = cpu_get_pc(core);
 	uint32 sp = cpu_get_sp(core);
 	BusAccessType type;
 	uint32 size;
