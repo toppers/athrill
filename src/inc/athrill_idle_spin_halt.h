@@ -19,6 +19,9 @@ typedef struct {
 void athrill_idle_spin_halt_register_target(const AthrillIdleSpinHaltTargetOps *ops);
 void athrill_idle_spin_halt_init(void);
 
+/* The configured idle PC (0: none). A block translator checks idle_ready only there. */
+AthrillAddrType athrill_idle_spin_halt_idle_pc(void);
+
 /* TRUE when the configured idle PC is current and the target says it is safe. */
 std_bool athrill_idle_spin_halt_idle_ready(CoreIdType core_id);
 

@@ -99,6 +99,14 @@ void athrill_idle_spin_halt_init(void)
 	read_spin_halt();
 }
 
+AthrillAddrType athrill_idle_spin_halt_idle_pc(void)
+{
+	if (!target_has_idle_halt()) {
+		return 0U;
+	}
+	return idle_pc;
+}
+
 std_bool athrill_idle_spin_halt_idle_ready(CoreIdType core_id)
 {
 	TargetCoreType *core;
