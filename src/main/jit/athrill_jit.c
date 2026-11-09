@@ -33,6 +33,8 @@ struct AthrillJitBuilder {
 	struct sljit_compiler *c;
 	std_bool failed;
 	AthrillJitLabel *labels;
+	/* every exit jumps here: one return sequence per block */
+	AthrillJitLabel *exit_label;
 };
 
 struct AthrillJitCode {
@@ -218,6 +220,11 @@ AthrillJitBuilder *athrill_jit_builder_create(void)
 	sljit_emit_enter(b->c, 0, SLJIT_ARGS2(W, P, P), 3, 4, 0);
 	sljit_emit_op1(b->c, SLJIT_MOV, JIT_REG_DONE, 0, SLJIT_IMM, 0);
 	sljit_emit_op1(b->c, SLJIT_MOV, JIT_REG_RESULT, 0, SLJIT_IMM, 0);
+	b->exit_label = athrill_jit_label_new(b);
+	if (b->exit_label == NULL) {
+		athrill_jit_builder_abort(b);
+		return NULL;
+	}
 	return b;
 }
 
@@ -580,28 +587,13 @@ void athrill_jit_jump_if(AthrillJitBuilder *b, AthrillJitCond cond,
 
 void athrill_jit_exit(AthrillJitBuilder *b)
 {
-	if (b->failed) {
-		return;
-	}
-	sljit_emit_return(b->c, SLJIT_MOV, JIT_REG_DONE, 0);
+	athrill_jit_jump(b, b->exit_label);
 }
 
 void athrill_jit_exit_if(AthrillJitBuilder *b, AthrillJitCond cond,
 			 AthrillJitOperand a, AthrillJitOperand c)
 {
-	AthrillJitLabel *stay;
-
-	if (b->failed) {
-		return;
-	}
-	/* if (!(a cond c)) goto stay; exit; stay: */
-	stay = athrill_jit_label_new(b);
-	if (stay == NULL) {
-		return;
-	}
-	athrill_jit_jump_if(b, (AthrillJitCond)(cond ^ 1U), a, c, stay);
-	athrill_jit_exit(b);
-	athrill_jit_label_place(b, stay);
+	athrill_jit_jump_if(b, cond, a, c, b->exit_label);
 }
 
 /* ---- finish ---- */
@@ -651,6 +643,8 @@ AthrillJitCode *athrill_jit_builder_finish(AthrillJitBuilder *b)
 	if (b == NULL) {
 		return NULL;
 	}
+	/* A block that falls off its end exits like athrill_jit_exit(). */
+	athrill_jit_label_place(b, b->exit_label);
 	if (!b->failed && !labels_complete(b)) {
 		fail(b, "a label was used but never placed");
 	}
@@ -658,7 +652,6 @@ AthrillJitCode *athrill_jit_builder_finish(AthrillJitBuilder *b)
 		athrill_jit_builder_abort(b);
 		return NULL;
 	}
-	/* A block that falls off its end exits like athrill_jit_exit(). */
 	sljit_emit_return(b->c, SLJIT_MOV, JIT_REG_DONE, 0);
 	err = sljit_get_compiler_error(b->c);
 	if (err != SLJIT_SUCCESS) {
@@ -697,6 +690,11 @@ uint64 athrill_jit_code_run(const AthrillJitCode *code, void *core, void *ctx)
 uint32 athrill_jit_code_size(const AthrillJitCode *code)
 {
 	return code->size;
+}
+
+const void *athrill_jit_code_entry(const AthrillJitCode *code)
+{
+	return code->entry;
 }
 
 void athrill_jit_code_free(AthrillJitCode *code)

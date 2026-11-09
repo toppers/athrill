@@ -160,6 +160,8 @@ const char *athrill_jit_last_error(void);
 /* ---- running ---- */
 uint64 athrill_jit_code_run(const AthrillJitCode *code, void *core, void *ctx);
 uint32 athrill_jit_code_size(const AthrillJitCode *code);
+/* The host code itself (for inspection: dumping and disassembling). */
+const void *athrill_jit_code_entry(const AthrillJitCode *code);
 void athrill_jit_code_free(AthrillJitCode *code);
 
 /* ---- block cache ---- */

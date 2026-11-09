@@ -26,7 +26,7 @@ PY
 		echo "  [caught] $1"
 	fi
 }
-mutate "exit_if not inverted" 'athrill_jit_jump_if(b, (AthrillJitCond)(cond ^ 1U), a, c, stay);' 'athrill_jit_jump_if(b, cond, a, c, stay);'
+mutate "exit_if inverted" '	athrill_jit_jump_if(b, cond, a, c, b->exit_label);' '	athrill_jit_jump_if(b, (AthrillJitCond)(cond ^ 1U), a, c, b->exit_label);'
 mutate "32-bit operations done in 64 bit" '		return SLJIT_32;' '		return 0;'
 mutate "generation ignored" '	if (slot->generation != generation) {' '	if (0) {'
 mutate "signed less as unsigned" '		return SLJIT_SIG_LESS;' '		return SLJIT_LESS;'
