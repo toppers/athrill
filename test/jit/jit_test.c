@@ -717,6 +717,54 @@ typedef struct {
 	uint32 after;
 } ExitCore;
 
+/* set_if: every condition, both widths, against ref_cond() */
+static void test_set_if(void)
+{
+	int cond;
+	int width;
+	int i;
+	CondCore core;
+	AthrillJitBuilder *b;
+	AthrillJitCode *code;
+
+	for (cond = ATHRILL_JIT_EQ; cond <= ATHRILL_JIT_LES; cond++) {
+		for (width = 4; width <= 8; width += 4) {
+			b = athrill_jit_builder_create();
+			if (width == 4) {
+				athrill_jit_set_if(b, (AthrillJitCond)cond, athrill_jit_core(offsetof(CondCore, taken), 4),
+						   athrill_jit_core(offsetof(CondCore, a32), 4), athrill_jit_core(offsetof(CondCore, c32), 4));
+			} else {
+				athrill_jit_set_if(b, (AthrillJitCond)cond, athrill_jit_core(offsetof(CondCore, taken), 4),
+						   athrill_jit_core(offsetof(CondCore, a), 8), athrill_jit_core(offsetof(CondCore, c), 8));
+			}
+			code = athrill_jit_builder_finish(b);
+			CHECK(code != NULL, "set_if %d/%d: no code (%s)", cond, width, athrill_jit_last_error());
+			if (code == NULL) {
+				continue;
+			}
+			for (i = 0; i < 300; i++) {
+				uint64 a = sample(i % 40);
+				uint64 c = (i < 40) ? sample((i * 7) % 18) : rnd();
+
+				if ((i % 5) == 0) {
+					c = a;
+				}
+				memset(&core, 0, sizeof(core));
+				core.a = a;
+				core.c = c;
+				core.a32 = (uint32)a;
+				core.c32 = (uint32)c;
+				core.taken = 0x77U;
+				(void)athrill_jit_code_run(code, &core, NULL);
+				CHECK((int)core.taken == ref_cond((AthrillJitCond)cond, a, c, width),
+				      "set_if %d/%d a=%016llx c=%016llx: %u", cond, width, (unsigned long long)a,
+				      (unsigned long long)c, core.taken);
+			}
+			athrill_jit_code_free(code);
+		}
+	}
+}
+
 static void test_exit_if(void)
 {
 	int cond;
@@ -1481,6 +1529,7 @@ int main(void)
 	test_chain();
 	test_chain_indirect();
 	test_conditions();
+	test_set_if();
 	test_exit_if();
 	test_call();
 	test_call_value();

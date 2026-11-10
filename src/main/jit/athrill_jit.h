@@ -175,6 +175,10 @@ void athrill_jit_jump(AthrillJitBuilder *b, AthrillJitLabel *label);
 void athrill_jit_jump_if(AthrillJitBuilder *b, AthrillJitCond cond,
 			 AthrillJitOperand a, AthrillJitOperand c, AthrillJitLabel *label);
 
+/* dst = (a cond c) ? 1 : 0, compared with the width of a (an IMM a takes c's). */
+void athrill_jit_set_if(AthrillJitBuilder *b, AthrillJitCond cond, AthrillJitOperand dst,
+			AthrillJitOperand a, AthrillJitOperand c);
+
 /* Returns from the block with the done counter. */
 void athrill_jit_exit(AthrillJitBuilder *b);
 /* if (a cond c) exit */

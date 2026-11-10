@@ -769,6 +769,46 @@ void athrill_jit_jump_if(AthrillJitBuilder *b, AthrillJitCond cond,
 	bind_jump(b, label, jump);
 }
 
+void athrill_jit_set_if(AthrillJitBuilder *b, AthrillJitCond cond, AthrillJitOperand dst,
+			AthrillJitOperand a, AthrillJitOperand c)
+{
+	sljit_s32 s1;
+	sljit_sw s1w;
+	sljit_s32 s2;
+	sljit_sw s2w;
+	sljit_s32 d;
+	sljit_sw dw;
+	sljit_s32 type = sljit_cond_of(cond);
+	sljit_s32 set;
+	uint8 width = pair_width(a, c);
+
+	if (b->failed) {
+		return;
+	}
+	if (type < 0) {
+		fail(b, "set_if: unknown condition");
+		return;
+	}
+	if (!valid_width(width)) {
+		fail(b, "set_if: two immediates (no width)");
+		return;
+	}
+	if (!is_destination(dst)) {
+		fail(b, "set_if: the destination must be a CORE, CTX, ABS or TEMP field");
+		return;
+	}
+	if (!load_widened(b, a, width, SLJIT_R0, &s1, &s1w) || !load_widened(b, c, width, SLJIT_R1, &s2, &s2w)) {
+		return;
+	}
+	if (!to_sljit(b, dst, &d, &dw)) {
+		return;
+	}
+	/* a condition and its inverse share one flag setting (sljit: even, odd) */
+	set = ((type == SLJIT_EQUAL) || (type == SLJIT_NOT_EQUAL)) ? SLJIT_SET_Z : SLJIT_SET(type & ~1);
+	sljit_emit_op2u(b->c, SLJIT_SUB | set | width_flag(width), s1, s1w, s2, s2w);
+	sljit_emit_op_flags(b->c, (dst.width == 4U) ? SLJIT_MOV32 : SLJIT_MOV, d, dw, type);
+}
+
 void athrill_jit_exit(AthrillJitBuilder *b)
 {
 	athrill_jit_jump(b, b->exit_label);
