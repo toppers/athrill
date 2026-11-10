@@ -69,6 +69,31 @@ struct AthrillJitCode {
 static AthrillJitChainSlot *jit_linked_slots;
 static uint32 jit_linked_num;
 
+/* The indirect table: pc 1 (odd, never looked up) marks an empty pair. */
+typedef struct {
+	uint64 pc;
+	void *chain_entry;
+} JitIndirectEntry;
+
+/* the emitted lookup scales the index by 16 */
+typedef char jit_indirect_entry_is_16_bytes[(sizeof(JitIndirectEntry) == 16U) ? 1 : -1];
+
+static JitIndirectEntry jit_indirect[ATHRILL_JIT_INDIRECT_ENTRIES];
+static std_bool jit_indirect_ready;
+static uint32 jit_indirect_used;
+
+static void indirect_clear(void)
+{
+	uint32 i;
+
+	for (i = 0U; i < ATHRILL_JIT_INDIRECT_ENTRIES; i++) {
+		jit_indirect[i].pc = 1U;
+		jit_indirect[i].chain_entry = NULL;
+	}
+	jit_indirect_used = 0U;
+	jit_indirect_ready = TRUE;
+}
+
 typedef sljit_sw (*JitEntryFunc)(void *core, void *ctx);
 
 static void set_error(const char *fmt, ...)
@@ -837,11 +862,63 @@ void athrill_jit_chain_unlink_all(void)
 	}
 	jit_linked_slots = NULL;
 	jit_linked_num = 0U;
+	if (jit_indirect_used != 0U) {
+		indirect_clear();
+	}
 }
 
 uint32 athrill_jit_chain_links(void)
 {
 	return jit_linked_num;
+}
+
+void athrill_jit_chain_indirect(AthrillJitBuilder *b, AthrillJitOperand pc)
+{
+	sljit_s32 s;
+	sljit_sw sw;
+	struct sljit_jump *miss;
+
+	if (b->failed) {
+		return;
+	}
+	if ((pc.kind != ATHRILL_JIT_OPERAND_IMM) && (pc.width != 8U)) {
+		fail(b, "chain_indirect: the pc must be 8 bytes");
+		return;
+	}
+	if (!to_sljit(b, pc, &s, &sw)) {
+		return;
+	}
+	if (!jit_indirect_ready) {
+		indirect_clear();
+	}
+	/* R0 = pc; R1 = &jit_indirect[(pc >> 1) % entries] */
+	sljit_emit_op1(b->c, SLJIT_MOV, SLJIT_R0, 0, s, sw);
+	sljit_emit_op2(b->c, SLJIT_LSHR, SLJIT_R1, 0, SLJIT_R0, 0, SLJIT_IMM, 1);
+	sljit_emit_op2(b->c, SLJIT_AND, SLJIT_R1, 0, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)(ATHRILL_JIT_INDIRECT_ENTRIES - 1U));
+	sljit_emit_op2(b->c, SLJIT_SHL, SLJIT_R1, 0, SLJIT_R1, 0, SLJIT_IMM, 4);	/* sizeof(JitIndirectEntry) */
+	sljit_emit_op2(b->c, SLJIT_ADD, SLJIT_R1, 0, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)(uintptr_t)jit_indirect);
+	sljit_emit_op1(b->c, SLJIT_MOV, SLJIT_R2, 0, SLJIT_MEM1(SLJIT_R1), 0);
+	miss = sljit_emit_cmp(b->c, SLJIT_NOT_EQUAL, SLJIT_R2, 0, SLJIT_R0, 0);
+	sljit_emit_ijump(b->c, SLJIT_JUMP, SLJIT_MEM1(SLJIT_R1), (sljit_sw)sizeof(uint64));
+	sljit_set_label(miss, sljit_emit_label(b->c));
+}
+
+void athrill_jit_chain_indirect_set(uint64 pc, const AthrillJitCode *next)
+{
+	JitIndirectEntry *e;
+
+	if ((next == NULL) || ((pc & 1U) != 0U)) {
+		return;
+	}
+	if (!jit_indirect_ready) {
+		indirect_clear();
+	}
+	e = &jit_indirect[(pc >> 1) & (ATHRILL_JIT_INDIRECT_ENTRIES - 1U)];
+	if (e->pc == 1U) {
+		jit_indirect_used++;
+	}
+	e->pc = pc;
+	e->chain_entry = next->chain_entry;
 }
 
 void athrill_jit_builder_abort(AthrillJitBuilder *b)
@@ -933,7 +1010,7 @@ void athrill_jit_code_free(AthrillJitCode *code)
 		return;
 	}
 	/* no link may point into this code, nor be one of its slots */
-	if (jit_linked_slots != NULL) {
+	if ((jit_linked_slots != NULL) || (jit_indirect_used != 0U)) {
 		athrill_jit_chain_unlink_all();
 	}
 	sljit_free_code(code->entry, NULL);

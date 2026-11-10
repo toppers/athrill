@@ -210,6 +210,20 @@ void athrill_jit_chain_exit(AthrillJitBuilder *b, AthrillJitOperand slot_out, ui
 uint64 athrill_jit_chain_tag(const AthrillJitChainSlot *slot);
 void athrill_jit_chain_link(AthrillJitChainSlot *slot, const AthrillJitCode *next);
 void athrill_jit_chain_unlink_all(void);
+
+/*
+ * Indirect chaining, for an exit whose next pc is only known at run time
+ * (a register jump). athrill_jit_chain_indirect() looks the pc (an 8-byte
+ * operand, an even value) up in one table of (pc -> block) the core keeps;
+ * found, it jumps to that block's chain entry as a linked exit does; not
+ * found, the block goes on with the next operation (the target then exits
+ * and, in C, enters the pair with athrill_jit_chain_indirect_set()).
+ * The table holds ATHRILL_JIT_INDIRECT_ENTRIES pairs, one per (pc / 2) mod
+ * its size; athrill_jit_chain_unlink_all() (so every code free) empties it.
+ */
+#define ATHRILL_JIT_INDIRECT_ENTRIES 4096U
+void athrill_jit_chain_indirect(AthrillJitBuilder *b, AthrillJitOperand pc);
+void athrill_jit_chain_indirect_set(uint64 pc, const AthrillJitCode *next);
 uint32 athrill_jit_chain_links(void);	/* slots linked now */
 
 /* ---- running ---- */

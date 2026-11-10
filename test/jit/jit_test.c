@@ -552,6 +552,69 @@ static void test_chain(void)
 	CHECK(athrill_jit_chain_links() == 0U, "chain: freeing the slot's own block unlinks");
 }
 
+/* indirect chaining: a pc looked up in the core's table */
+typedef struct {
+	uint64 next_pc;
+	uint64 a_runs;
+	uint64 b_runs;
+	uint64 missed;
+	uint64 slot;
+	uint64 limit;
+} IndirectCore;
+
+static void test_chain_indirect(void)
+{
+	AthrillJitBuilder *b;
+	AthrillJitCode *a;
+	AthrillJitCode *bb;
+	IndirectCore core;
+	uint64 done;
+	const uint64 pc = 0x40001234ULL;
+
+	b = athrill_jit_builder_create();
+	athrill_jit_count(b, 2U);
+	athrill_jit_alu(b, ATHRILL_JIT_ADD, athrill_jit_core(offsetof(IndirectCore, a_runs), 8),
+			athrill_jit_core(offsetof(IndirectCore, a_runs), 8), athrill_jit_imm(1));
+	athrill_jit_chain_indirect(b, athrill_jit_core(offsetof(IndirectCore, next_pc), 8));
+	athrill_jit_mov(b, athrill_jit_core(offsetof(IndirectCore, missed), 8), athrill_jit_imm(1));
+	a = athrill_jit_builder_finish(b);
+	b = athrill_jit_builder_create();
+	athrill_jit_exit_if(b, ATHRILL_JIT_GTU, athrill_jit_done(), athrill_jit_core(offsetof(IndirectCore, limit), 8));
+	athrill_jit_count(b, 3U);
+	athrill_jit_alu(b, ATHRILL_JIT_ADD, athrill_jit_core(offsetof(IndirectCore, b_runs), 8),
+			athrill_jit_core(offsetof(IndirectCore, b_runs), 8), athrill_jit_imm(1));
+	bb = athrill_jit_builder_finish(b);
+	CHECK((a != NULL) && (bb != NULL), "indirect: no code (%s)", athrill_jit_last_error());
+	if ((a == NULL) || (bb == NULL)) {
+		return;
+	}
+	memset(&core, 0, sizeof(core));
+	core.limit = 100U;
+	core.next_pc = pc;
+	done = athrill_jit_code_run(a, &core, NULL);
+	CHECK((done == 2U) && (core.missed == 1U) && (core.b_runs == 0U), "indirect: miss goes on");
+	athrill_jit_chain_indirect_set(pc, bb);
+	core.missed = 0U;
+	done = athrill_jit_code_run(a, &core, NULL);
+	CHECK((done == 5U) && (core.missed == 0U) && (core.b_runs == 1U), "indirect: hit jumps to the block (done %llu)",
+	      (unsigned long long)done);
+	/* another pc in the same table position: a miss */
+	core.next_pc = pc + 2U * ATHRILL_JIT_INDIRECT_ENTRIES;
+	done = athrill_jit_code_run(a, &core, NULL);
+	CHECK((done == 2U) && (core.missed == 1U) && (core.b_runs == 1U), "indirect: a different pc misses");
+	core.next_pc = pc;
+	core.missed = 0U;
+	athrill_jit_chain_unlink_all();
+	done = athrill_jit_code_run(a, &core, NULL);
+	CHECK((done == 2U) && (core.missed == 1U) && (core.b_runs == 1U), "indirect: unlink_all empties the table");
+	athrill_jit_chain_indirect_set(pc, bb);
+	athrill_jit_code_free(bb);
+	core.missed = 0U;
+	done = athrill_jit_code_run(a, &core, NULL);
+	CHECK((done == 2U) && (core.missed == 1U), "indirect: freeing the block empties the table");
+	athrill_jit_code_free(a);
+}
+
 /* ------------------------------------------------------------------ */
 /* 3. conditions                                                       */
 
@@ -1380,6 +1443,7 @@ int main(void)
 	test_host_memory();
 	test_temps();
 	test_chain();
+	test_chain_indirect();
 	test_conditions();
 	test_exit_if();
 	test_call();
