@@ -99,6 +99,11 @@ void athrill_idle_spin_halt_init(void)
 	read_spin_halt();
 }
 
+std_bool athrill_idle_spin_halt_spin_enabled(void)
+{
+	return spin_halt;
+}
+
 AthrillAddrType athrill_idle_spin_halt_idle_pc(void)
 {
 	if (!target_has_idle_halt()) {
