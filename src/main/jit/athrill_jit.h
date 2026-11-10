@@ -185,6 +185,33 @@ AthrillJitCode *athrill_jit_builder_finish(AthrillJitBuilder *b);
 void athrill_jit_builder_abort(AthrillJitBuilder *b);
 const char *athrill_jit_last_error(void);
 
+/*
+ * Chaining: an exit that can later go straight on to another block.
+ *
+ * athrill_jit_chain_exit() ends the block like athrill_jit_exit(), through
+ * a link slot. Unlinked, it stores the slot's address in slot_out (an
+ * 8-byte CORE or CTX field) and returns the done counter. The target then
+ * calls athrill_jit_chain_link(slot, next) when it knows the block that
+ * runs next after that exit (tag: the target's own value for the slot,
+ * e.g. the guest pc the exit goes to, read back with
+ * athrill_jit_chain_tag()). Linked, the exit jumps to next's chain entry
+ * without returning: the done counter and RESULT go on, so next's first
+ * operations see the counts of the blocks before it; the target emits its
+ * entry checks (budget, ...) as the first operations of every block.
+ *
+ * Every athrill_jit_code_free() (and so every cache drop or flush) first
+ * unlinks all slots, so no link points to freed code. The target calls
+ * athrill_jit_chain_unlink_all() itself whenever a link may have become
+ * wrong (its code changed, its mode changed).
+ */
+typedef struct AthrillJitChainSlot AthrillJitChainSlot;
+
+void athrill_jit_chain_exit(AthrillJitBuilder *b, AthrillJitOperand slot_out, uint64 tag);
+uint64 athrill_jit_chain_tag(const AthrillJitChainSlot *slot);
+void athrill_jit_chain_link(AthrillJitChainSlot *slot, const AthrillJitCode *next);
+void athrill_jit_chain_unlink_all(void);
+uint32 athrill_jit_chain_links(void);	/* slots linked now */
+
 /* ---- running ---- */
 uint64 athrill_jit_code_run(const AthrillJitCode *code, void *core, void *ctx);
 uint32 athrill_jit_code_size(const AthrillJitCode *code);

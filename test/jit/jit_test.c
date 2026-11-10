@@ -468,6 +468,90 @@ static void test_temps(void)
 	CHECK(athrill_jit_builder_finish(b) == NULL, "temps: index out of range refused");
 }
 
+/* chaining: a linked exit goes on into the next block without returning */
+typedef struct {
+	uint64 a_runs;
+	uint64 b_runs;
+	uint64 slot;	/* slot_out */
+	uint64 limit;	/* B exits at its entry when done > limit */
+} ChainCore;
+
+static AthrillJitCode *chain_block_a(void)
+{
+	AthrillJitBuilder *b = athrill_jit_builder_create();
+
+	athrill_jit_count(b, 2U);
+	athrill_jit_alu(b, ATHRILL_JIT_ADD, athrill_jit_core(offsetof(ChainCore, a_runs), 8),
+			athrill_jit_core(offsetof(ChainCore, a_runs), 8), athrill_jit_imm(1));
+	athrill_jit_chain_exit(b, athrill_jit_core(offsetof(ChainCore, slot), 8), 0x1234U);
+	return athrill_jit_builder_finish(b);
+}
+
+static AthrillJitCode *chain_block_b(void)
+{
+	AthrillJitBuilder *b = athrill_jit_builder_create();
+
+	/* the entry check sees the counts of the block before */
+	athrill_jit_exit_if(b, ATHRILL_JIT_GTU, athrill_jit_done(), athrill_jit_core(offsetof(ChainCore, limit), 8));
+	athrill_jit_count(b, 3U);
+	athrill_jit_alu(b, ATHRILL_JIT_ADD, athrill_jit_core(offsetof(ChainCore, b_runs), 8),
+			athrill_jit_core(offsetof(ChainCore, b_runs), 8), athrill_jit_imm(1));
+	return athrill_jit_builder_finish(b);
+}
+
+static void test_chain(void)
+{
+	AthrillJitCode *a = chain_block_a();
+	AthrillJitCode *bb = chain_block_b();
+	AthrillJitCode *b2;
+	ChainCore core;
+	uint64 done;
+	AthrillJitChainSlot *slot;
+
+	CHECK((a != NULL) && (bb != NULL), "chain: no code (%s)", athrill_jit_last_error());
+	if ((a == NULL) || (bb == NULL)) {
+		return;
+	}
+	memset(&core, 0, sizeof(core));
+	core.limit = 100U;
+	done = athrill_jit_code_run(a, &core, NULL);
+	CHECK((done == 2U) && (core.a_runs == 1U) && (core.b_runs == 0U) && (core.slot != 0U),
+	      "chain unlinked: A alone, slot reported (done %llu)", (unsigned long long)done);
+	slot = (AthrillJitChainSlot *)(uintptr_t)core.slot;
+	CHECK(athrill_jit_chain_tag(slot) == 0x1234U, "chain: tag kept");
+	athrill_jit_chain_link(slot, bb);
+	athrill_jit_chain_link(slot, bb);	/* twice: listed once */
+	CHECK(athrill_jit_chain_links() == 1U, "chain: one link (%u)", athrill_jit_chain_links());
+	core.slot = 0U;
+	done = athrill_jit_code_run(a, &core, NULL);
+	CHECK((done == 5U) && (core.a_runs == 2U) && (core.b_runs == 1U) && (core.slot == 0U),
+	      "chain linked: A then B in one run (done %llu, b %llu)", (unsigned long long)done,
+	      (unsigned long long)core.b_runs);
+	/* B's entry check stops it: done 2 > limit 1 */
+	core.limit = 1U;
+	done = athrill_jit_code_run(a, &core, NULL);
+	CHECK((done == 2U) && (core.a_runs == 3U) && (core.b_runs == 1U), "chain: next block's entry check exits");
+	core.limit = 100U;
+	/* unlink all: back to the stub */
+	athrill_jit_chain_unlink_all();
+	CHECK(athrill_jit_chain_links() == 0U, "chain: unlinked");
+	done = athrill_jit_code_run(a, &core, NULL);
+	CHECK((done == 2U) && (core.b_runs == 1U) && (core.slot == (uint64)(uintptr_t)slot), "chain: unlinked exits again");
+	/* freeing a linked-to block unlinks it */
+	athrill_jit_chain_link(slot, bb);
+	b2 = chain_block_b();
+	athrill_jit_code_free(bb);
+	CHECK(athrill_jit_chain_links() == 0U, "chain: free unlinks");
+	done = athrill_jit_code_run(a, &core, NULL);
+	CHECK((done == 2U) && (core.b_runs == 1U), "chain: no jump into freed code");
+	athrill_jit_chain_link(slot, b2);
+	done = athrill_jit_code_run(a, &core, NULL);
+	CHECK((done == 5U) && (core.b_runs == 2U), "chain: relinked to a new block");
+	athrill_jit_code_free(a);
+	athrill_jit_code_free(b2);
+	CHECK(athrill_jit_chain_links() == 0U, "chain: freeing the slot's own block unlinks");
+}
+
 /* ------------------------------------------------------------------ */
 /* 3. conditions                                                       */
 
@@ -1295,6 +1379,7 @@ int main(void)
 	test_mov();
 	test_host_memory();
 	test_temps();
+	test_chain();
 	test_conditions();
 	test_exit_if();
 	test_call();

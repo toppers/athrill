@@ -33,18 +33,41 @@ struct AthrillJitLabel {
 	AthrillJitLabel *next_in_builder;
 };
 
+struct AthrillJitChainSlot {
+	void *target;	/* where the exit jumps: its own stub, or a linked block's chain entry */
+	void *stub;
+	uint64 tag;
+	AthrillJitChainSlot *next_linked;
+	std_bool linked;
+};
+
+/* A block's chain slots, allocated with the builder (their addresses are emitted). */
+#define JIT_CHAIN_SLOTS_MAX 72U
+
 struct AthrillJitBuilder {
 	struct sljit_compiler *c;
 	std_bool failed;
 	AthrillJitLabel *labels;
 	/* every exit jumps here: one return sequence per block */
 	AthrillJitLabel *exit_label;
+	/* right after the prologue: where a linked exit of another block enters */
+	struct sljit_label *chain_entry;
+	AthrillJitChainSlot *slots;
+	struct sljit_label *stub_labels[JIT_CHAIN_SLOTS_MAX];
+	uint32 slot_num;
 };
 
 struct AthrillJitCode {
 	void *entry;
+	void *chain_entry;
 	uint32 size;
+	AthrillJitChainSlot *slots;
+	uint32 slot_num;
 };
+
+/* All slots linked now (the list unlink_all() walks). */
+static AthrillJitChainSlot *jit_linked_slots;
+static uint32 jit_linked_num;
 
 typedef sljit_sw (*JitEntryFunc)(void *core, void *ctx);
 
@@ -240,6 +263,13 @@ AthrillJitBuilder *athrill_jit_builder_create(void)
 	sljit_emit_enter(b->c, 0, SLJIT_ARGS2(W, P, P), 3, JIT_SAVEDS, 0);
 	sljit_emit_op1(b->c, SLJIT_MOV, JIT_REG_DONE, 0, SLJIT_IMM, 0);
 	sljit_emit_op1(b->c, SLJIT_MOV, JIT_REG_RESULT, 0, SLJIT_IMM, 0);
+	b->chain_entry = sljit_emit_label(b->c);
+	b->slots = (AthrillJitChainSlot *)calloc(JIT_CHAIN_SLOTS_MAX, sizeof(AthrillJitChainSlot));
+	if (b->slots == NULL) {
+		set_error("out of memory");
+		athrill_jit_builder_abort(b);
+		return NULL;
+	}
 	b->exit_label = athrill_jit_label_new(b);
 	if (b->exit_label == NULL) {
 		athrill_jit_builder_abort(b);
@@ -738,11 +768,88 @@ static std_bool labels_complete(AthrillJitBuilder *b)
 	return TRUE;
 }
 
+/* ---- chaining ---- */
+
+void athrill_jit_chain_exit(AthrillJitBuilder *b, AthrillJitOperand slot_out, uint64 tag)
+{
+	AthrillJitChainSlot *slot;
+	struct sljit_jump *skip;
+	sljit_s32 d;
+	sljit_sw dw;
+
+	if (b->failed) {
+		return;
+	}
+	if (((slot_out.kind != ATHRILL_JIT_OPERAND_CORE) && (slot_out.kind != ATHRILL_JIT_OPERAND_CTX))
+	    || (slot_out.width != 8U)) {
+		fail(b, "chain_exit: slot_out must be an 8-byte CORE or CTX field");
+		return;
+	}
+	if (b->slot_num >= JIT_CHAIN_SLOTS_MAX) {
+		fail(b, "chain_exit: too many chain exits in one block");
+		return;
+	}
+	if (!to_sljit(b, slot_out, &d, &dw)) {
+		return;
+	}
+	slot = &b->slots[b->slot_num];
+	slot->tag = tag;
+	/* jump through the slot */
+	sljit_emit_ijump(b->c, SLJIT_JUMP, SLJIT_MEM0(), (sljit_sw)(uintptr_t)&slot->target);
+	/* the stub: unlinked, report the slot and exit (only reached through the slot) */
+	b->stub_labels[b->slot_num] = sljit_emit_label(b->c);
+	sljit_emit_op1(b->c, SLJIT_MOV, d, dw, SLJIT_IMM, (sljit_sw)(uintptr_t)slot);
+	skip = sljit_emit_jump(b->c, SLJIT_JUMP);
+	bind_jump(b, b->exit_label, skip);
+	b->slot_num++;
+}
+
+uint64 athrill_jit_chain_tag(const AthrillJitChainSlot *slot)
+{
+	return slot->tag;
+}
+
+void athrill_jit_chain_link(AthrillJitChainSlot *slot, const AthrillJitCode *next)
+{
+	if ((slot == NULL) || (next == NULL)) {
+		return;
+	}
+	slot->target = next->chain_entry;
+	if (!slot->linked) {
+		slot->linked = TRUE;
+		slot->next_linked = jit_linked_slots;
+		jit_linked_slots = slot;
+		jit_linked_num++;
+	}
+}
+
+void athrill_jit_chain_unlink_all(void)
+{
+	AthrillJitChainSlot *slot = jit_linked_slots;
+	AthrillJitChainSlot *next;
+
+	while (slot != NULL) {
+		next = slot->next_linked;
+		slot->target = slot->stub;
+		slot->linked = FALSE;
+		slot->next_linked = NULL;
+		slot = next;
+	}
+	jit_linked_slots = NULL;
+	jit_linked_num = 0U;
+}
+
+uint32 athrill_jit_chain_links(void)
+{
+	return jit_linked_num;
+}
+
 void athrill_jit_builder_abort(AthrillJitBuilder *b)
 {
 	if (b == NULL) {
 		return;
 	}
+	free(b->slots);
 	free_labels(b);
 	sljit_free_compiler(b->c);
 	free(b);
@@ -753,6 +860,7 @@ AthrillJitCode *athrill_jit_builder_finish(AthrillJitBuilder *b)
 	AthrillJitCode *code;
 	void *entry;
 	sljit_s32 err;
+	uint32 i;
 
 	if (b == NULL) {
 		return NULL;
@@ -787,7 +895,15 @@ AthrillJitCode *athrill_jit_builder_finish(AthrillJitBuilder *b)
 		return NULL;
 	}
 	code->entry = entry;
+	code->chain_entry = (void *)sljit_get_label_addr(b->chain_entry);
 	code->size = (uint32)sljit_get_generated_code_size(b->c);
+	code->slots = b->slots;
+	code->slot_num = b->slot_num;
+	for (i = 0U; i < b->slot_num; i++) {
+		code->slots[i].stub = (void *)sljit_get_label_addr(b->stub_labels[i]);
+		code->slots[i].target = code->slots[i].stub;
+	}
+	b->slots = NULL;	/* now the code's */
 	athrill_jit_builder_abort(b);
 	return code;
 }
@@ -816,7 +932,12 @@ void athrill_jit_code_free(AthrillJitCode *code)
 	if (code == NULL) {
 		return;
 	}
+	/* no link may point into this code, nor be one of its slots */
+	if (jit_linked_slots != NULL) {
+		athrill_jit_chain_unlink_all();
+	}
 	sljit_free_code(code->entry, NULL);
+	free(code->slots);
 	free(code);
 }
 
