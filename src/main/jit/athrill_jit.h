@@ -126,6 +126,24 @@ void athrill_jit_movs(AthrillJitBuilder *b, AthrillJitOperand dst, AthrillJitOpe
 void athrill_jit_alu(AthrillJitBuilder *b, AthrillJitAluOp op,
 		     AthrillJitOperand dst, AthrillJitOperand a, AthrillJitOperand c);
 
+/*
+ * Host memory through a computed address: the access is at the host
+ * address (bias + addr), both 8-byte operands; bias is a host address the
+ * target worked out (e.g. its RAM buffer minus the guest base). size is
+ * 1, 2, 4 or 8 bytes, little endian, any alignment.
+ *
+ * The core does not check the address: the target guards it first
+ * (athrill_jit_jump_if() on its own range) so that only host memory it
+ * owns is reached.
+ *
+ * load: dst (8 bytes) = the value, zero-extended, or sign-extended when
+ * sign_extend. store: the low size bytes of src.
+ */
+void athrill_jit_load_host(AthrillJitBuilder *b, AthrillJitOperand dst, AthrillJitOperand addr,
+			   AthrillJitOperand bias, uint8 size, std_bool sign_extend);
+void athrill_jit_store_host(AthrillJitBuilder *b, AthrillJitOperand src, AthrillJitOperand addr,
+			    AthrillJitOperand bias, uint8 size);
+
 /* done = done + n */
 void athrill_jit_count(AthrillJitBuilder *b, uint32 n);
 

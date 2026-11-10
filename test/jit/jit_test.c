@@ -5,7 +5,8 @@
  * the JIT itself:
  *   1. alu: every operation, 32 and 64 bit, every operand kind, random and
  *      boundary values; shift counts masked as specified.
- *   2. mov / movs: widening (zero / sign) and narrowing.
+ *   2. mov / movs: widening (zero / sign) and narrowing; host loads and
+ *      stores of 1, 2, 4 and 8 bytes at any alignment (zero / sign).
  *   3. conditions: every condition, 32 and 64 bit, at the signed and
  *      unsigned boundaries.
  *   4. division: the RISC-V rules (x / 0 = -1, x % 0 = x, MIN / -1 = MIN,
@@ -288,6 +289,117 @@ static void test_mov(void)
 	athrill_jit_code_free(zext);
 	athrill_jit_code_free(sext);
 	athrill_jit_code_free(narrow);
+}
+
+/* ------------------------------------------------------------------ */
+/* 2b. host memory through a computed address                          */
+
+typedef struct {
+	uint64 addr;
+	uint64 bias;
+	uint64 value;
+	uint64 loaded;
+} HostCore;
+
+/* The reference: little-endian bytes of mem at offset, extended as asked. */
+static uint64 ref_load(const uint8 *mem, uint32 offset, uint8 size, int sign_extend)
+{
+	uint64 v = 0U;
+	uint32 i;
+
+	for (i = 0U; i < size; i++) {
+		v |= (uint64)mem[offset + i] << (8U * i);
+	}
+	if (sign_extend && (size < 8U) && ((v >> (8U * size - 1U)) & 1U)) {
+		v |= ~0ULL << (8U * size);
+	}
+	return v;
+}
+
+static void test_host_memory(void)
+{
+	static const uint8 sizes[] = { 1U, 2U, 4U, 8U };
+	uint8 mem[64];
+	uint8 want[64];
+	HostCore core;
+	AthrillJitBuilder *b;
+	AthrillJitCode *load[4][2];
+	AthrillJitCode *store[4];
+	const uint64 guest_base = 0x40000000ULL;
+	uint32 k;
+	uint32 sign;
+	uint32 offset;
+	uint32 i;
+	int n;
+
+	for (k = 0U; k < 4U; k++) {
+		for (sign = 0U; sign < 2U; sign++) {
+			b = athrill_jit_builder_create();
+			athrill_jit_load_host(b, athrill_jit_core(offsetof(HostCore, loaded), 8),
+					      athrill_jit_core(offsetof(HostCore, addr), 8),
+					      athrill_jit_core(offsetof(HostCore, bias), 8), sizes[k], sign != 0U);
+			load[k][sign] = athrill_jit_builder_finish(b);
+			CHECK(load[k][sign] != NULL, "load_host %u/%u: no code (%s)", sizes[k], sign, athrill_jit_last_error());
+		}
+		b = athrill_jit_builder_create();
+		athrill_jit_store_host(b, athrill_jit_core(offsetof(HostCore, value), 8),
+				       athrill_jit_core(offsetof(HostCore, addr), 8),
+				       athrill_jit_core(offsetof(HostCore, bias), 8), sizes[k]);
+		store[k] = athrill_jit_builder_finish(b);
+		CHECK(store[k] != NULL, "store_host %u: no code (%s)", sizes[k], athrill_jit_last_error());
+	}
+	for (n = 0; n < 400; n++) {
+		k = (uint32)(rnd() % 4U);
+		offset = (uint32)(rnd() % (64U - 8U));	/* any alignment */
+		for (i = 0U; i < 64U; i++) {
+			mem[i] = (uint8)rnd();
+		}
+		memcpy(want, mem, sizeof(mem));
+		core.addr = guest_base + offset;
+		core.bias = (uint64)(uintptr_t)mem - guest_base;
+		for (sign = 0U; sign < 2U; sign++) {
+			if (load[k][sign] == NULL) {
+				continue;
+			}
+			core.loaded = 0xA5A5A5A5A5A5A5A5ULL;
+			(void)athrill_jit_code_run(load[k][sign], &core, NULL);
+			CHECK(core.loaded == ref_load(mem, offset, sizes[k], (int)sign),
+			      "load_host %u/%u at +%u: got %016llx want %016llx", sizes[k], sign, offset,
+			      (unsigned long long)core.loaded, (unsigned long long)ref_load(mem, offset, sizes[k], (int)sign));
+		}
+		if (store[k] == NULL) {
+			continue;
+		}
+		core.value = rnd();
+		for (i = 0U; i < sizes[k]; i++) {
+			want[offset + i] = (uint8)(core.value >> (8U * i));
+		}
+		(void)athrill_jit_code_run(store[k], &core, NULL);
+		CHECK(memcmp(mem, want, sizeof(mem)) == 0, "store_host %u at +%u: only the %u bytes change",
+		      sizes[k], offset, sizes[k]);
+	}
+	for (k = 0U; k < 4U; k++) {
+		athrill_jit_code_free(load[k][0]);
+		athrill_jit_code_free(load[k][1]);
+		athrill_jit_code_free(store[k]);
+	}
+	/* invalid descriptions */
+	b = athrill_jit_builder_create();
+	athrill_jit_load_host(b, athrill_jit_core(offsetof(HostCore, loaded), 8),
+			      athrill_jit_core(offsetof(HostCore, addr), 8), athrill_jit_core(offsetof(HostCore, bias), 8), 3U, FALSE);
+	CHECK(athrill_jit_builder_finish(b) == NULL, "load_host: size 3 refused");
+	b = athrill_jit_builder_create();
+	athrill_jit_load_host(b, athrill_jit_core(offsetof(HostCore, loaded), 4),
+			      athrill_jit_core(offsetof(HostCore, addr), 8), athrill_jit_core(offsetof(HostCore, bias), 8), 4U, FALSE);
+	CHECK(athrill_jit_builder_finish(b) == NULL, "load_host: 4-byte destination refused");
+	b = athrill_jit_builder_create();
+	athrill_jit_store_host(b, athrill_jit_core(offsetof(HostCore, value), 4),
+			       athrill_jit_core(offsetof(HostCore, addr), 8), athrill_jit_core(offsetof(HostCore, bias), 8), 8U);
+	CHECK(athrill_jit_builder_finish(b) == NULL, "store_host: 4-byte source of an 8-byte store refused");
+	b = athrill_jit_builder_create();
+	athrill_jit_store_host(b, athrill_jit_core(offsetof(HostCore, value), 8),
+			       athrill_jit_core(offsetof(HostCore, addr), 4), athrill_jit_core(offsetof(HostCore, bias), 8), 4U);
+	CHECK(athrill_jit_builder_finish(b) == NULL, "store_host: 4-byte address refused");
 }
 
 /* ------------------------------------------------------------------ */
@@ -1115,6 +1227,7 @@ int main(void)
 	test_alu();
 	printf("  alu: %d checks so far\n", checks);
 	test_mov();
+	test_host_memory();
 	test_conditions();
 	test_exit_if();
 	test_call();

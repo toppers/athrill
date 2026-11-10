@@ -411,6 +411,100 @@ void athrill_jit_alu(AthrillJitBuilder *b, AthrillJitAluOp op,
 	sljit_emit_op2(b->c, sop | width_flag(width), d, dw, s1, s1w, s2, s2w);
 }
 
+/* The sljit move of size bytes (sign: the signed load forms). -1: invalid size. */
+static sljit_s32 host_move_of(uint8 size, std_bool sign_extend)
+{
+	switch (size) {
+	case 1U:
+		return sign_extend ? SLJIT_MOV_S8 : SLJIT_MOV_U8;
+	case 2U:
+		return sign_extend ? SLJIT_MOV_S16 : SLJIT_MOV_U16;
+	case 4U:
+		return sign_extend ? SLJIT_MOV_S32 : SLJIT_MOV_U32;
+	case 8U:
+		return SLJIT_MOV;
+	default:
+		return -1;
+	}
+}
+
+/* R0 = addr + bias (both 8 bytes). */
+static std_bool host_address(AthrillJitBuilder *b, AthrillJitOperand addr, AthrillJitOperand bias)
+{
+	sljit_s32 s1;
+	sljit_sw s1w;
+	sljit_s32 s2;
+	sljit_sw s2w;
+
+	if ((addr.kind != ATHRILL_JIT_OPERAND_IMM) && (addr.width != 8U)) {
+		fail(b, "host access: the address must be 8 bytes");
+		return FALSE;
+	}
+	if ((bias.kind != ATHRILL_JIT_OPERAND_IMM) && (bias.width != 8U)) {
+		fail(b, "host access: the bias must be 8 bytes");
+		return FALSE;
+	}
+	if (!to_sljit(b, addr, &s1, &s1w) || !to_sljit(b, bias, &s2, &s2w)) {
+		return FALSE;
+	}
+	sljit_emit_op2(b->c, SLJIT_ADD, SLJIT_R0, 0, s1, s1w, s2, s2w);
+	return TRUE;
+}
+
+void athrill_jit_load_host(AthrillJitBuilder *b, AthrillJitOperand dst, AthrillJitOperand addr,
+			   AthrillJitOperand bias, uint8 size, std_bool sign_extend)
+{
+	sljit_s32 d;
+	sljit_sw dw;
+	sljit_s32 move = host_move_of(size, sign_extend);
+
+	if (b->failed) {
+		return;
+	}
+	if (move < 0) {
+		fail(b, "load_host: size must be 1, 2, 4 or 8");
+		return;
+	}
+	if (!is_destination(dst) || (dst.width != 8U)) {
+		fail(b, "load_host: the destination must be an 8-byte CORE, CTX or ABS field");
+		return;
+	}
+	if (!to_sljit(b, dst, &d, &dw) || !host_address(b, addr, bias)) {
+		return;
+	}
+	sljit_emit_op1(b->c, move, SLJIT_R1, 0, SLJIT_MEM1(SLJIT_R0), 0);
+	sljit_emit_op1(b->c, SLJIT_MOV, d, dw, SLJIT_R1, 0);
+}
+
+void athrill_jit_store_host(AthrillJitBuilder *b, AthrillJitOperand src, AthrillJitOperand addr,
+			    AthrillJitOperand bias, uint8 size)
+{
+	sljit_s32 s;
+	sljit_sw sw;
+	sljit_s32 move = host_move_of(size, FALSE);
+
+	if (b->failed) {
+		return;
+	}
+	if (move < 0) {
+		fail(b, "store_host: size must be 1, 2, 4 or 8");
+		return;
+	}
+	if ((src.kind != ATHRILL_JIT_OPERAND_IMM) && (src.width < size)) {
+		fail(b, "store_host: the source is narrower than size");
+		return;
+	}
+	if (!to_sljit(b, src, &s, &sw)) {
+		return;
+	}
+	/* the value first: R0 is the address */
+	sljit_emit_op1(b->c, (size == 8U) ? SLJIT_MOV : SLJIT_MOV32, SLJIT_R1, 0, s, sw);
+	if (!host_address(b, addr, bias)) {
+		return;
+	}
+	sljit_emit_op1(b->c, move, SLJIT_MEM1(SLJIT_R0), 0, SLJIT_R1, 0);
+}
+
 void athrill_jit_count(AthrillJitBuilder *b, uint32 n)
 {
 	if (b->failed) {
