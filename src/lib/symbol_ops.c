@@ -140,6 +140,14 @@ static int symbol_index_find(SymbolRangeIndex *index, const DbgSymbolType *table
 	return found;
 }
 
+const char *symbol_registered_name(const char *elf_name, std_bool keep_prefix)
+{
+	if (keep_prefix || (elf_name[0] != '_')) {
+		return elf_name;
+	}
+	return &elf_name[1];
+}
+
 int symbol_get_func(char *funcname, uint32 func_len, AthrillAddrType *addrp, uint32 *size)
 {
 	int i;
