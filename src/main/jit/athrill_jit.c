@@ -4,7 +4,8 @@
  *
  * Register use in a generated block:
  *   S0 = core, S1 = ctx (the two arguments), S2 = done counter,
- *   S3 = RESULT of the last call; R0..R2 are scratch.
+ *   S3 = RESULT of the last call, S4.. = the target's temporaries;
+ *   R0..R2 are scratch.
  */
 #include "athrill_jit.h"
 #include "sljitLir.h"
@@ -18,6 +19,9 @@
 #define JIT_REG_CTX	SLJIT_S1
 #define JIT_REG_DONE	SLJIT_S2
 #define JIT_REG_RESULT	SLJIT_S3
+#define JIT_SAVEDS	(4 + (sljit_s32)ATHRILL_JIT_TEMPS)
+
+static const sljit_s32 jit_temp_reg[ATHRILL_JIT_TEMPS] = { SLJIT_S4, SLJIT_S5 };
 
 static char jit_error[160];
 
@@ -108,6 +112,11 @@ AthrillJitOperand athrill_jit_result(void)
 	return operand(ATHRILL_JIT_OPERAND_RESULT, 8U, 0);
 }
 
+AthrillJitOperand athrill_jit_temp(uint32 index, uint8 width)
+{
+	return operand(ATHRILL_JIT_OPERAND_TEMP, width, (sint64)index);
+}
+
 static std_bool valid_width(uint8 width)
 {
 	return (width == 4U) || (width == 8U);
@@ -122,6 +131,9 @@ static std_bool is_destination(AthrillJitOperand op)
 		return TRUE;
 	}
 	if (op.kind == ATHRILL_JIT_OPERAND_ABS) {
+		return TRUE;
+	}
+	if (op.kind == ATHRILL_JIT_OPERAND_TEMP) {
 		return TRUE;
 	}
 	return FALSE;
@@ -157,6 +169,14 @@ static std_bool to_sljit(AthrillJitBuilder *b, AthrillJitOperand op, sljit_s32 *
 		return TRUE;
 	case ATHRILL_JIT_OPERAND_RESULT:
 		*arg = JIT_REG_RESULT;
+		*argw = 0;
+		return TRUE;
+	case ATHRILL_JIT_OPERAND_TEMP:
+		if ((op.value < 0) || (op.value >= (sint64)ATHRILL_JIT_TEMPS)) {
+			fail(b, "temp: index out of range");
+			return FALSE;
+		}
+		*arg = jit_temp_reg[op.value];
 		*argw = 0;
 		return TRUE;
 	}
@@ -217,7 +237,7 @@ AthrillJitBuilder *athrill_jit_builder_create(void)
 		return NULL;
 	}
 	/* uint64 block(void *core, void *ctx): core -> S0, ctx -> S1 */
-	sljit_emit_enter(b->c, 0, SLJIT_ARGS2(W, P, P), 3, 4, 0);
+	sljit_emit_enter(b->c, 0, SLJIT_ARGS2(W, P, P), 3, JIT_SAVEDS, 0);
 	sljit_emit_op1(b->c, SLJIT_MOV, JIT_REG_DONE, 0, SLJIT_IMM, 0);
 	sljit_emit_op1(b->c, SLJIT_MOV, JIT_REG_RESULT, 0, SLJIT_IMM, 0);
 	b->exit_label = athrill_jit_label_new(b);

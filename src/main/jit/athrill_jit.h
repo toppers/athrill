@@ -54,7 +54,16 @@ typedef enum {
 	ATHRILL_JIT_OPERAND_ABS,	/* a host variable (absolute address) */
 	ATHRILL_JIT_OPERAND_DONE,	/* the block's "done" counter (64 bit) */
 	ATHRILL_JIT_OPERAND_RESULT,	/* the int returned by the last athrill_jit_call() */
+	ATHRILL_JIT_OPERAND_TEMP,	/* a host register for the target's own values (index) */
 } AthrillJitOperandKind;
+
+/*
+ * Temporaries: ATHRILL_JIT_TEMPS host registers (callee-saved, so a value
+ * survives athrill_jit_call()) for values the target computes and reuses
+ * within a block, instead of fields in memory. Their value at block entry
+ * is undefined.
+ */
+#define ATHRILL_JIT_TEMPS 2U
 
 typedef struct {
 	AthrillJitOperandKind kind;
@@ -68,6 +77,7 @@ AthrillJitOperand athrill_jit_ctx(uint32 offset, uint8 width);
 AthrillJitOperand athrill_jit_abs(const void *address, uint8 width);
 AthrillJitOperand athrill_jit_done(void);
 AthrillJitOperand athrill_jit_result(void);
+AthrillJitOperand athrill_jit_temp(uint32 index, uint8 width);	/* index < ATHRILL_JIT_TEMPS */
 
 /* ---- operations ---- */
 typedef enum {
@@ -111,7 +121,7 @@ typedef int (*AthrillJitCallFunc)(void *core, void *ctx, const void *arg);
 AthrillJitBuilder *athrill_jit_builder_create(void);
 
 /*
- * dst = src. dst is CORE, CTX or ABS. A 4-byte src into an 8-byte dst is
+ * dst = src. dst is CORE, CTX, ABS or TEMP. A 4-byte src into an 8-byte dst is
  * zero-extended by athrill_jit_mov() and sign-extended by athrill_jit_movs();
  * an 8-byte src into a 4-byte dst keeps the low half.
  */

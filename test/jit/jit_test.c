@@ -402,6 +402,72 @@ static void test_host_memory(void)
 	CHECK(athrill_jit_builder_finish(b) == NULL, "store_host: 4-byte address refused");
 }
 
+/* temporaries: values in host registers, kept across a call */
+typedef struct {
+	uint64 a;
+	uint64 c;
+	uint64 out0;
+	uint64 out1;
+	uint32 out32;
+	uint32 calls;
+} TempCore;
+
+static int temp_clobber(void *core_v, void *ctx_v, const void *arg)
+{
+	TempCore *core = (TempCore *)core_v;
+	volatile uint64 sink[32];
+	uint32 i;
+
+	(void)ctx_v;
+	(void)arg;
+	for (i = 0U; i < 32U; i++) {
+		sink[i] = rnd();	/* uses registers and stack */
+	}
+	core->calls += (uint32)(sink[3] & 1U) + 1U - (uint32)(sink[3] & 1U);
+	return 0;
+}
+
+static void test_temps(void)
+{
+	AthrillJitBuilder *b;
+	AthrillJitCode *code;
+	TempCore core;
+	uint64 want0;
+	uint64 want1;
+	int i;
+
+	b = athrill_jit_builder_create();
+	/* t0 = a + c, t1 = t0 ^ a; a call; out0 = t0 - 1, out1 = t1 + t0, out32 = (uint32)t1 */
+	athrill_jit_alu(b, ATHRILL_JIT_ADD, athrill_jit_temp(0, 8), athrill_jit_core(offsetof(TempCore, a), 8),
+			athrill_jit_core(offsetof(TempCore, c), 8));
+	athrill_jit_alu(b, ATHRILL_JIT_XOR, athrill_jit_temp(1, 8), athrill_jit_temp(0, 8),
+			athrill_jit_core(offsetof(TempCore, a), 8));
+	athrill_jit_call(b, temp_clobber, NULL);
+	athrill_jit_alu(b, ATHRILL_JIT_SUB, athrill_jit_core(offsetof(TempCore, out0), 8), athrill_jit_temp(0, 8),
+			athrill_jit_imm(1));
+	athrill_jit_alu(b, ATHRILL_JIT_ADD, athrill_jit_core(offsetof(TempCore, out1), 8), athrill_jit_temp(1, 8),
+			athrill_jit_temp(0, 8));
+	athrill_jit_mov(b, athrill_jit_core(offsetof(TempCore, out32), 4), athrill_jit_temp(1, 8));
+	code = athrill_jit_builder_finish(b);
+	CHECK(code != NULL, "temps: no code (%s)", athrill_jit_last_error());
+	if (code != NULL) {
+		for (i = 0; i < 100; i++) {
+			memset(&core, 0, sizeof(core));
+			core.a = sample(i);
+			core.c = rnd();
+			want0 = core.a + core.c;
+			want1 = want0 ^ core.a;
+			(void)athrill_jit_code_run(code, &core, NULL);
+			CHECK((core.out0 == want0 - 1U) && (core.out1 == want1 + want0) && (core.out32 == (uint32)want1)
+			      && (core.calls == 1U), "temps: a=%016llx kept across the call", (unsigned long long)core.a);
+		}
+		athrill_jit_code_free(code);
+	}
+	b = athrill_jit_builder_create();
+	athrill_jit_mov(b, athrill_jit_temp(ATHRILL_JIT_TEMPS, 8), athrill_jit_imm(1));
+	CHECK(athrill_jit_builder_finish(b) == NULL, "temps: index out of range refused");
+}
+
 /* ------------------------------------------------------------------ */
 /* 3. conditions                                                       */
 
@@ -1228,6 +1294,7 @@ int main(void)
 	printf("  alu: %d checks so far\n", checks);
 	test_mov();
 	test_host_memory();
+	test_temps();
 	test_conditions();
 	test_exit_if();
 	test_call();
