@@ -22,6 +22,11 @@ skipped), so a run repeats exactly from the same inputs, and it can run in
 lockstep with the [Hakoniwa](https://github.com/toppers/hakoniwa)
 co-simulation environment (`--hakoniwa`).
 
+An optional block JIT (`-DATHRILL_ENABLE_JIT=ON`, built on [sljit](https://github.com/zherczeg/sljit)) gives the
+targets a common block builder and cache; a target translates its own instructions into it. The output stays
+bit-identical: PX4 runs about 1.8 times faster on the STM32 target (RTF 3.2 to 3.5 with tick skip) and 2.9 times
+faster on the RISC-V target (RTF 4.5). The targets' READMEs have the measurements.
+
 Command-line options, memory maps, and core device parameters are described in the
 [configuration reference](docs/configuration.md).
 

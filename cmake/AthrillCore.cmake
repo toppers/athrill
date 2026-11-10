@@ -49,6 +49,28 @@ set(ATHRILL_BASE_INCLUDE_DIRS
     "${ATHRILL_SRC_DIR}/osdep"
 )
 
+# Experimental JIT (src/main/jit): the target-independent block builder and
+# block cache over sljit (https://github.com/zherczeg/sljit, BSD-2-Clause).
+# A target adds ${ATHRILL_JIT_SOURCES} to its executable and uses
+# athrill_jit.h; with the option OFF nothing is built and nothing changes.
+option(ATHRILL_ENABLE_JIT "Enable the experimental JIT (needs an sljit checkout)" OFF)
+set(ATHRILL_SLJIT_DIR "${ATHRILL_ROOT}/../sljit" CACHE PATH "sljit checkout (its sljit_src directory is used)")
+set(ATHRILL_JIT_SOURCES)
+if(ATHRILL_ENABLE_JIT)
+    get_filename_component(ATHRILL_SLJIT_DIR "${ATHRILL_SLJIT_DIR}" ABSOLUTE)
+    if(NOT EXISTS "${ATHRILL_SLJIT_DIR}/sljit_src/sljitLir.c")
+        message(FATAL_ERROR
+            "ATHRILL_ENABLE_JIT needs sljit: ${ATHRILL_SLJIT_DIR}/sljit_src/sljitLir.c not found "
+            "(set ATHRILL_SLJIT_DIR)")
+    endif()
+    set(ATHRILL_JIT_SOURCES
+        "${ATHRILL_SRC_DIR}/main/jit/athrill_jit.c"
+        "${ATHRILL_SLJIT_DIR}/sljit_src/sljitLir.c")
+    list(APPEND ATHRILL_BASE_INCLUDE_DIRS
+        "${ATHRILL_SRC_DIR}/main/jit"
+        "${ATHRILL_SLJIT_DIR}/sljit_src")
+endif()
+
 set(ATHRILL_WINDOWS_COMPAT_INCLUDE_DIR
     "${ATHRILL_SRC_DIR}/osdep/windows/include")
 
@@ -254,6 +276,11 @@ function(athrill_apply_common_settings target_name)
     if(ATHRILL_ENABLE_GDB_RSP)
         target_compile_definitions("${target_name}" PRIVATE
             ATHRILL_ENABLE_GDB_RSP)
+    endif()
+    if(ATHRILL_ENABLE_JIT)
+        # SLJIT_DEBUG 0: sljit's own assertions off (as in a release build of sljit)
+        target_compile_definitions("${target_name}" PRIVATE
+            ATHRILL_ENABLE_JIT SLJIT_CONFIG_AUTO=1 SLJIT_DEBUG=0 SLJIT_VERBOSE=0)
     endif()
     if(MSVC)
         target_compile_features("${target_name}" PRIVATE c_std_11 cxx_std_17)
