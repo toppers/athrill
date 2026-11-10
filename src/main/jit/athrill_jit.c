@@ -604,6 +604,21 @@ void athrill_jit_call(AthrillJitBuilder *b, AthrillJitCallFunc func, const void 
 	sljit_emit_op1(b->c, SLJIT_MOV_S32, JIT_REG_RESULT, 0, SLJIT_R0, 0);
 }
 
+void athrill_jit_call_value(AthrillJitBuilder *b, AthrillJitCallValueFunc func, uint32 value)
+{
+	if (b->failed) {
+		return;
+	}
+	if (func == NULL) {
+		fail(b, "call_value: NULL function");
+		return;
+	}
+	sljit_emit_op1(b->c, SLJIT_MOV_P, SLJIT_R0, 0, JIT_REG_CORE, 0);
+	sljit_emit_op1(b->c, SLJIT_MOV32, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)value);
+	sljit_emit_icall(b->c, SLJIT_CALL, SLJIT_ARGS2(32, P, 32), SLJIT_IMM, SLJIT_FUNC_ADDR(func));
+	sljit_emit_op1(b->c, SLJIT_MOV_S32, JIT_REG_RESULT, 0, SLJIT_R0, 0);
+}
+
 /* ---- labels and jumps ---- */
 
 AthrillJitLabel *athrill_jit_label_new(AthrillJitBuilder *b)

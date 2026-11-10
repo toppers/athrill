@@ -803,6 +803,42 @@ static int call_probe(void *core_v, void *ctx_v, const void *arg)
 	return *ret;
 }
 
+static int call_value_probe(void *core_v, uint32 value)
+{
+	CallCore *core = (CallCore *)core_v;
+
+	core->value = core->value * 10U + value;
+	core->calls++;
+	return (int)(value ^ 0x5AU);
+}
+
+static void test_call_value(void)
+{
+	static const uint32 values[] = { 0U, 1U, 0xFFFFU, 0xE7FEU, 0xF7FFBFFEU, 0xFFFFFFFFU };
+	unsigned k;
+	AthrillJitBuilder *b;
+	AthrillJitCode *code;
+	CallCore core;
+
+	for (k = 0U; k < sizeof(values) / sizeof(values[0]); k++) {
+		b = athrill_jit_builder_create();
+		athrill_jit_call_value(b, call_value_probe, values[k]);
+		athrill_jit_mov(b, athrill_jit_core(offsetof(CallCore, result32), 4), athrill_jit_result());
+		code = athrill_jit_builder_finish(b);
+		CHECK(code != NULL, "call_value: no code (%s)", athrill_jit_last_error());
+		if (code == NULL) {
+			continue;
+		}
+		memset(&core, 0, sizeof(core));
+		core.value = 7U;
+		(void)athrill_jit_code_run(code, &core, NULL);
+		CHECK((core.value == 70U + (uint64)values[k]) && (core.calls == 1U) && (core.result32 == (values[k] ^ 0x5AU)),
+		      "call_value %08x: value %llu calls %u result %08x", values[k], (unsigned long long)core.value, core.calls,
+		      core.result32);
+		athrill_jit_code_free(code);
+	}
+}
+
 static void test_call(void)
 {
 	static const sint32 returns[] = { 0, 1, -1, 7, 0x7FFFFFFF, (sint32)0x80000000U, -12345 };
@@ -1447,6 +1483,7 @@ int main(void)
 	test_conditions();
 	test_exit_if();
 	test_call();
+	test_call_value();
 	printf("  conditions, exit_if: %d checks so far\n", checks);
 	test_division();
 	printf("  division: %d checks so far\n", checks);

@@ -160,6 +160,13 @@ void athrill_jit_count(AthrillJitBuilder *b, uint32 n);
 /* RESULT = func(core, ctx, arg). The scratch state is lost; fields are not. */
 void athrill_jit_call(AthrillJitBuilder *b, AthrillJitCallFunc func, const void *arg);
 
+/*
+ * RESULT = func(core, value): a target's own function of that form (an
+ * instruction's executor with its encoding), called directly.
+ */
+typedef int (*AthrillJitCallValueFunc)(void *core, uint32 value);
+void athrill_jit_call_value(AthrillJitBuilder *b, AthrillJitCallValueFunc func, uint32 value);
+
 /* Labels and jumps (within one block). */
 AthrillJitLabel *athrill_jit_label_new(AthrillJitBuilder *b);
 void athrill_jit_label_place(AthrillJitBuilder *b, AthrillJitLabel *label);
