@@ -47,12 +47,8 @@ Std_ReturnType cpuemu_symbol_set(void)
 	DbgSymbolType sym;
 	ElfSymbolType elfsym;
 	std_bool disable_underscore = FALSE;
-	uint32 name_index = 1U;
 
 	(void)cpuemu_get_devcfg_value("DISABLE_SYMBOL_UNDERSCORE", (uint32*)&disable_underscore);
-	if (disable_underscore != FALSE) {
-		name_index = 0U;
-	}
 
 
 	err = elfsym_get_symbol_num(&num);
@@ -65,7 +61,7 @@ Std_ReturnType cpuemu_symbol_set(void)
 		if (err != STD_E_OK) {
 			return err;
 		}
-		sym.name = &elfsym.name[name_index];
+		sym.name = (char *)symbol_registered_name(elfsym.name, disable_underscore != FALSE);
 		sym.addr = elfsym.addr;
 		sym.size = elfsym.size;
 		switch (elfsym.type) {
@@ -90,7 +86,7 @@ Std_ReturnType cpuemu_symbol_set(void)
 			}
 			break;
 		default:
-			//printf("undefined symbol:%s type:0x%x\n", &elfsym.name[name_index], elfsym.type);
+			//printf("undefined symbol:%s type:0x%x\n", sym.name, elfsym.type);
 			break;
 		}
 

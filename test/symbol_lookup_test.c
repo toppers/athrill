@@ -8,10 +8,14 @@
  * The results must equal that model exactly. They must also equal the
  * previous linear implementation, except where it did not reuse a last
  * result of id 0.
+ *
+ * Also symbol_registered_name(): the leading underscore dropped unless
+ * kept, a name without one (or empty) kept whole.
  */
 #include "symbol_ops.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define SYMBOLS 3000U
 #define LOOKUPS 200000U
@@ -121,9 +125,31 @@ static void lookup(AthrillAddrType addr)
 	compare(actual, specified, previous, previous_before, found_addr);
 }
 
+static unsigned name_failures;
+
+static void check_name(const char *elf_name, std_bool keep_prefix, const char *want)
+{
+	const char *got = symbol_registered_name(elf_name, keep_prefix);
+
+	if (strcmp(got, want) != 0) {
+		printf("registered name of \"%s\" (keep %d): \"%s\", want \"%s\"\n", elf_name, (int)keep_prefix, got,
+		       want);
+		name_failures++;
+	}
+}
+
 int main(void)
 {
 	unsigned i;
+
+	check_name("_main", FALSE, "main");
+	check_name("__start", FALSE, "_start");
+	check_name("arch_cpu_idle", FALSE, "arch_cpu_idle");
+	check_name("$t", FALSE, "$t");
+	check_name("", FALSE, "");
+	check_name("_main", TRUE, "_main");
+	check_name("arch_cpu_idle", TRUE, "arch_cpu_idle");
+	printf("registered-name mismatches: %u\n", name_failures);
 
 	srand(1);
 	for (i = 0; i < SYMBOLS; i++) {
@@ -147,7 +173,7 @@ int main(void)
 	printf("specification mismatches: %u\n", spec_mismatches);
 	printf("differences from the previous implementation: %u (other than its id 0 case: %u)\n",
 		previous_mismatches, previous_differences_not_id0);
-	if ((spec_mismatches == 0U) && (previous_differences_not_id0 == 0U)) {
+	if ((spec_mismatches == 0U) && (previous_differences_not_id0 == 0U) && (name_failures == 0U)) {
 		printf("SELFTEST PASS\n");
 		return 0;
 	}

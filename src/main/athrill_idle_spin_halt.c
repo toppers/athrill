@@ -58,6 +58,12 @@ static void read_idle_function(void)
 		return;
 	}
 	if (symbol_get_func(name, (uint32)strlen(name), &address, &size) < 0) {
+		if (configured) {
+			fprintf(stderr, "WARNING: %s %s: no such function in the ELF; the idle function is not used\n",
+				IDLE_FUNCTION_CONFIG, name);
+		} else {
+			fprintf(stderr, "INFO: no %s in the ELF: the idle function is not used\n", name);
+		}
 		return;
 	}
 	/* All supported instruction sets require bit zero of an instruction PC to be clear. */

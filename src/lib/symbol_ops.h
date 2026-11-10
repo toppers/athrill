@@ -14,6 +14,13 @@ typedef struct {
 extern uint32 symbol_get_func_num(void);
 extern uint32 symbol_get_gl_num(void);
 
+/*
+ * The name under which an ELF symbol is registered: without its leading
+ * underscore (the V850 toolchain prefixes C symbols with one) unless
+ * keep_prefix, which DISABLE_SYMBOL_UNDERSCORE sets. A name that does not
+ * start with an underscore is kept whole.
+ */
+extern const char *symbol_registered_name(const char *elf_name, std_bool keep_prefix);
 extern int symbol_get_func(char *funcname, uint32 func_len, AthrillAddrType *addrp, uint32 *size);
 extern char * symbol_pc2func(AthrillAddrType pc);
 extern int symbol_pc2funcid(AthrillAddrType pc, AthrillAddrType *funcaddr);
