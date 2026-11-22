@@ -32,7 +32,8 @@ static void elf_dwarf_build_array_dimension(DwarfDataArrayType *obj, ElfDwarfDie
 		case DW_AT_type:
 			break;
 		default:
-			ASSERT(0);
+			dwarf_skip_unknown_attribute("array", member->offset, attr_type);
+			break;
 		}
 	}
 
@@ -69,7 +70,8 @@ void elf_dwarf_build_array_type(ElfDwarfDieType *die)
 		case DW_AT_sibling:
 			break;
 		default:
-			ASSERT(0);
+			dwarf_skip_unknown_attribute("array", die->offset, attr_type);
+			break;
 		}
 	}
 	//配列サイズ

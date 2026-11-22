@@ -36,8 +36,8 @@ void elf_dwarf_build_pointer_type(ElfDwarfDieType *die)
 			//printf("ref_debug_info_offset:off=0x%x\n", obj->ref_debug_info_offset);
 			break;
 		default:
-			printf("die=0x%x attr=0x%x\n", die->offset, attr_type);
-			ASSERT(0);
+			dwarf_skip_unknown_attribute("pointer", die->offset, attr_type);
+			break;
 		}
 	}
 	obj->info.die = die;

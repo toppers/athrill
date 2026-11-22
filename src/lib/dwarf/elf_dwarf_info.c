@@ -42,6 +42,24 @@ static ElfDwarfDieType *elf_dwarf_alloc_empty_ElfDwarfDie(void)
 	return obj;
 }
 
+/*
+ * A value the debug-information reader cannot compute (an attribute form,
+ * or an expression that is not a constant offset) only affects what the
+ * debugger shows: it reads as 0, with one note per form, instead of
+ * stopping the run (#96).
+ */
+static void elf_dwarf_info_note_unsupported_form(DwFormType form)
+{
+	static uint8 noted[256 / 8];
+	uint32 f = ((uint32)form) & 0xFFU;
+
+	if ((noted[f / 8U] & (uint8)(1U << (f % 8U))) != 0U) {
+		return;
+	}
+	noted[f / 8U] |= (uint8)(1U << (f % 8U));
+	printf("WARNING: DWARF: value of form 0x%x not computed (read as 0)\n", (uint32)form);
+}
+
 uint32 elf_dwarf_info_get_value(DwFormType form, ElfDwarfAttributeType *obj, uint32 *size)
 {
 	uint32 value = -1;
@@ -86,15 +104,23 @@ uint32 elf_dwarf_info_get_value(DwFormType form, ElfDwarfAttributeType *obj, uin
 		*size = 4;
 		break;
 	case DW_FORM_block1:
+	case DW_FORM_exprloc:
 		//printf("block1:len=%u op[0]=%x, op[1]=%x\n", obj->encoded.op.len,
 		//		obj->encoded.op.ops[0], obj->encoded.op.ops[1]);
-		elf_dwarf_info_ops_push(0);
-		elf_dwarf_info_ops_DW_OP(obj->encoded.op.ops[0], &obj->encoded.op.ops[1]);
-		value = elf_dwarf_info_ops_pop();
+		if ((obj->encoded.op.len > 0) && (obj->encoded.op.ops[0] == DW_OP_plus_uconst)) {
+			elf_dwarf_info_ops_push(0);
+			elf_dwarf_info_ops_DW_OP(obj->encoded.op.ops[0], &obj->encoded.op.ops[1]);
+			value = elf_dwarf_info_ops_pop();
+		}
+		else {
+			/* e.g. a run-time array bound (DW_OP_fbreg ...): no constant value */
+			elf_dwarf_info_note_unsupported_form(form);
+			value = 0;
+		}
 		break;
 	default:
-		printf("invalid form=0x%x\n", form);
-		ASSERT(0);
+		elf_dwarf_info_note_unsupported_form(form);
+		value = 0;
 		break;
 	}
 	return value;

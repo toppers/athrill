@@ -36,8 +36,8 @@ void elf_dwarf_build_typedef_type(ElfDwarfDieType *die)
 		case DW_AT_decl_column:
 			break;
 		default:
-			printf("name=0x%x form=%s\n", attr_type, attr->typename);
-			ASSERT(0);
+			dwarf_skip_unknown_attribute("typedef", die->offset, attr_type);
+			break;
 		}
 	}
 	obj->info.die = die;

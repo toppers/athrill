@@ -27,7 +27,8 @@ void elf_dwarf_build_base_type(ElfDwarfDieType *die)
 			//printf("encoding=0x%x\n", obj->encoding);
 			break;
 		default:
-			ASSERT(0);
+			dwarf_skip_unknown_attribute("base", die->offset, attr_type);
+			break;
 		}
 	}
 	obj->info.die = die;
