@@ -53,8 +53,8 @@ static void elf_dwarf_build_subprogram_variable(DwarfDataSubprogramType *obj, El
 		case DW_AT_unknown_0x2137:
 			break;
 		default:
-			printf("attr_type=0x%x\n", attr_type);
-			ASSERT(0);
+			dwarf_skip_unknown_attribute("subprogram", variable->offset, attr_type);
+			break;
 		}
 	}
 	dwarf_add_subprogram_variable(obj, &localVariable);
@@ -144,8 +144,8 @@ void elf_dwarf_build_subprogram_type(ElfDwarfDieType *die)
 #endif
 			break;
 		default:
-			printf("die=0x%x attr_type=0x%x\n", die->offset, attr_type);
-			ASSERT(0);
+			dwarf_skip_unknown_attribute("subprogram", die->offset, attr_type);
+			break;
 		}
 	}
 

@@ -55,8 +55,8 @@ static void elf_dwarf_build_struct_member(DwarfDataStructType *obj, ElfDwarfDieT
 		case DW_AT_specification:
 			break;
 		default:
-			printf("attr_type=0x%x\n", attr_type);
-			ASSERT(0);
+			dwarf_skip_unknown_attribute("struct", member->offset, attr_type);
+			break;
 		}
 	}
 	dwarf_add_struct_member(obj, &mem);
@@ -126,8 +126,8 @@ static void elf_dwarf_build_struct_method(DwarfDataStructType *obj, ElfDwarfDieT
 		case DW_AT_specification:
 			break;
 		default:
-			printf("attr_type=0x%x\n", attr_type);
-			ASSERT(0);
+			dwarf_skip_unknown_attribute("struct", member->offset, attr_type);
+			break;
 		}
 	}
 	dwarf_add_struct_member(obj, &mem);
@@ -190,8 +190,8 @@ void elf_dwarf_build_struct_type(ElfDwarfDieType *die)
 		case DW_AT_specification:
 			break;
 		default:
-			printf("attr_type=0x%x\n", attr_type);
-			ASSERT(0);
+			dwarf_skip_unknown_attribute("struct", die->offset, attr_type);
+			break;
 		}
 	}
 

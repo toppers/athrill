@@ -145,7 +145,7 @@ ordinary getters return the first compatible entry.
 | `DEBUG_FUNC_ENABLE_PROF` | `1` enables function call/time profiling; every other value disables it. | `1`. | `DEBUG_FUNC_ENABLE_PROF 0` |
 | `DEBUG_FUNC_ENABLE_WATCH` | `1` enables data-watch and access-context collection; every other value disables it. | `1`. | `DEBUG_FUNC_ENABLE_WATCH 0` |
 | `DEBUG_FUNC_FT_LOG_SIZE` | Decimal entries allocated for each core's function trace ring. Use a positive value. | `1024`. | `DEBUG_FUNC_FT_LOG_SIZE 4096` |
-| `DEBUG_FUNC_DISABLE_DEBUG_DATA_TYPE` | Nonzero skips building DWARF variable-type information. | `0`; applies only to usable DWARF in ELF32 files. | `DEBUG_FUNC_DISABLE_DEBUG_DATA_TYPE 1` |
+| `DEBUG_FUNC_DISABLE_DEBUG_DATA_TYPE` | Nonzero skips building DWARF variable-type information. Otherwise it is built when the debugger first prints a variable, not at start-up. | `0`; applies only to usable DWARF in ELF32 files. | `DEBUG_FUNC_DISABLE_DEBUG_DATA_TYPE 1` |
 | `DISABLE_SYMBOL_UNDERSCORE` | Nonzero keeps ELF symbol names unchanged. Zero drops a leading `_`, for toolchains that prefix C symbols with one (V850); a name that does not start with `_` is kept whole. | `0`. | `DISABLE_SYMBOL_UNDERSCORE 1` |
 | `DEBUG_FUNC_OPLOG` | File containing debugger commands to replay at interactive startup. The file is opened `a+`; successful later commands are appended. | Absent: no replay or recording. Requires `-i`. | `DEBUG_FUNC_OPLOG debugger.ops` |
 | `DEBUG_FUNC_REMOTE_ATHRILL_LISTEN_PORT_NO` | Decimal UDP port on which remote interactive Athrill listens. | Target constant, `49152` in current targets; requires `-i -r`. | `DEBUG_FUNC_REMOTE_ATHRILL_LISTEN_PORT_NO 49152` |

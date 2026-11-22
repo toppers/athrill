@@ -186,13 +186,35 @@ static Std_ReturnType get_DW_AT_type_value(ElfDwarfDieType *die, uint32 *retp)
 			//printf("Not Supported:get_DW_AT_type_value:off=0x%x 0x%x\n", die->offset, attr_type);
 			return STD_E_NOENT;
 		default:
-			printf("get_DW_AT_type_value:not supported attr=0x%x\n", attr_type);
+			dwarf_skip_unknown_attribute("type", die->offset, attr_type);
 			break;
 		}
 	}
-	printf("get_DW_AT_type_value:not supported:off=0x%x die->attribute->current_array_size=%u\n", die->offset, die->attribute->current_array_size);
-	ASSERT(0);
+	/* No DW_AT_type: the caller treats the type as unknown. */
 	return STD_E_NOENT;
+}
+
+#define DWARF_AT_NOTE_RANGE	0x4000U	/* DW_AT_hi_user + 1 */
+void dwarf_skip_unknown_attribute(const char *builder, uint32 die_offset, DwAtType attr_type)
+{
+	static uint8 noted[DWARF_AT_NOTE_RANGE / 8U];
+	static std_bool noted_out_of_range = FALSE;
+	uint32 type = (uint32)attr_type;
+
+	if (type < DWARF_AT_NOTE_RANGE) {
+		if ((noted[type / 8U] & (uint8)(1U << (type % 8U))) != 0U) {
+			return;
+		}
+		noted[type / 8U] |= (uint8)(1U << (type % 8U));
+	}
+	else {
+		if (noted_out_of_range) {
+			return;
+		}
+		noted_out_of_range = TRUE;
+	}
+	printf("WARNING: DWARF: skipped unsupported attribute 0x%x (%s, first at die 0x%x)\n",
+		type, builder, die_offset);
 }
 
 
@@ -283,6 +305,32 @@ void dwarf_build_data_type_set(void)
 {
 	build_types();
 	resolve_reference();
+}
+
+/*
+ * The variable types serve only the debugger's print command. Building
+ * them for a large program (PX4: ~26 MB of DWARF 4) takes minutes, so the
+ * loader only enables them and the first print builds them.
+ */
+static std_bool data_type_set_enabled = FALSE;
+static std_bool data_type_set_built = FALSE;
+
+void dwarf_enable_data_type_set(void)
+{
+	data_type_set_enabled = TRUE;
+}
+
+std_bool dwarf_ensure_data_type_set(void)
+{
+	if (data_type_set_enabled == FALSE) {
+		return FALSE;
+	}
+	if (data_type_set_built == FALSE) {
+		data_type_set_built = TRUE;
+		printf("INFO: building DWARF variable types for the first print ...\n");
+		dwarf_build_data_type_set();
+	}
+	return TRUE;
 }
 
 void *dwarf_alloc_data_type(DwarfDataEnumType type)

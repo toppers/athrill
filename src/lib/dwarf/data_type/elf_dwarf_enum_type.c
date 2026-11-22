@@ -37,8 +37,8 @@ void elf_dwarf_build_enum_type(ElfDwarfDieType *die)
 		case DW_AT_enum_class:
 			break;
 		default:
-			printf("name=0x%x form=%s\n", attr_type, attr->typename);
-			ASSERT(0);
+			dwarf_skip_unknown_attribute("enum", die->offset, attr_type);
+			break;
 		}
 	}
 
@@ -64,7 +64,8 @@ void elf_dwarf_build_enum_type(ElfDwarfDieType *die)
 				mem.const_value = elf_dwarf_info_get_value(abbrev->attribute_form->data[j], attr, &size);
 				break;
 			default:
-				ASSERT(0);
+				dwarf_skip_unknown_attribute("enum", member->offset, attr_type);
+				break;
 			}
 		}
 		dwarf_add_enum_member(obj, mem.name, mem.const_value);

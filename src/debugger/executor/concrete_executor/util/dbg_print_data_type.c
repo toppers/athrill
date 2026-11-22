@@ -551,6 +551,9 @@ bool print_variable_with_data_type(char *variable_name, AthrillAddrType vaddr, u
 	DwarfDataType *type;
 	PrintControlType ctrl;
 
+	if (dwarf_ensure_data_type_set() == FALSE) {
+		return FALSE;
+	}
 	variable = (DwarfDataVariableType *)dwarf_search_data_type(DATA_TYPE_VARIABLE, NULL, NULL, variable_name);
 	if (variable == NULL || variable->ref == NULL) {
 		return FALSE;

@@ -47,8 +47,8 @@ void elf_dwarf_build_variable_type(ElfDwarfDieType *die)
 		case DW_AT_unknown_0x2137:
 			break;
 		default:
-			printf("die=0x%x attr_type=0x%x\n", die->offset, attr_type);
-			ASSERT(0);
+			dwarf_skip_unknown_attribute("variable", die->offset, attr_type);
+			break;
 		}
 	}
 	obj->info.die = die;

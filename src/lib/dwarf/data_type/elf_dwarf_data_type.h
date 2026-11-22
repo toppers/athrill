@@ -33,9 +33,18 @@ typedef struct {
 extern void dwarf_register_data_type(DwarfDataType *entry);
 extern ElfPointerArrayType	*dwarf_get_data_types(DwarfDataEnumType type);
 extern void dwarf_build_data_type_set(void);
+extern void dwarf_enable_data_type_set(void);
+extern std_bool dwarf_ensure_data_type_set(void);
 extern DwarfDataType *elf_dwarf_get_data_type(uint32 debug_info_offset);
 
 extern Std_ReturnType dwarf_get_real_type_offset(uint32 offset, uint32 *retp);
+
+/*
+ * An attribute a builder does not use (for example a DWARF 5 attribute
+ * such as DW_AT_deleted) is skipped. The debug information only serves
+ * the debugger; it must not stop a run (#96). One note per attribute.
+ */
+extern void dwarf_skip_unknown_attribute(const char *builder, uint32 die_offset, DwAtType attr_type);
 
 /*
  * ex. uint32
